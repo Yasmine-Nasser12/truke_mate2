@@ -15,9 +15,10 @@ public class TruckMateDbContext : DbContext
     public DbSet<ShipmentRequest> ShipmentRequests { get; set; }
     public DbSet<Offer> Offers { get; set; }
     public DbSet<Trip> Trips { get; set; }
-
+    public DbSet<Truck> trucks { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
     }
 }

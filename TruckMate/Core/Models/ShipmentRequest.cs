@@ -20,5 +20,7 @@ namespace TruckMate.Core.Models
         public bool IsReturnTrip { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public ICollection<Offer> Offers { get; set; } = new List<Offer>();
     }
 }
