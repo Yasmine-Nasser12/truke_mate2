@@ -1,7 +1,23 @@
-﻿namespace TruckMate.Data.Context
-{
-    public class TruckMateDbContext
-    {
+﻿namespace TruckMate.Data.Context;
+using Microsoft.EntityFrameworkCore;
+using TruckMate.Core.Models;
 
+public class TruckMateDbContext : DbContext
+{
+    public TruckMateDbContext(DbContextOptions<TruckMateDbContext> options)
+        : base(options)
+    {
+    }
+
+    public DbSet<User> Users { get; set; }
+    public DbSet<Driver> Drivers { get; set; }
+    public DbSet<Trader> Traders { get; set; }
+    public DbSet<ShipmentRequest> ShipmentRequests { get; set; }
+    public DbSet<Offer> Offers { get; set; }
+    public DbSet<Trip> Trips { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
     }
 }
