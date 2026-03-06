@@ -1,17 +1,23 @@
-# truck_mate
+# TruckMate
 
-A new Flutter project.
+A Flutter application for connecting trucks with shipments to reduce empty return trips.
+
+## Features
+- Splash Screen with simple animation
+- Onboarding flow (3 screens with short videos)
+- Smooth page indicators
+- Next / Get Started button
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+This project is built with Flutter.
 
-A few resources to get you started if this is your first Flutter project:
+### Prerequisites
+- Flutter SDK (latest stable)
+- Dart SDK
+- Android Studio / VS Code
+- Android device or emulator (for Android testing)
+- Mac with Xcode (for iOS builds)
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### Installation
+1. Clone the repository:
