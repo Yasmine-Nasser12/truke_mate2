@@ -1,11 +1,18 @@
 // ════════════════════════════════════════════════════════════
-//  trips_screen.dart  — Full Animations
+//  trips_screen.dart  — API CONNECTED, ALL ANIMATIONS PRESERVED
+//  Tab 1: Available Requests → GET /api/driver/trips/available-requests
+//  Tab 2: My Trips           → GET /api/driver/trips/my-trips
 // ════════════════════════════════════════════════════════════
 
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '/providers/theme_provider.dart';
+import '/providers/driver_provider.dart';
+import '/models/driver_models.dart';
+import '/services/driver_service.dart';
+import '/screen/driver/driver_trip_screens.dart'
+    show TripAvailableScreen, RequestDetailsScreen, TripData, AvailableTripsScreen;
 
 const Color _kTeal  = Color(0xFF00D5BE);
 const Color _kAmber = Color(0xFFF59E0B);
@@ -19,32 +26,23 @@ Color _muted(bool d)  => d ? const Color(0xFF5F7E97) : const Color(0xFF8A9BB0);
 enum TripStatus { inProgress, scheduled, completed }
 enum FilterType { all, upcoming, completed }
 
+// ── My Trips model ──
 class TripModel {
   final String id, date, from, to;
   final int miles;
   final TripStatus status;
-  final double? progress;
+  final double earnings;
   const TripModel({
     required this.id, required this.date,
     required this.from, required this.to,
     required this.miles, required this.status,
-    this.progress,
+    this.earnings = 0,
   });
 }
 
-const List<TripModel> kTrips = [
-  TripModel(id: 'TR-4721', date: 'Dec 16, 2025', from: 'Nasr City',
-      to: 'Maadi', miles: 382, status: TripStatus.inProgress, progress: 0.47),
-  TripModel(id: 'TR-4722', date: 'Dec 17, 2025', from: 'Maadi',
-      to: 'Nasr City', miles: 124, status: TripStatus.scheduled),
-  TripModel(id: 'TR-4723', date: 'Dec 17, 2025', from: 'Maadi',
-      to: 'Zamalik', miles: 355, status: TripStatus.scheduled),
-  TripModel(id: 'TR-4718', date: 'Dec 14, 2025', from: 'Zamalik',
-      to: 'Dokki', miles: 87, status: TripStatus.completed),
-  TripModel(id: 'TR-4715', date: 'Dec 14, 2025', from: 'Zamalik',
-      to: 'Dokki', miles: 52, status: TripStatus.completed),
-];
-
+// ══════════════════════════════════════════════════════════════
+//  TRIPS SCREEN
+// ══════════════════════════════════════════════════════════════
 class TripsScreen extends StatefulWidget {
   const TripsScreen({super.key});
   @override
@@ -53,54 +51,128 @@ class TripsScreen extends StatefulWidget {
 
 class _TripsScreenState extends State<TripsScreen>
     with TickerProviderStateMixin {
+  int _mainTab = 0;
   FilterType _filter = FilterType.all;
 
+  // ── My Trips state ──
+  List<TripModel> _myTrips = [];
+  bool _myTripsLoading = false;
+  String? _myTripsError;
+
   late AnimationController _pageCtrl;
+  late AnimationController _tabCtrl;
   late List<Animation<double>> _itemAnims;
+
+  final DriverService _service = DriverService();
 
   @override
   void initState() {
     super.initState();
     _pageCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 900))..forward();
+        vsync: this, duration: const Duration(milliseconds: 900))
+      ..forward();
+    _tabCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 300))
+      ..forward();
     _itemAnims = List.generate(8, (i) {
       final s = (i * 0.09).clamp(0.0, 0.8);
       final e = (s + 0.4).clamp(0.0, 1.0);
       return CurvedAnimation(parent: _pageCtrl,
           curve: Interval(s, e, curve: Curves.easeOutCubic));
     });
+
+    // Load available trips on init
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<DriverProvider>().loadAvailableTrips();
+    });
   }
 
   @override
-  void dispose() { _pageCtrl.dispose(); super.dispose(); }
+  void dispose() {
+    _pageCtrl.dispose();
+    _tabCtrl.dispose();
+    super.dispose();
+  }
 
-  List<TripModel> get _filteredOthers {
-    final others = kTrips.where((t) => t.status != TripStatus.inProgress).toList();
-    switch (_filter) {
-      case FilterType.upcoming:
-        return others.where((t) => t.status == TripStatus.scheduled).toList();
-      case FilterType.completed:
-        return others.where((t) => t.status == TripStatus.completed).toList();
-      case FilterType.all: return others;
+  void _switchMainTab(int i) {
+    if (i == _mainTab) return;
+    _tabCtrl.forward(from: 0);
+    setState(() => _mainTab = i);
+    if (i == 1) _loadMyTrips();
+  }
+
+  // ── GET /api/driver/trips/my-trips ──
+  Future<void> _loadMyTrips({String status = 'all'}) async {
+    setState(() { _myTripsLoading = true; _myTripsError = null; });
+    try {
+      final res = await _service.getMyTrips(status: status);
+      if (res['success'] == true) {
+        final data = res['data'];
+        final list = (data['trips'] ?? data['data'] ?? []) as List;
+        setState(() {
+          _myTrips = list.map((t) {
+            final statusStr = (t['status'] ?? '').toString().toLowerCase();
+            TripStatus tripStatus;
+            if (statusStr == 'active' || statusStr == 'inprogress') {
+              tripStatus = TripStatus.inProgress;
+            } else if (statusStr == 'scheduled' || statusStr == 'pending') {
+              tripStatus = TripStatus.scheduled;
+            } else {
+              tripStatus = TripStatus.completed;
+            }
+            return TripModel(
+              id:       t['tripId']          ?? t['id'] ?? '',
+              date:     t['earnedAtFormatted'] ?? t['date'] ?? '',
+              from:     t['pickupLocation']   ?? '',
+              to:       t['dropoffLocation']  ?? '',
+              miles:    (t['distance'] as num?)?.toInt() ?? 0,
+              status:   tripStatus,
+              earnings: (t['amountEGP'] as num?)?.toDouble() ?? 0.0,
+            );
+          }).toList();
+        });
+      } else {
+        setState(() => _myTripsError = res['message'] ?? 'Failed to load trips');
+      }
+    } catch (e) {
+      setState(() => _myTripsError = e.toString());
+    } finally {
+      setState(() => _myTripsLoading = false);
     }
   }
 
-  bool get _showActive =>
-      _filter == FilterType.all || _filter == FilterType.upcoming;
+  List<TripModel> get _filteredTrips {
+    switch (_filter) {
+      case FilterType.upcoming:
+        return _myTrips.where((t) => t.status == TripStatus.scheduled).toList();
+      case FilterType.completed:
+        return _myTrips.where((t) => t.status == TripStatus.completed).toList();
+      case FilterType.all:
+        return _myTrips;
+    }
+  }
 
   void _openFilter() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      // Spring transition matching React Native spring(damping:35, stiffness:400)
       transitionAnimationController: AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 400),
+        vsync: this, duration: const Duration(milliseconds: 400),
       ),
       builder: (_) => FilterSheet(
         current: _filter,
-        onSelect: (f) { setState(() => _filter = f); Navigator.pop(context); },
+        onSelect: (f) {
+          setState(() => _filter = f);
+          Navigator.pop(context);
+          // reload with filter
+          final statusMap = {
+            FilterType.all: 'all',
+            FilterType.upcoming: 'active',
+            FilterType.completed: 'completed',
+          };
+          _loadMyTrips(status: statusMap[f] ?? 'all');
+        },
       ),
     );
   }
@@ -120,39 +192,47 @@ class _TripsScreenState extends State<TripsScreen>
   @override
   Widget build(BuildContext context) {
     final d = context.watch<ThemeProvider>().isDark;
-    final active = kTrips.firstWhere((t) => t.status == TripStatus.inProgress);
-    final others = _filteredOthers;
 
     return Scaffold(
       backgroundColor: _bg(d),
       body: SafeArea(child: Column(children: [
-        // Header
+
+        // ── Header ──
         _animItem(0, Padding(
           padding: const EdgeInsets.fromLTRB(20, 22, 16, 0),
           child: Row(children: [
-            GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                width: 36, height: 36,
-                margin: const EdgeInsets.only(right: 12),
-                decoration: BoxDecoration(
-                  color: _card(d), borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: _border(d))),
-                child: const Icon(Icons.arrow_back_rounded, color: _kTeal, size: 18),
-              ),
-            ),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Trips', style: TextStyle(
                   color: _text(d), fontSize: 22, fontWeight: FontWeight.w700)),
-              Text('Manage your deliveries',
+              Text('Manage your requests and active trips',
                   style: TextStyle(color: _muted(d), fontSize: 12.5)),
             ]),
             const Spacer(),
-            _FilterButton(active: _filter != FilterType.all,
-                onTap: _openFilter, isDark: d),
+            if (_mainTab == 1)
+              _FilterButton(active: _filter != FilterType.all,
+                  onTap: _openFilter, isDark: d),
           ]),
         )),
 
+        // ── Main Tab Toggle ──
+        _animItem(1, Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: Container(
+            height: 48,
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: _card(d),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _border(d)),
+            ),
+            child: Row(children: [
+              _tabPill('Available Requests', 0, d),
+              _tabPill('My Trips', 1, d),
+            ]),
+          ),
+        )),
+
+        // ── Active filter tag ──
         if (_filter != FilterType.all)
           _animItem(1, Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -160,46 +240,626 @@ class _TripsScreenState extends State<TripsScreen>
               alignment: Alignment.centerLeft,
               child: _FilterTag(
                 label: _filter == FilterType.upcoming ? 'Upcoming' : 'Completed',
-                onRemove: () => setState(() => _filter = FilterType.all),
+                onRemove: () {
+                  setState(() => _filter = FilterType.all);
+                  _loadMyTrips();
+                },
               ),
             ),
           )),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
 
-        Expanded(child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          physics: const BouncingScrollPhysics(),
-          children: [
-            if (_showActive) ...[
-              _animItem(1, _SectionLabel('Active Now', muted: _muted(d))),
-              const SizedBox(height: 10),
-              _animItem(2, _ActiveCard(
-                trip: active, onTap: () {}, isDark: d,
-                cardBg: _card(d), textColor: _text(d),
-                mutedColor: _muted(d), borderColor: _border(d))),
-              const SizedBox(height: 20),
-            ],
-            _animItem(3, _SectionLabel('Other Trips', muted: _muted(d))),
-            const SizedBox(height: 10),
-            // AnimatePresence popLayout → AnimatedList equivalent
-            for (int i = 0; i < others.length; i++)
-              _animItem(4 + i, Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _OtherCard(
-                  trip: others[i], onTap: () {}, isDark: d,
-                  cardBg: _card(d), textColor: _text(d),
-                  mutedColor: _muted(d), borderColor: _border(d)),
-              )),
-            const SizedBox(height: 8),
-          ],
-        )),
+        // ── Tab 0: Available Requests ──
+        if (_mainTab == 0)
+          Expanded(child: _AvailableRequestsList(isDark: d)),
+
+        // ── Tab 1: My Trips ──
+        if (_mainTab == 1)
+          Expanded(
+            child: AnimatedBuilder(
+              animation: _tabCtrl,
+              builder: (_, child) => Opacity(
+                opacity: _tabCtrl.value,
+                child: Transform.translate(
+                    offset: Offset(0, 20 * (1 - _tabCtrl.value)), child: child),
+              ),
+              child: _myTripsLoading
+                  ? _loadingState(d)
+                  : _myTripsError != null
+                      ? _errorState(d)
+                      : _MyTripsList(d: d, trips: _filteredTrips, itemAnims: _itemAnims),
+            ),
+          ),
       ])),
+    );
+  }
+
+  Widget _loadingState(bool d) => Center(child: Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      const CircularProgressIndicator(color: _kTeal, strokeWidth: 2.5),
+      const SizedBox(height: 16),
+      Text('Loading trips...', style: TextStyle(color: _muted(d), fontSize: 14)),
+    ],
+  ));
+
+  Widget _errorState(bool d) => Center(child: Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      Icon(Icons.wifi_off_outlined, color: _muted(d), size: 48),
+      const SizedBox(height: 16),
+      Text('Failed to load trips', style: TextStyle(color: _text(d), fontSize: 16)),
+      const SizedBox(height: 8),
+      GestureDetector(
+        onTap: _loadMyTrips,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          decoration: BoxDecoration(
+            color: _kTeal.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _kTeal.withOpacity(0.3)),
+          ),
+          child: const Text('Retry', style: TextStyle(color: _kTeal, fontWeight: FontWeight.w600)),
+        ),
+      ),
+    ],
+  ));
+
+  Widget _tabPill(String label, int idx, bool d) {
+    return Expanded(child: GestureDetector(
+      onTap: () => _switchMainTab(idx),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: _mainTab == idx
+              ? const LinearGradient(colors: [Color(0xFF009689), Color(0xFF00D5BE)])
+              : null,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: _mainTab == idx
+              ? [BoxShadow(color: _kTeal.withOpacity(0.3), blurRadius: 8)]
+              : [],
+        ),
+        alignment: Alignment.center,
+        child: Text(label, style: TextStyle(
+          color: _mainTab == idx ? Colors.white : _muted(d),
+          fontSize: 13, fontWeight: FontWeight.w600,
+        )),
+      ),
+    ));
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  AVAILABLE REQUESTS LIST — من الـ DriverProvider
+// ══════════════════════════════════════════════════════════════
+class _AvailableRequestsList extends StatefulWidget {
+  final bool isDark;
+  const _AvailableRequestsList({required this.isDark});
+  @override
+  State<_AvailableRequestsList> createState() => _AvailableRequestsListState();
+}
+
+class _AvailableRequestsListState extends State<_AvailableRequestsList>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _listCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _listCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 800))
+      ..forward();
+  }
+
+  @override
+  void dispose() { _listCtrl.dispose(); super.dispose(); }
+
+  // ── بيحول AvailableTrip → TripData للـ screens الموجودة ──
+  TripData _toTripData(AvailableTrip t) => TripData(
+    id:           t.id,
+    pickup:       t.origin,
+    dropoff:      t.destination,
+    distance:     t.distance,
+    estTime:      t.estimatedTime,
+    cargoType:    t.goodsType,
+    trader:       t.traderName,
+    price:        t.price,
+    weightLbs:    (t.weightTons * 2204.62).toInt(),
+    postedAgo:    t.scheduledDate,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final driver = context.watch<DriverProvider>();
+    final trips  = driver.availableTrips;
+    final isLoading = driver.isLoading;
+
+    if (isLoading && trips.isEmpty) {
+      return Center(child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(color: _kTeal, strokeWidth: 2.5),
+          const SizedBox(height: 16),
+          Text('Finding available trips...',
+              style: TextStyle(color: _muted(widget.isDark), fontSize: 14)),
+        ],
+      ));
+    }
+
+    if (trips.isEmpty) return _emptyState();
+
+    return RefreshIndicator(
+      color: _kTeal,
+      onRefresh: () => context.read<DriverProvider>().loadAvailableTrips(),
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: trips.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 14),
+        itemBuilder: (ctx, i) => AnimatedBuilder(
+          animation: _listCtrl,
+          builder: (_, child) {
+            final delay = i * 0.12;
+            final t = ((_listCtrl.value - delay) / 0.4).clamp(0.0, 1.0);
+            final curve = Curves.easeOutCubic.transform(t);
+            return Opacity(
+              opacity: curve,
+              child: Transform.translate(
+                  offset: Offset(0, 20 * (1 - curve)), child: child),
+            );
+          },
+          child: _RequestCard(
+            trip: _toTripData(trips[i]),
+            isDark: widget.isDark,
+            onViewDetails: () => Navigator.push(ctx, MaterialPageRoute(
+              builder: (_) => RequestDetailsScreen(trip: _toTripData(trips[i])),
+            )),
+            onAccept: () => Navigator.push(ctx, MaterialPageRoute(
+              builder: (_) => TripAvailableScreen(trip: _toTripData(trips[i])),
+            )),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyState() => Center(child: Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      Container(
+        width: 72, height: 72,
+        decoration: BoxDecoration(
+            shape: BoxShape.circle, color: _kTeal.withOpacity(0.1)),
+        child: const Icon(Icons.inbox_outlined, color: _kTeal, size: 34),
+      ),
+      const SizedBox(height: 16),
+      Text('No trips available right now',
+          style: TextStyle(color: _text(widget.isDark), fontSize: 16)),
+      const SizedBox(height: 8),
+      Text('Check back soon for new shipments',
+          style: TextStyle(color: _muted(widget.isDark), fontSize: 13)),
+    ],
+  ));
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  REQUEST CARD
+// ══════════════════════════════════════════════════════════════
+class _RequestCard extends StatefulWidget {
+  final TripData trip;
+  final bool isDark;
+  final VoidCallback onViewDetails;
+  final VoidCallback onAccept;
+
+  const _RequestCard({
+    required this.trip, required this.isDark,
+    required this.onViewDetails, required this.onAccept,
+  });
+
+  @override
+  State<_RequestCard> createState() => _RequestCardState();
+}
+
+class _RequestCardState extends State<_RequestCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pressCtrl;
+  late Animation<double> _pressAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _pressCtrl = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 120));
+    _pressAnim = Tween<double>(begin: 1.0, end: 0.98)
+        .animate(CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() { _pressCtrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.trip;
+    final d = widget.isDark;
+
+    return GestureDetector(
+      onTapDown: (_) => _pressCtrl.forward(),
+      onTapUp: (_) => _pressCtrl.reverse(),
+      onTapCancel: () => _pressCtrl.reverse(),
+      child: ScaleTransition(
+        scale: _pressAnim,
+        child: Container(
+          decoration: BoxDecoration(
+            color: _card(d),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _border(d)),
+            boxShadow: d ? [] : [BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 10, offset: const Offset(0, 3))],
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+            // Price Banner
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: const BoxDecoration(
+                color: _kAmber,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Offered Price',
+                      style: TextStyle(color: Colors.black.withOpacity(0.7), fontSize: 13)),
+                  Row(children: [
+                    Text('${t.price.toInt()}', style: const TextStyle(
+                        color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
+                    const Text(' EGP', style: TextStyle(color: Colors.black87, fontSize: 13)),
+                  ]),
+                ],
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+                // Route Timeline
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Column(children: [
+                    Container(width: 10, height: 10,
+                        decoration: const BoxDecoration(color: _kTeal, shape: BoxShape.circle)),
+                    Container(width: 2, height: 40, color: _kTeal.withOpacity(0.3)),
+                    const Icon(Icons.location_on_rounded, color: _kAmber, size: 14),
+                  ]),
+                  const SizedBox(width: 14),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Pickup', style: TextStyle(color: _muted(d), fontSize: 11)),
+                    Text(t.pickup, style: TextStyle(color: _text(d), fontSize: 15,
+                        fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
+                    Text('Drop-off', style: TextStyle(color: _muted(d), fontSize: 11)),
+                    Text(t.dropoff, style: TextStyle(color: _text(d), fontSize: 15,
+                        fontWeight: FontWeight.bold)),
+                  ])),
+                ]),
+                const SizedBox(height: 12),
+
+                // Info Chips
+                Row(children: [
+                  _chip(Icons.location_on_outlined, 'Distance', t.distance, d),
+                  const SizedBox(width: 8),
+                  _chip(Icons.access_time_rounded, 'Time', t.estTime, d),
+                  const SizedBox(width: 8),
+                  _chip(Icons.scale_outlined, 'Weight', '${t.weightLbs} lbs', d),
+                ]),
+                const SizedBox(height: 12),
+
+                // Cargo & Posted
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Cargo', style: TextStyle(color: _muted(d), fontSize: 11)),
+                      Text(t.cargoType, style: TextStyle(color: _text(d),
+                          fontSize: 14, fontWeight: FontWeight.w600)),
+                    ]),
+                    Text(t.postedAgo, style: const TextStyle(color: _kAmber, fontSize: 12)),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Action Buttons
+                Row(children: [
+                  Expanded(child: OutlinedButton(
+                    onPressed: widget.onViewDetails,
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: _kTeal.withOpacity(0.5)),
+                      foregroundColor: _kTeal,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                    ),
+                    child: const Text('View Details',
+                        style: TextStyle(color: _kTeal, fontSize: 14,
+                            fontWeight: FontWeight.w600)),
+                  )),
+                  const SizedBox(width: 12),
+                  Expanded(child: _AcceptButton(onTap: widget.onAccept)),
+                ]),
+              ]),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _chip(IconData icon, String label, String value, bool d) =>
+    Expanded(child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: d ? const Color(0xFF112236) : const Color(0xFFEEF5FF),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _border(d)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(icon, color: _kTeal, size: 12),
+          const SizedBox(width: 3),
+          Text(label, style: TextStyle(color: _muted(d), fontSize: 10)),
+        ]),
+        const SizedBox(height: 3),
+        Text(value, style: TextStyle(color: _text(d), fontSize: 11,
+            fontWeight: FontWeight.bold)),
+      ]),
+    ));
+}
+
+// ── Accept Button with shimmer ──
+class _AcceptButton extends StatefulWidget {
+  final VoidCallback onTap;
+  const _AcceptButton({required this.onTap});
+
+  @override
+  State<_AcceptButton> createState() => _AcceptButtonState();
+}
+
+class _AcceptButtonState extends State<_AcceptButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _shimCtrl;
+  late Animation<double> _shimX;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimCtrl = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 2000))..repeat();
+    _shimX = Tween<double>(begin: -300, end: 300)
+        .animate(CurvedAnimation(parent: _shimCtrl, curve: Curves.linear));
+  }
+
+  @override
+  void dispose() { _shimCtrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Container(
+        height: 46,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+              colors: [Color(0xFF009689), Color(0xFF00D5BE)]),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(
+              color: _kTeal.withOpacity(0.3),
+              blurRadius: 8, offset: const Offset(0, 4))],
+        ),
+        clipBehavior: Clip.hardEdge,
+        child: Stack(alignment: Alignment.center, children: [
+          AnimatedBuilder(
+            animation: _shimX,
+            builder: (_, __) => Transform.translate(
+              offset: Offset(_shimX.value, 0),
+              child: Container(
+                width: 80,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [
+                    Colors.transparent,
+                    Colors.white.withOpacity(0.2),
+                    Colors.transparent,
+                  ]),
+                ),
+              ),
+            ),
+          ),
+          const Row(mainAxisSize: MainAxisSize.min, children: [
+            Text('Accept', style: TextStyle(
+                color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+            SizedBox(width: 6),
+            Icon(Icons.arrow_forward, color: Colors.white, size: 16),
+          ]),
+        ]),
+      ),
     );
   }
 }
 
-// ── Filter Button (bounce on tap) ──
+
+// ══════════════════════════════════════════════════════════════
+//  MY TRIPS LIST
+// ══════════════════════════════════════════════════════════════
+class _MyTripsList extends StatelessWidget {
+  final bool d;
+  final List<TripModel> trips;
+  final List<Animation<double>> itemAnims;
+
+  const _MyTripsList({required this.d, required this.trips, required this.itemAnims});
+
+  Widget _anim(int idx, Widget child) {
+    final anim = itemAnims[idx.clamp(0, itemAnims.length - 1)];
+    return AnimatedBuilder(
+      animation: anim,
+      builder: (_, __) => Opacity(
+        opacity: anim.value,
+        child: Transform.translate(
+            offset: Offset(0, 20 * (1 - anim.value)), child: child),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (trips.isEmpty) {
+      return Center(child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.route_outlined, color: _muted(d), size: 56),
+          const SizedBox(height: 16),
+          Text('No trips found', style: TextStyle(
+              color: _text(d), fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text('Accepted trips will appear here',
+              style: TextStyle(color: _muted(d), fontSize: 14)),
+        ],
+      ));
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      physics: const BouncingScrollPhysics(),
+      itemCount: trips.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (_, i) => _anim(2 + i, _MyTripCard(trip: trips[i], isDark: d)),
+    );
+  }
+}
+
+// ── My Trip Card ──
+class _MyTripCard extends StatefulWidget {
+  final TripModel trip;
+  final bool isDark;
+  const _MyTripCard({required this.trip, required this.isDark});
+  @override
+  State<_MyTripCard> createState() => _MyTripCardState();
+}
+
+class _MyTripCardState extends State<_MyTripCard> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.trip;
+    final d = widget.isDark;
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: _card(d),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _border(d)),
+            boxShadow: d ? [] : [BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8, offset: const Offset(0, 2))],
+          ),
+          child: Row(children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: _kTeal.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.local_shipping_outlined, color: _kTeal, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Expanded(
+                  child: Text('${t.from}  →  ${t.to}',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: _text(d), fontSize: 14,
+                          fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(width: 8),
+                _StatusBadge(status: t.status),
+              ]),
+              const SizedBox(height: 4),
+              Text(t.id, style: TextStyle(color: _muted(d), fontSize: 12)),
+              const SizedBox(height: 6),
+              Row(children: [
+                const Icon(Icons.attach_money_rounded, color: _kAmber, size: 14),
+                Text('${t.earnings.toStringAsFixed(0)} EGP',
+                    style: const TextStyle(color: _kAmber,
+                        fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(width: 12),
+                const Icon(Icons.calendar_today_outlined,
+                    color: Color(0xFF5F7E97), size: 12),
+                const SizedBox(width: 4),
+                Expanded(child: Text(t.date,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: _muted(d), fontSize: 12))),
+                Text('View', style: TextStyle(
+                    color: _kTeal, fontSize: 12, fontWeight: FontWeight.w500)),
+                const Icon(Icons.chevron_right_rounded, color: _kTeal, size: 16),
+              ]),
+            ])),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Status Badge ──
+class _StatusBadge extends StatelessWidget {
+  final TripStatus status;
+  const _StatusBadge({required this.status});
+  @override
+  Widget build(BuildContext context) {
+    late Color color; late String label;
+    switch (status) {
+      case TripStatus.inProgress:
+        color = const Color(0xFF00D4E0); label = 'In Progress'; break;
+      case TripStatus.scheduled:
+        color = const Color(0xFFFF8904); label = 'Scheduled'; break;
+      case TripStatus.completed:
+        color = _kTeal; label = 'Delivered'; break;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        border: Border.all(color: color.withOpacity(0.45)),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 6, height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(
+            color: color, fontSize: 10.5, fontWeight: FontWeight.w600)),
+      ]),
+    );
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  FILTER BUTTON
+// ══════════════════════════════════════════════════════════════
 class _FilterButton extends StatefulWidget {
   final bool active, isDark;
   final VoidCallback onTap;
@@ -216,8 +876,7 @@ class _FilterButtonState extends State<_FilterButton>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this,
-        duration: const Duration(milliseconds: 400));
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
     _scale = TweenSequence<double>([
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.28), weight: 40),
       TweenSequenceItem(tween: Tween(begin: 1.28, end: 0.88), weight: 30),
@@ -243,8 +902,10 @@ class _FilterButtonState extends State<_FilterButton>
                 ? _kTeal.withOpacity(widget.isDark ? 0.3 : 0.15)
                 : _card(widget.isDark),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: widget.active
-                ? _kTeal.withOpacity(0.4) : _border(widget.isDark))),
+            border: Border.all(
+              color: widget.active ? _kTeal.withOpacity(0.4) : _border(widget.isDark),
+            ),
+          ),
           child: const Icon(Icons.filter_alt_outlined, color: _kTeal, size: 20),
         ),
       ),
@@ -257,13 +918,15 @@ class _FilterTag extends StatelessWidget {
   final String label;
   final VoidCallback onRemove;
   const _FilterTag({required this.label, required this.onRemove});
+
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.fromLTRB(12, 5, 8, 5),
     decoration: BoxDecoration(
       color: _kTeal.withOpacity(0.12),
       border: Border.all(color: _kTeal.withOpacity(0.35)),
-      borderRadius: BorderRadius.circular(20)),
+      borderRadius: BorderRadius.circular(20),
+    ),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       Text(label, style: const TextStyle(
           color: _kTeal, fontSize: 12, fontWeight: FontWeight.w600)),
@@ -274,241 +937,17 @@ class _FilterTag extends StatelessWidget {
           width: 16, height: 16,
           decoration: BoxDecoration(
               color: _kTeal.withOpacity(0.2), shape: BoxShape.circle),
-          child: const Icon(Icons.close, color: _kTeal, size: 10)),
+          child: const Icon(Icons.close, color: _kTeal, size: 10),
+        ),
       ),
     ]),
   );
 }
 
-// ── Active Card (with animated progress bar) ──
-class _ActiveCard extends StatefulWidget {
-  final TripModel trip;
-  final VoidCallback onTap;
-  final bool isDark;
-  final Color cardBg, textColor, mutedColor, borderColor;
-  const _ActiveCard({
-    required this.trip, required this.onTap, required this.isDark,
-    required this.cardBg, required this.textColor,
-    required this.mutedColor, required this.borderColor,
-  });
-  @override
-  State<_ActiveCard> createState() => _ActiveCardState();
-}
 
-class _ActiveCardState extends State<_ActiveCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _prog;
-  bool _pressed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(vsync: this,
-        duration: const Duration(milliseconds: 1100));
-    _prog = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) _ctrl.forward();
-    });
-  }
-
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = ((widget.trip.progress ?? 0) * 100).round();
-    final progressBg = widget.isDark
-        ? const Color(0xFF1B3A52) : const Color(0xFFDFF4F2);
-
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) { setState(() => _pressed = false); widget.onTap(); },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.97 : 1.0,
-        duration: const Duration(milliseconds: 120),
-        child: Container(
-          decoration: BoxDecoration(
-            color: widget.cardBg,
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: widget.borderColor),
-            boxShadow: widget.isDark ? [] : [
-              BoxShadow(color: Colors.black.withOpacity(0.06),
-                  blurRadius: 12, offset: const Offset(0, 4))],
-          ),
-          padding: const EdgeInsets.all(15),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Container(
-                width: 42, height: 42,
-                decoration: BoxDecoration(
-                  color: _kTeal.withOpacity(0.14),
-                  borderRadius: BorderRadius.circular(11)),
-                child: const Icon(Icons.navigation_rounded, color: _kTeal, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Trip #${widget.trip.id}',
-                    style: TextStyle(color: widget.textColor,
-                        fontSize: 14.5, fontWeight: FontWeight.w600)),
-                Text(widget.trip.date,
-                    style: TextStyle(color: widget.mutedColor, fontSize: 11.5)),
-              ]),
-              const Spacer(),
-              _StatusBadge(status: widget.trip.status),
-            ]),
-            const SizedBox(height: 15),
-            Row(children: [
-              Icon(Icons.location_on_outlined,
-                  color: _kTeal.withOpacity(0.6), size: 14),
-              const SizedBox(width: 5),
-              Text('${widget.trip.from}  →  ${widget.trip.to}',
-                  style: TextStyle(color: widget.textColor, fontSize: 13)),
-              const Spacer(),
-              Text('${widget.trip.miles} mi',
-                  style: TextStyle(color: widget.mutedColor, fontSize: 12.5)),
-            ]),
-            const SizedBox(height: 13),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('Progress',
-                  style: TextStyle(color: widget.mutedColor, fontSize: 11.5)),
-              Text('$pct%', style: const TextStyle(
-                  color: _kTeal, fontSize: 11.5, fontWeight: FontWeight.w700)),
-            ]),
-            const SizedBox(height: 6),
-            // Animated progress bar (width: 0 → progress%)
-            AnimatedBuilder(
-              animation: _prog,
-              builder: (_, __) => ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: Stack(children: [
-                  Container(height: 5, color: progressBg),
-                  FractionallySizedBox(
-                    widthFactor: (widget.trip.progress ?? 0) * _prog.value,
-                    child: Container(
-                      height: 5,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_kTeal, Color(0xFF00D3F2)]),
-                        borderRadius: BorderRadius.all(Radius.circular(4))),
-                    ),
-                  ),
-                ]),
-              ),
-            ),
-            const SizedBox(height: 13),
-            Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-              const Text('View Details', style: TextStyle(
-                  color: _kTeal, fontSize: 12.5, fontWeight: FontWeight.w500)),
-              const SizedBox(width: 2),
-              const Icon(Icons.chevron_right_rounded, color: _kTeal, size: 18),
-            ]),
-          ]),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Other Card ──
-class _OtherCard extends StatefulWidget {
-  final TripModel trip;
-  final VoidCallback onTap;
-  final bool isDark;
-  final Color cardBg, textColor, mutedColor, borderColor;
-  const _OtherCard({
-    required this.trip, required this.onTap, required this.isDark,
-    required this.cardBg, required this.textColor,
-    required this.mutedColor, required this.borderColor,
-  });
-  @override
-  State<_OtherCard> createState() => _OtherCardState();
-}
-
-class _OtherCardState extends State<_OtherCard> {
-  bool _pressed = false;
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) { setState(() => _pressed = false); widget.onTap(); },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.97 : 1.0,
-        duration: const Duration(milliseconds: 120),
-        child: Container(
-          decoration: BoxDecoration(
-            color: widget.cardBg,
-            borderRadius: BorderRadius.circular(13),
-            border: Border.all(color: widget.borderColor),
-            boxShadow: widget.isDark ? [] : [
-              BoxShadow(color: Colors.black.withOpacity(0.04),
-                  blurRadius: 8, offset: const Offset(0, 2))],
-          ),
-          padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Text('Trip #${widget.trip.id}',
-                  style: TextStyle(color: widget.textColor,
-                      fontSize: 13.5, fontWeight: FontWeight.w600)),
-              const Spacer(),
-              _StatusBadge(status: widget.trip.status),
-            ]),
-            const SizedBox(height: 8),
-            Row(children: [
-              Icon(Icons.calendar_today_outlined,
-                  color: widget.mutedColor, size: 13),
-              const SizedBox(width: 5),
-              Text(widget.trip.date,
-                  style: TextStyle(color: widget.mutedColor, fontSize: 11.5)),
-            ]),
-            const SizedBox(height: 5),
-            Row(children: [
-              Icon(Icons.location_on_outlined,
-                  color: _kTeal.withOpacity(0.6), size: 13),
-              const SizedBox(width: 5),
-              Text('${widget.trip.from}  →  ${widget.trip.to}',
-                  style: TextStyle(color: widget.textColor, fontSize: 12.5)),
-              const Spacer(),
-              Text('${widget.trip.miles} mi',
-                  style: TextStyle(color: widget.mutedColor, fontSize: 11.5)),
-              const SizedBox(width: 4),
-              Icon(Icons.chevron_right_rounded,
-                  color: widget.mutedColor, size: 18),
-            ]),
-          ]),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Status Badge ──
-class _StatusBadge extends StatelessWidget {
-  final TripStatus status;
-  const _StatusBadge({required this.status});
-  @override
-  Widget build(BuildContext context) {
-    late Color color; late String label;
-    switch (status) {
-      case TripStatus.inProgress: color = const Color(0xFF00D4E0); label = 'In Progress'; break;
-      case TripStatus.scheduled:  color = const Color(0xFFFF8904); label = 'Scheduled'; break;
-      case TripStatus.completed:  color = _kTeal; label = 'Completed'; break;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        border: Border.all(color: color.withOpacity(0.45)),
-        borderRadius: BorderRadius.circular(20)),
-      child: Text(label, style: TextStyle(
-          color: color, fontSize: 10.5, fontWeight: FontWeight.w600)),
-    );
-  }
-}
-
-// ── Filter Bottom Sheet (spring animation) ──
+// ══════════════════════════════════════════════════════════════
+//  FILTER BOTTOM SHEET
+// ══════════════════════════════════════════════════════════════
 class FilterSheet extends StatelessWidget {
   final FilterType current;
   final ValueChanged<FilterType> onSelect;
@@ -525,15 +964,16 @@ class FilterSheet extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: sheetBg,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 32),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        // Drag handle
         Container(
           width: 36, height: 4,
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
-              color: handleColor, borderRadius: BorderRadius.circular(3))),
+              color: handleColor, borderRadius: BorderRadius.circular(3)),
+        ),
         Row(children: [
           Text('Filter Trips', style: TextStyle(
               color: textColor, fontSize: 15, fontWeight: FontWeight.w600)),
@@ -544,27 +984,27 @@ class FilterSheet extends StatelessWidget {
               width: 28, height: 28,
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1A3550) : const Color(0xFFF0F4F8),
-                shape: BoxShape.circle),
-              child: Icon(Icons.close, color: textColor, size: 14)),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.close, color: textColor, size: 14),
+            ),
           ),
         ]),
         const SizedBox(height: 18),
-        _FilterOption(label: 'All Trips',
-            selected: current == FilterType.all,
+        _FilterOption(label: 'All Trips', selected: current == FilterType.all,
             onTap: () => onSelect(FilterType.all), isDark: isDark),
         const SizedBox(height: 10),
-        _FilterOption(label: 'Upcoming',
-            selected: current == FilterType.upcoming,
+        _FilterOption(label: 'Upcoming', selected: current == FilterType.upcoming,
             onTap: () => onSelect(FilterType.upcoming), isDark: isDark),
         const SizedBox(height: 10),
-        _FilterOption(label: 'Completed',
-            selected: current == FilterType.completed,
+        _FilterOption(label: 'Completed', selected: current == FilterType.completed,
             onTap: () => onSelect(FilterType.completed), isDark: isDark),
       ]),
     );
   }
 }
 
+// ── Filter Option ──
 class _FilterOption extends StatefulWidget {
   final String label;
   final bool selected, isDark;
@@ -577,12 +1017,36 @@ class _FilterOption extends StatefulWidget {
   State<_FilterOption> createState() => _FilterOptionState();
 }
 
-class _FilterOptionState extends State<_FilterOption> {
+class _FilterOptionState extends State<_FilterOption>
+    with SingleTickerProviderStateMixin {
   bool _pressed = false;
+  late final AnimationController _checkCtrl;
+  late final Animation<double> _checkScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkCtrl = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 200));
+    _checkScale = CurvedAnimation(parent: _checkCtrl, curve: Curves.easeOutBack);
+    if (widget.selected) _checkCtrl.value = 1.0;
+  }
+
+  @override
+  void didUpdateWidget(_FilterOption old) {
+    super.didUpdateWidget(old);
+    if (widget.selected && !old.selected) _checkCtrl.forward();
+    if (!widget.selected && old.selected) _checkCtrl.reverse();
+  }
+
+  @override
+  void dispose() { _checkCtrl.dispose(); super.dispose(); }
+
   @override
   Widget build(BuildContext context) {
     final unselBg = widget.isDark ? const Color(0xFF112236) : const Color(0xFFF5F8FA);
     final textColor = widget.isDark ? const Color(0xFFE8F0F8) : const Color(0xFF1A2A3A);
+
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) { setState(() => _pressed = false); widget.onTap(); },
@@ -595,45 +1059,42 @@ class _FilterOptionState extends State<_FilterOption> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
           decoration: BoxDecoration(
             color: widget.selected
-                ? _kTeal.withOpacity(widget.isDark ? 0.3 : 0.12)
-                : unselBg,
+                ? _kTeal.withOpacity(widget.isDark ? 0.3 : 0.12) : unselBg,
             border: Border.all(
               color: widget.selected ? _kTeal : Colors.transparent,
-              width: 1.5),
-            borderRadius: BorderRadius.circular(12)),
+              width: 1.5,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Row(children: [
             Text(widget.label, style: TextStyle(
                 color: textColor, fontSize: 14,
                 fontWeight: widget.selected ? FontWeight.w600 : FontWeight.w500)),
             const Spacer(),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 20, height: 20,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: widget.selected ? _kTeal : Colors.transparent,
-                border: Border.all(
-                  color: widget.selected ? _kTeal
-                      : (widget.isDark
-                          ? Colors.white.withOpacity(0.25)
-                          : Colors.black.withOpacity(0.2)),
-                  width: 2)),
-              child: widget.selected
-                  ? const Icon(Icons.check, color: Colors.white, size: 12)
-                  : null,
+            ScaleTransition(
+              scale: _checkScale,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 20, height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.selected ? _kTeal : Colors.transparent,
+                  border: Border.all(
+                    color: widget.selected ? _kTeal
+                        : (widget.isDark
+                            ? Colors.white.withOpacity(0.25)
+                            : Colors.black.withOpacity(0.2)),
+                    width: 2,
+                  ),
+                ),
+                child: widget.selected
+                    ? const Icon(Icons.check, color: Colors.white, size: 12)
+                    : null,
+              ),
             ),
           ]),
         ),
       ),
     );
   }
-}
-
-class _SectionLabel extends StatelessWidget {
-  final String text;
-  final Color muted;
-  const _SectionLabel(this.text, {required this.muted});
-  @override
-  Widget build(BuildContext context) => Text(text,
-      style: TextStyle(color: muted, fontSize: 12.5, fontWeight: FontWeight.w500));
 }

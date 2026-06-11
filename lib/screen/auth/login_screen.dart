@@ -6,6 +6,7 @@ import '/screen/driver/driver_home_screen.dart';
 import '/screen/trader/trader_home_screen.dart';
 import '/screen/auth/select_role.dart';
 import '/providers/theme_provider.dart';
+import '/services/auth_service.dart'; // ✅ إضافة
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,6 +21,8 @@ class _LoginScreenState extends State<LoginScreen>
   bool _obscure  = true;
   bool _loading  = false;
   bool _isDriver = true;
+
+  final AuthService _authService = AuthService(); // ✅ إضافة
 
   late final AnimationController _pageCtrl;
   late final List<Animation<double>> _anims;
@@ -63,21 +66,57 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
+  // ✅ الفنكشن دي اتغيرت بس - كل الـ UI فضل زي ما هو
   Future<void> _handleLogin() async {
+    // التحقق من الحقول
+    if (_emailCtrl.text.trim().isEmpty || _passwordCtrl.text.trim().isEmpty) {
+      _showError('من فضلك ادخل الإيميل والباسورد');
+      return;
+    }
+
     setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 1200));
-    if (!mounted) return;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isLoggedIn', true);
-    await prefs.setString('role', _isDriver ? 'driver' : 'trader');
+
+    final result = await _authService.login(
+      phone: _emailCtrl.text.trim(),
+      password: _passwordCtrl.text.trim(),
+    );
+
     if (!mounted) return;
     setState(() => _loading = false);
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-          builder: (_) =>
-              _isDriver ? const DriverHomeScreen() : const TraderHomeScreen()),
-      (route) => false,
+
+    if (result['success']) {
+      // حفظ بيانات اليوزر
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
+      await prefs.setString('role', _isDriver ? 'driver' : 'trader');
+      await prefs.setString('lastRole', _isDriver ? 'driver' : 'trader');
+
+      if (!mounted) return;
+
+      // الانتقال للهوم
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+            builder: (_) =>
+                _isDriver ? const DriverHomeScreen() : const TraderHomeScreen()),
+        (route) => false,
+      );
+    } else {
+      // عرض رسالة الخطأ
+      _showError(result['message'] ?? 'حدث خطأ، حاول مجدداً');
+    }
+  }
+
+  // ✅ إضافة: عرض رسالة الخطأ
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: const EdgeInsets.all(16),
+      ),
     );
   }
 

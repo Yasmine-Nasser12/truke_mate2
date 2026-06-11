@@ -7,9 +7,11 @@ import '/screen/driver/license_details_screen.dart';
 
 class VehicleDetailsScreen extends StatefulWidget {
   final String fullName, phone, email, nationalId, licenseNumber, licenseType;
+  final String licenseImageBase64; // ← جديد
   const VehicleDetailsScreen({super.key,
     this.fullName='', this.phone='', this.email='',
-    this.nationalId='', this.licenseNumber='', this.licenseType=''});
+    this.nationalId='', this.licenseNumber='', this.licenseType='',
+    this.licenseImageBase64=''}); // ← جديد
   @override
   State<VehicleDetailsScreen> createState() => _VehicleDetailsScreenState();
 }
@@ -42,10 +44,18 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
       plateNumber: _plateCtrl.text, truckType: _truckCtrl.text, capacity: capacity);
     Navigator.push(context, MaterialPageRoute(
       builder: (_) => DriverOtpScreen4(
-        fullName: widget.fullName, phone: widget.phone,
-        email: widget.email, nationalId: widget.nationalId,
-        licenseNumber: widget.licenseNumber, licenseType: widget.licenseType,
-        plateNumber: _plateCtrl.text, truckType: _truckCtrl.text, capacity: capacity)));
+        fullName:           widget.fullName,
+        phone:              widget.phone,
+        email:              widget.email,
+        nationalId:         widget.nationalId,
+        licenseNumber:      widget.licenseNumber,
+        licenseType:        widget.licenseType,
+        plateNumber:        _plateCtrl.text,
+        truckType:          _truckCtrl.text,
+        capacity:           capacity,
+        password:           _passCtrl.text,
+        licenseImageBase64: widget.licenseImageBase64, // ← جديد
+      )));
   }
 
   @override
@@ -57,7 +67,6 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Form(key: _formKey, child: Column(children: [
-            // ── Back ──
             Align(alignment: Alignment.centerLeft,
               child: GestureDetector(onTap: () => Navigator.pop(context),
                 child: Container(width: 45, height: 45,
@@ -73,7 +82,6 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
             DriverStepIndicator(currentStep: 3),
             const SizedBox(height: 40),
 
-            // ── Form card ──
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
               decoration: BoxDecoration(
@@ -138,7 +146,6 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                     ]),
                   ])),
 
-                // ── Password ──
                 _PassField(label: 'Password', hint: 'Enter your password',
                   ctrl: _passCtrl, obscure: _obscurePass, theme: t,
                   onToggle: () => setState(() => _obscurePass = !_obscurePass),
@@ -179,7 +186,6 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
   }
 }
 
-// ── Password Field ──
 class _PassField extends StatelessWidget {
   final String label, hint;
   final TextEditingController ctrl;

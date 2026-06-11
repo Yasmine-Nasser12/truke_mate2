@@ -4,7 +4,6 @@ enum ShipmentStatus { pending, inTransit, delivered, cancelled }
 
 enum OfferStatus { pending, accepted, rejected }
 
-// ✅ أضفنا system
 enum NotificationType { shipment, offer, payment, system }
 
 class ShipmentMilestone {
@@ -31,10 +30,12 @@ class Shipment {
     required this.status,
     required this.progress,
     required this.driverName,
+    required this.driverInitials, // ✅ جديد
     required this.vehicleInfo,
     required this.goodsType,
     required this.priority,
     required this.timeline,
+    this.cancelReason,             // ✅ جديد — nullable
   });
 
   final String id;
@@ -48,10 +49,12 @@ class Shipment {
   final ShipmentStatus status;
   final double progress;
   final String driverName;
+  final String driverInitials;   // ✅ جديد
   final String vehicleInfo;
   final String goodsType;
   final String priority;
   final List<ShipmentMilestone> timeline;
+  final String? cancelReason;    // ✅ جديد
 
   bool get isActive =>
       status == ShipmentStatus.pending || status == ShipmentStatus.inTransit;
@@ -62,6 +65,7 @@ class DriverOffer {
     required this.id,
     required this.shipmentId,
     required this.driverName,
+    required this.driverInitials, // ✅ جديد
     required this.rating,
     required this.completedTrips,
     required this.price,
@@ -74,6 +78,7 @@ class DriverOffer {
   final String id;
   final String shipmentId;
   final String driverName;
+  final String driverInitials;   // ✅ جديد
   final double rating;
   final int completedTrips;
   final double price;
@@ -115,7 +120,7 @@ class TraderSummary {
   final int completedDeliveries;
 }
 
-// ── Status Colors ──
+// ── Status helpers ─────────────────────────────────────────────────────────────
 Color shipmentStatusColor(ShipmentStatus status) {
   switch (status) {
     case ShipmentStatus.pending:   return const Color(0xFFF3B64C);
@@ -142,7 +147,6 @@ Color offerStatusColor(OfferStatus status) {
   }
 }
 
-// ✅ system case مضاف
 IconData notificationIcon(NotificationType type) {
   switch (type) {
     case NotificationType.shipment: return Icons.local_shipping_outlined;
@@ -151,3 +155,7 @@ IconData notificationIcon(NotificationType type) {
     case NotificationType.system:   return Icons.info_outline;
   }
 }
+
+// ── Initials helper ────────────────────────────────────────────────────────────
+String makeInitials(String name) =>
+    name.trim().split(' ').take(2).map((w) => w[0].toUpperCase()).join();

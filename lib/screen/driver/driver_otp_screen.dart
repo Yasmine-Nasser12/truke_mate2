@@ -5,12 +5,18 @@ import 'package:provider/provider.dart';
 import '/providers/theme_provider.dart';
 import 'package:flutter/services.dart';
 import '/screen/auth/driver_reset_password.dart';
+import '/services/auth_service.dart'; // ✅ إضافة
 
 enum OtpFlowStep { first, second }
 
 class DriverOtpScreen extends StatefulWidget {
   final OtpFlowStep flowStep;
-  const DriverOtpScreen({super.key, this.flowStep = OtpFlowStep.first});
+  final String phone; // ✅ إضافة
+  const DriverOtpScreen({
+    super.key,
+    this.flowStep = OtpFlowStep.first,
+    this.phone = '', // ✅ إضافة
+  });
 
   @override
   State<DriverOtpScreen> createState() => _DriverOtpScreenState();
@@ -23,6 +29,8 @@ class _DriverOtpScreenState extends State<DriverOtpScreen>
 
   int _secondsLeft = 46;
   Timer? _timer;
+  bool _loading = false; // ✅ إضافة
+  final AuthService _authService = AuthService(); // ✅ إضافة
 
   // ── Animations ──
   late final AnimationController _pulseCtrl;
@@ -31,15 +39,15 @@ class _DriverOtpScreenState extends State<DriverOtpScreen>
   late final AnimationController _dotsCtrl;
   late final AnimationController _entranceCtrl;
 
-  // stagger intervals for elements
   late final List<Animation<double>> _fadeSeries;
   late final List<Animation<Offset>> _slideSeries;
 
   @override
   void initState() {
     super.initState();
-    _controllers = List.generate(4, (_) => TextEditingController());
-    _focusNodes = List.generate(4, (_) => FocusNode());
+    // ✅ 6 بدل 4
+    _controllers = List.generate(6, (_) => TextEditingController());
+    _focusNodes = List.generate(6, (_) => FocusNode());
     _startTimer();
 
     _pulseCtrl = AnimationController(
@@ -65,7 +73,6 @@ class _DriverOtpScreenState extends State<DriverOtpScreen>
       duration: const Duration(milliseconds: 1100),
     )..forward();
 
-    // 5 stagger slots: icon, title, subtitle, email, otp boxes, hint, buttons
     final intervals = [
       const Interval(0.0, 0.45),
       const Interval(0.1, 0.55),
@@ -117,7 +124,8 @@ class _DriverOtpScreenState extends State<DriverOtpScreen>
   }
 
   void _onChanged(int index, String value) {
-    if (value.isNotEmpty && index < 3) _focusNodes[index + 1].requestFocus();
+    // ✅ 5 بدل 3 عشان 6 boxes
+    if (value.isNotEmpty && index < 5) _focusNodes[index + 1].requestFocus();
     if (value.isEmpty && index > 0) _focusNodes[index - 1].requestFocus();
   }
 
@@ -129,34 +137,79 @@ class _DriverOtpScreenState extends State<DriverOtpScreen>
     );
   }
 
-  void _verifyAndContinue() {
+  // ✅ بقت بتكلم الباك
+  Future<void> _verifyAndContinue() async {
     final otp = _controllers.map((e) => e.text).join();
-    if (otp.length < 4) {
+    // ✅ 6 بدل 4
+    if (otp.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter the 4-digit code.')),
+        const SnackBar(content: Text('Please enter the 6-digit code.')),
       );
       return;
     }
-    if (widget.flowStep == OtpFlowStep.first) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              const DriverOtpScreen(flowStep: OtpFlowStep.second),
+
+    setState(() => _loading = true);
+
+    final result = await _authService.verifyResetOtp(
+      phone: widget.phone,
+      otp: otp,
+    );
+
+    if (!mounted) return;
+    setState(() => _loading = false);
+
+    if (result['success']) {
+      if (widget.flowStep == OtpFlowStep.first) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DriverOtpScreen(
+              flowStep: OtpFlowStep.second,
+              phone: widget.phone,
+            ),
+          ),
+        );
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DriverResetPassword(
+              phone: widget.phone,
+              otp: otp,
+            ),
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Something went wrong.'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.all(16),
         ),
       );
-      return;
     }
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const DriverResetPassword()),
-    );
   }
 
-  void _resend() {
+  // ✅ بقت بتكلم الباك
+  Future<void> _resend() async {
     if (_secondsLeft > 0) return;
-    setState(() => _secondsLeft = 46);
-    _startTimer();
+    final result = await _authService.forgotPassword(phone: widget.phone);
+    if (!mounted) return;
+    if (result['success']) {
+      setState(() => _secondsLeft = 46);
+      _startTimer();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Something went wrong.'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Widget _stagger(int index, Widget child) {
@@ -168,7 +221,7 @@ class _DriverOtpScreenState extends State<DriverOtpScreen>
 
   @override
   Widget build(BuildContext context) {
-      final t = context.watch<ThemeProvider>().theme;
+    final t = context.watch<ThemeProvider>().theme;
     final isSecond = widget.flowStep == OtpFlowStep.second;
 
     return Scaffold(
@@ -176,8 +229,7 @@ class _DriverOtpScreenState extends State<DriverOtpScreen>
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
@@ -198,7 +250,6 @@ class _DriverOtpScreenState extends State<DriverOtpScreen>
               ),
               child: Stack(
                 children: [
-                  // Animated corner dots
                   ..._buildCornerDots(),
 
                   Column(
@@ -212,86 +263,70 @@ class _DriverOtpScreenState extends State<DriverOtpScreen>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            // Left key icon with float
                             AnimatedBuilder(
                               animation: _pulseAnim,
                               builder: (_, __) => Transform.translate(
-                                offset: Offset(
-                                    0, -4 * (_pulseAnim.value - 0.88) / 0.12),
+                                offset: Offset(0, -4 * (_pulseAnim.value - 0.88) / 0.12),
                                 child: const Icon(Icons.lock_outline,
                                     color: Color(0xFFE6A817), size: 44),
                               ),
                             ),
                             const SizedBox(width: 16),
-                            // Center shield
                             SizedBox(
-                              width: 78,
-                              height: 78,
+                              width: 78, height: 78,
                               child: Stack(
                                 alignment: Alignment.center,
                                 children: [
-                                  // Rotating ring
                                   AnimatedBuilder(
                                     animation: _rotateCtrl,
                                     builder: (_, __) => Transform.rotate(
                                       angle: _rotateCtrl.value * 2 * pi,
                                       child: Container(
-                                        width: 78,
-                                        height: 78,
+                                        width: 78, height: 78,
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           border: Border.all(
-                                            color: const Color(0xFF00D5BE)
-                                                .withOpacity(0.25),
+                                            color: const Color(0xFF00D5BE).withOpacity(0.25),
                                             width: 1,
                                           ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                  // Pulsing circle
                                   AnimatedBuilder(
                                     animation: _pulseAnim,
                                     builder: (_, __) => Transform.scale(
                                       scale: _pulseAnim.value,
                                       child: Container(
-                                        width: 72,
-                                        height: 72,
+                                        width: 72, height: 72,
                                         decoration: BoxDecoration(
                                           color: t.isDark ? const Color(0xFF0D2035) : Colors.white,
                                           shape: BoxShape.circle,
                                           boxShadow: [
                                             BoxShadow(
                                               color: const Color(0xFF00D5BE)
-                                                  .withOpacity(0.15 +
-                                                      0.15 *
-                                                          _pulseAnim.value),
-                                              blurRadius: 18,
-                                              spreadRadius: 2,
+                                                  .withOpacity(0.15 + 0.15 * _pulseAnim.value),
+                                              blurRadius: 18, spreadRadius: 2,
                                             ),
                                           ],
                                         ),
                                         child: const Icon(Icons.shield,
-                                            color: Color(0xFF00D5BE),
-                                            size: 58),
+                                            color: Color(0xFF00D5BE), size: 58),
                                       ),
                                     ),
                                   ),
                                   const Padding(
                                     padding: EdgeInsets.only(top: 6),
-                                    child: Icon(Icons.check,
-                                        color: Colors.white, size: 22),
+                                    child: Icon(Icons.check, color: Colors.white, size: 22),
                                   ),
                                 ],
                               ),
                             ),
                             const SizedBox(width: 16),
-                            // Right key icon
                             AnimatedBuilder(
                               animation: _pulseAnim,
                               builder: (_, __) => Transform.translate(
-                                offset: Offset(
-                                    0, 4 * (_pulseAnim.value - 0.88) / 0.12),
+                                offset: Offset(0, 4 * (_pulseAnim.value - 0.88) / 0.12),
                                 child: const Icon(Icons.vpn_key_outlined,
                                     color: Color(0xFF00D5BE), size: 38),
                               ),
@@ -303,285 +338,183 @@ class _DriverOtpScreenState extends State<DriverOtpScreen>
                       const SizedBox(height: 20),
 
                       // Title
-                      _stagger(
-                        1,
-                        Text(
-                          'Reset Password',
-                          style: TextStyle(
-                            color: t.textPrimary,
-                            fontSize: 26,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
+                      _stagger(1, Text('Reset Password',
+                          style: TextStyle(color: t.textPrimary, fontSize: 26,
+                              fontWeight: FontWeight.w800, letterSpacing: 0.5))),
                       const SizedBox(height: 6),
-                      _stagger(
-                        1,
-                        Container(
-                          width: 75,
-                          height: 1,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF00D5BE).withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
+                      _stagger(1, Container(
+                        width: 75, height: 1,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00D5BE).withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(2),
                         ),
-                      ),
+                      )),
 
                       const SizedBox(height: 12),
 
-                      // Subtitle
-                      _stagger(
-                        2,
-                        Text(
-                          isSecond
-                              ? 'Step 2 of 2: Confirm verification code'
-                              : 'Enter the 4-digit verification code sent to',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
+                      // ✅ Subtitle - 6 بدل 4
+                      _stagger(2, Text(
+                        isSecond
+                            ? 'Step 2 of 2: Confirm verification code'
+                            : 'Enter the 6-digit verification code sent to your email',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                      )),
 
                       const SizedBox(height: 10),
 
-                      // Email chip
-                      _stagger(
-                        2,
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 7),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF00D5BE).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color:
-                                  const Color(0xFF00D5BE).withOpacity(0.3),
-                              width: 0.8,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(Icons.email_outlined,
-                                  color: Color(0xFF00D5BE), size: 14),
-                              SizedBox(width: 6),
-                              Text('A*****@gmail.com',
-                                  style: TextStyle(
-                                      color: Color(0xFF00D5BE),
-                                      fontSize: 12)),
-                            ],
-                          ),
+                      // ✅ بيعرض الإيميل بدل الموبايل
+                      _stagger(2, Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00D5BE).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: const Color(0xFF00D5BE).withOpacity(0.3), width: 0.8),
                         ),
-                      ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.mail_outline_rounded,
+                                color: Color(0xFF00D5BE), size: 14),
+                            const SizedBox(width: 6),
+                            Text(
+                              widget.phone.isNotEmpty ? widget.phone : '***',
+                              style: const TextStyle(color: Color(0xFF00D5BE), fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      )),
 
                       const SizedBox(height: 24),
 
-                      // OTP Boxes
-                      _stagger(
-                        3,
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: List.generate(
-                              4,
-                              (i) => _OtpDigitBox(
-                                    controller: _controllers[i],
-                                    focusNode: _focusNodes[i],
-                                    onChanged: (v) => _onChanged(i, v),
-                                    onBackspaceWhenEmpty: () =>
-                                        _onBackspaceEmpty(i),
-                                    enterDelay:
-                                        Duration(milliseconds: 400 + i * 60),
-                                  )),
-                        ),
-                      ),
+                      // ✅ OTP Boxes - 6 بدل 4
+                      _stagger(3, Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: List.generate(6, (i) => _OtpDigitBox(
+                          controller: _controllers[i],
+                          focusNode: _focusNodes[i],
+                          onChanged: (v) => _onChanged(i, v),
+                          onBackspaceWhenEmpty: () => _onBackspaceEmpty(i),
+                          enterDelay: Duration(milliseconds: 400 + i * 60),
+                        )),
+                      )),
 
                       const SizedBox(height: 20),
 
                       // Timer
-                      _stagger(
-                        4,
-                        AnimatedBuilder(
-                          animation: _pulseAnim,
-                          builder: (_, __) => Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF8904).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: const Color(0xFFFF8904)
-                                    .withOpacity(0.3 +
-                                        0.1 * (_pulseAnim.value - 0.88) / 0.12),
-                                width: 1.2,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFFFF8904).withOpacity(
-                                      0.1 +
-                                          0.12 *
-                                              (_pulseAnim.value - 0.88) /
-                                              0.12),
-                                  blurRadius: 14,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.access_time,
-                                    color: Color(0xFFFF8904), size: 18),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '0:${_secondsLeft.toString().padLeft(2, '0')}',
-                                  style: const TextStyle(
-                                    color: Color(0xFFFF8904),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Security hint box
-                      _stagger(
-                        4,
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 12),
+                      _stagger(4, AnimatedBuilder(
+                        animation: _pulseAnim,
+                        builder: (_, __) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF00D5BE).withOpacity(0.06),
+                            color: const Color(0xFFFF8904).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color:
-                                  const Color(0xFF00D5BE).withOpacity(0.2),
-                              width: 0.8,
+                              color: const Color(0xFFFF8904)
+                                  .withOpacity(0.3 + 0.1 * (_pulseAnim.value - 0.88) / 0.12),
+                              width: 1.2,
                             ),
+                            boxShadow: [BoxShadow(
+                              color: const Color(0xFFFF8904).withOpacity(
+                                  0.1 + 0.12 * (_pulseAnim.value - 0.88) / 0.12),
+                              blurRadius: 14, spreadRadius: 1,
+                            )],
                           ),
                           child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.shield_outlined,
-                                  color: Color(0xFF00D5BE), size: 16),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: RichText(
-                                  text: TextSpan(
-                                    style: TextStyle(
-                                      color: t.textMuted,
-                                      fontSize: 12,
-                                      height: 1.6,
-                                    ),
-                                    children: const [
-                                      TextSpan(
-                                          text:
-                                              'This is a temporary verification code '),
-                                      TextSpan(
-                                        text: 'Never share it with anyone',
-                                        style: TextStyle(
-                                          color: Color(0xFF00D5BE),
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      TextSpan(text: ' for your security.'),
-                                    ],
-                                  ),
-                                ),
+                              const Icon(Icons.access_time, color: Color(0xFFFF8904), size: 18),
+                              const SizedBox(width: 8),
+                              Text(
+                                '0:${_secondsLeft.toString().padLeft(2, '0')}',
+                                style: const TextStyle(
+                                    color: Color(0xFFFF8904), fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),
                         ),
-                      ),
+                      )),
+
+                      const SizedBox(height: 16),
+
+                      // Security hint box
+                      _stagger(4, Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00D5BE).withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF00D5BE).withOpacity(0.2), width: 0.8),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.shield_outlined, color: Color(0xFF00D5BE), size: 16),
+                            const SizedBox(width: 10),
+                            Expanded(child: RichText(
+                              text: TextSpan(
+                                style: TextStyle(color: t.textMuted, fontSize: 12, height: 1.6),
+                                children: const [
+                                  TextSpan(text: 'This is a temporary verification code '),
+                                  TextSpan(text: 'Never share it with anyone',
+                                      style: TextStyle(color: Color(0xFF00D5BE), fontWeight: FontWeight.bold)),
+                                  TextSpan(text: ' for your security.'),
+                                ],
+                              ),
+                            )),
+                          ],
+                        ),
+                      )),
 
                       const SizedBox(height: 20),
 
-                      // Verify button
-                      _stagger(
-                        5,
-                        _PressableButton(
-                          label: isSecond
-                              ? 'Verify Code (Final)'
-                              : 'Verify Code',
-                          onTap: _verifyAndContinue,
-                        ),
-                      ),
+                      // ✅ Verify button
+                      _stagger(5, _loading
+                          ? const CircularProgressIndicator(color: Color(0xFF00D5BE))
+                          : _PressableButton(
+                              label: isSecond ? 'Verify Code (Final)' : 'Verify Code',
+                              onTap: _verifyAndContinue,
+                            )),
 
                       const SizedBox(height: 12),
 
                       // Resend button
-                      _stagger(
-                        6,
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: OutlinedButton(
-                            onPressed: _secondsLeft == 0 ? _resend : null,
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(
-                                color: t.border,
-                                width: 1,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                if (_secondsLeft > 0) ...[
-                                  SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 1.5,
-                                      color: t.textMuted,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Resend available in ${_secondsLeft}s',
-                                    style: TextStyle(
-                                      color: t.textMuted,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ] else
-                                  const Text(
-                                    'Resend OTP',
-                                    style: TextStyle(
-                                      color: Color(0xFF00D5BE),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                              ],
-                            ),
+                      _stagger(6, SizedBox(
+                        width: double.infinity, height: 50,
+                        child: OutlinedButton(
+                          onPressed: _secondsLeft == 0 ? _resend : null,
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: t.border, width: 1),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (_secondsLeft > 0) ...[
+                                SizedBox(
+                                  width: 16, height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 1.5, color: t.textMuted),
+                                ),
+                                const SizedBox(width: 8),
+                                Text('Resend available in ${_secondsLeft}s',
+                                    style: TextStyle(color: t.textMuted, fontSize: 13)),
+                              ] else
+                                const Text('Resend OTP',
+                                    style: TextStyle(color: Color(0xFF00D5BE),
+                                        fontSize: 13, fontWeight: FontWeight.w600)),
+                            ],
                           ),
                         ),
-                      ),
+                      )),
 
                       const SizedBox(height: 20),
 
-                      _stagger(
-                        6,
-                        Text(
-                          '© 2025 TruckMate Smart Logistics. All rights reserved.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.25),
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
+                      _stagger(6, Text(
+                        '© 2025 TruckMate Smart Logistics. All rights reserved.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white.withOpacity(0.25), fontSize: 10),
+                      )),
 
                       const SizedBox(height: 8),
                     ],
@@ -610,13 +543,10 @@ class _DriverOtpScreenState extends State<DriverOtpScreen>
     return positions.asMap().entries.map((entry) {
       final i = entry.key;
       final pos = entry.value;
-      final color =
-          i % 3 == 0 ? const Color(0xFFFF8904) : const Color(0xFF00D5BE);
+      final color = i % 3 == 0 ? const Color(0xFFFF8904) : const Color(0xFF00D5BE);
       return Positioned(
-        top: pos['top'],
-        bottom: pos['bottom'],
-        left: pos['left'],
-        right: pos['right'],
+        top: pos['top'], bottom: pos['bottom'],
+        left: pos['left'], right: pos['right'],
         child: AnimatedBuilder(
           animation: _dotsCtrl,
           builder: (_, __) {
@@ -626,17 +556,11 @@ class _DriverOtpScreenState extends State<DriverOtpScreen>
             return Transform.scale(
               scale: scale,
               child: Container(
-                width: 7,
-                height: 7,
+                width: 7, height: 7,
                 decoration: BoxDecoration(
                   color: color.withOpacity(opacity),
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withOpacity(opacity * 0.5),
-                      blurRadius: 5,
-                    ),
-                  ],
+                  boxShadow: [BoxShadow(color: color.withOpacity(opacity * 0.5), blurRadius: 5)],
                 ),
               ),
             );
@@ -665,54 +589,37 @@ class _PressableButtonState extends State<_PressableButton>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 110));
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 110));
     _scale = Tween<double>(begin: 1.0, end: 0.96).animate(_ctrl);
   }
 
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _ctrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTapDown: (_) => _ctrl.forward(),
-      onTapUp: (_) {
-        _ctrl.reverse();
-        widget.onTap();
-      },
+      onTapUp: (_) { _ctrl.reverse(); widget.onTap(); },
       onTapCancel: () => _ctrl.reverse(),
       child: AnimatedBuilder(
         animation: _scale,
-        builder: (_, child) =>
-            Transform.scale(scale: _scale.value, child: child),
+        builder: (_, child) => Transform.scale(scale: _scale.value, child: child),
         child: Container(
-          width: double.infinity,
-          height: 50,
+          width: double.infinity, height: 50,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [Color(0xFF009689), Color(0xFF00BBA7), Color(0xFF00B4D8)],
             ),
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF00D5BE).withOpacity(0.3),
-                blurRadius: 14,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            boxShadow: [BoxShadow(
+              color: const Color(0xFF00D5BE).withOpacity(0.3),
+              blurRadius: 14, offset: const Offset(0, 4),
+            )],
           ),
           alignment: Alignment.center,
-          child: Text(
-            widget.label,
-            style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.bold),
-          ),
+          child: Text(widget.label,
+              style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
         ),
       ),
     );
@@ -748,35 +655,27 @@ class _OtpDigitBoxState extends State<_OtpDigitBox>
   @override
   void initState() {
     super.initState();
-    _enterCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
+    _enterCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
     _enterScale = Tween<double>(begin: 0.6, end: 1.0).animate(
       CurvedAnimation(parent: _enterCtrl, curve: Curves.elasticOut),
     );
     _enterFade = CurvedAnimation(parent: _enterCtrl, curve: Curves.easeOut);
-
-    Future.delayed(widget.enterDelay, () {
-      if (mounted) _enterCtrl.forward();
-    });
+    Future.delayed(widget.enterDelay, () { if (mounted) _enterCtrl.forward(); });
   }
 
   @override
-  void dispose() {
-    _enterCtrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _enterCtrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
-      final t = context.watch<ThemeProvider>().theme;
+    final t = context.watch<ThemeProvider>().theme;
     return FadeTransition(
       opacity: _enterFade,
       child: ScaleTransition(
         scale: _enterScale,
         child: SizedBox(
-          width: 58,
+          // ✅ عرض أصغر عشان 6 boxes تتناسب
+          width: 46,
           height: 58,
           child: Focus(
             onKeyEvent: (node, event) {
@@ -803,14 +702,11 @@ class _OtpDigitBoxState extends State<_OtpDigitBox>
                           : const Color(0xFF00D5BE).withOpacity(0.2),
                       width: isFocused ? 2 : 1.5,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF00D5BE)
-                            .withOpacity(isFocused ? 0.35 : 0.1),
-                        blurRadius: isFocused ? 16 : 6,
-                        spreadRadius: isFocused ? 2 : 0,
-                      ),
-                    ],
+                    boxShadow: [BoxShadow(
+                      color: const Color(0xFF00D5BE).withOpacity(isFocused ? 0.35 : 0.1),
+                      blurRadius: isFocused ? 16 : 6,
+                      spreadRadius: isFocused ? 2 : 0,
+                    )],
                   ),
                   child: TextField(
                     controller: widget.controller,

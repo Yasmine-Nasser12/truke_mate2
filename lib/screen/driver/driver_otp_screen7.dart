@@ -1,4 +1,9 @@
-﻿import 'dart:math';
+﻿// ════════════════════════════════════════════════════════════
+//  driver_otp_screen7.dart  — Verification Successful
+//  مفيش API هنا — الـ screen دي confirmation فقط
+//  بعد reset password ناجح → Continue → /login
+// ════════════════════════════════════════════════════════════
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '/providers/theme_provider.dart';
@@ -13,7 +18,6 @@ class DriverOTPScreen7 extends StatefulWidget {
 
 class _DriverOTPScreen7State extends State<DriverOTPScreen7>
     with TickerProviderStateMixin {
-  // ── Animations ──
   late final AnimationController _entranceCtrl;
   late final AnimationController _pulseCtrl;
   late final AnimationController _dotsCtrl;
@@ -30,7 +34,6 @@ class _DriverOTPScreen7State extends State<DriverOTPScreen7>
   late final Animation<Offset> _subSlide;
   late final Animation<double> _btnFade;
   late final Animation<Offset> _btnSlide;
-
   late final Animation<double> _pulseAnim;
   late final Animation<double> _rotateGlow;
 
@@ -38,7 +41,6 @@ class _DriverOTPScreen7State extends State<DriverOTPScreen7>
   void initState() {
     super.initState();
 
-    // Entrance
     _entranceCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1000))
       ..forward();
@@ -46,50 +48,39 @@ class _DriverOTPScreen7State extends State<DriverOTPScreen7>
     _cardFade = CurvedAnimation(
         parent: _entranceCtrl,
         curve: const Interval(0.0, 0.5, curve: Curves.easeOut));
-    _cardSlide = Tween<Offset>(
-      begin: const Offset(0, 0.15),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-        parent: _entranceCtrl,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeOut)));
+    _cardSlide = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
+        .animate(CurvedAnimation(
+            parent: _entranceCtrl,
+            curve: const Interval(0.0, 0.5, curve: Curves.easeOut)));
 
-    _iconScale = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-          parent: _entranceCtrl,
-          curve: const Interval(0.05, 0.5, curve: Curves.elasticOut)),
-    );
+    _iconScale = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
+        parent: _entranceCtrl,
+        curve: const Interval(0.05, 0.5, curve: Curves.elasticOut)));
 
     _titleFade = CurvedAnimation(
         parent: _entranceCtrl,
         curve: const Interval(0.35, 0.7, curve: Curves.easeOut));
-    _titleSlide = Tween<Offset>(
-      begin: const Offset(0, 0.15),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-        parent: _entranceCtrl,
-        curve: const Interval(0.35, 0.7, curve: Curves.easeOut)));
+    _titleSlide = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
+        .animate(CurvedAnimation(
+            parent: _entranceCtrl,
+            curve: const Interval(0.35, 0.7, curve: Curves.easeOut)));
 
     _subFade = CurvedAnimation(
         parent: _entranceCtrl,
         curve: const Interval(0.45, 0.78, curve: Curves.easeOut));
-    _subSlide = Tween<Offset>(
-      begin: const Offset(0, 0.12),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-        parent: _entranceCtrl,
-        curve: const Interval(0.45, 0.78, curve: Curves.easeOut)));
+    _subSlide = Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero)
+        .animate(CurvedAnimation(
+            parent: _entranceCtrl,
+            curve: const Interval(0.45, 0.78, curve: Curves.easeOut)));
 
     _btnFade = CurvedAnimation(
         parent: _entranceCtrl,
         curve: const Interval(0.6, 1.0, curve: Curves.easeOut));
-    _btnSlide = Tween<Offset>(
-      begin: const Offset(0, 0.12),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-        parent: _entranceCtrl,
-        curve: const Interval(0.6, 1.0, curve: Curves.easeOut)));
+    _btnSlide = Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero)
+        .animate(CurvedAnimation(
+            parent: _entranceCtrl,
+            curve: const Interval(0.6, 1.0, curve: Curves.easeOut)));
 
-    // Check draw animation
     _checkCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
     _checkDraw = CurvedAnimation(parent: _checkCtrl, curve: Curves.easeOut);
@@ -97,21 +88,17 @@ class _DriverOTPScreen7State extends State<DriverOTPScreen7>
       if (mounted) _checkCtrl.forward();
     });
 
-    // Pulse
     _pulseCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 2200))
       ..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.9, end: 1.1).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
+    _pulseAnim = Tween<double>(begin: 0.9, end: 1.1)
+        .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
-    // Rotate
-    _rotateCtrl = AnimationController(
-        vsync: this, duration: const Duration(seconds: 10))
-      ..repeat();
+    _rotateCtrl =
+        AnimationController(vsync: this, duration: const Duration(seconds: 10))
+          ..repeat();
     _rotateGlow = Tween<double>(begin: 0, end: 1).animate(_rotateCtrl);
 
-    // Dots
     _dotsCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 3000))
       ..repeat(reverse: true);
@@ -127,6 +114,14 @@ class _DriverOTPScreen7State extends State<DriverOTPScreen7>
     super.dispose();
   }
 
+  void _goToLogin() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.watch<ThemeProvider>().theme;
@@ -135,227 +130,167 @@ class _DriverOTPScreen7State extends State<DriverOTPScreen7>
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 23),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 23),
             child: FadeTransition(
               opacity: _cardFade,
               child: SlideTransition(
                 position: _cardSlide,
                 child: Container(
-                  width: 335,
-                  height: 635,
+                  width: 335, height: 635,
                   padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
                   decoration: BoxDecoration(
                     color: t.isDark ? const Color(0xFF192C3D) : const Color(0xFFFFFFFF),
                     borderRadius: BorderRadius.circular(32),
                     border: Border.all(
-                      color: const Color(0xFF00D5BE).withOpacity(0.2),
-                      width: 0.8,
-                    ),
+                        color: const Color(0xFF00D5BE).withOpacity(0.2), width: 0.8),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF14B8A6).withOpacity(0.08),
-                        blurRadius: 32,
-                        offset: const Offset(0, 8),
-                      ),
+                          color: const Color(0xFF14B8A6).withOpacity(0.08),
+                          blurRadius: 32, offset: const Offset(0, 8)),
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.5),
-                        blurRadius: 60,
-                        offset: const Offset(0, 20),
-                      ),
+                          color: Colors.black.withOpacity(0.5),
+                          blurRadius: 60, offset: const Offset(0, 20)),
                     ],
                   ),
-                  child: Stack(
-                    children: [
-                      // Corner dots
-                      ..._buildCornerDots(),
-
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // ── Animated Success Icon ──
-                          ScaleTransition(
-                            scale: _iconScale,
-                            child: SizedBox(
-                              width: 110,
-                              height: 110,
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  // Outer rotating ring
-                                  AnimatedBuilder(
-                                    animation: _rotateCtrl,
-                                    builder: (_, __) => Transform.rotate(
-                                      angle: _rotateGlow.value * 2 * pi,
-                                      child: Container(
-                                        width: 110,
-                                        height: 110,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: const Color(0xFF00D5BE)
-                                                .withOpacity(0.2),
-                                            width: 1,
-                                          ),
-                                        ),
-                                      ),
+                  child: Stack(children: [
+                    ..._buildCornerDots(),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // ── Success Icon ──
+                        ScaleTransition(
+                          scale: _iconScale,
+                          child: SizedBox(
+                            width: 110, height: 110,
+                            child: Stack(alignment: Alignment.center, children: [
+                              AnimatedBuilder(
+                                animation: _rotateCtrl,
+                                builder: (_, __) => Transform.rotate(
+                                  angle: _rotateGlow.value * 2 * pi,
+                                  child: Container(
+                                    width: 110, height: 110,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                          color: const Color(0xFF00D5BE).withOpacity(0.2),
+                                          width: 1),
                                     ),
                                   ),
-                                  // Counter ring
-                                  AnimatedBuilder(
-                                    animation: _rotateCtrl,
-                                    builder: (_, __) => Transform.rotate(
-                                      angle:
-                                          -_rotateGlow.value * 2 * pi * 0.6,
-                                      child: Container(
-                                        width: 90,
-                                        height: 90,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: const Color(0xFFFF8904)
-                                                .withOpacity(0.12),
-                                            width: 1,
-                                          ),
-                                        ),
-                                      ),
+                                ),
+                              ),
+                              AnimatedBuilder(
+                                animation: _rotateCtrl,
+                                builder: (_, __) => Transform.rotate(
+                                  angle: -_rotateGlow.value * 2 * pi * 0.6,
+                                  child: Container(
+                                    width: 90, height: 90,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                          color: const Color(0xFFFF8904).withOpacity(0.12),
+                                          width: 1),
                                     ),
                                   ),
-                                  // Pulsing circle
-                                  AnimatedBuilder(
-                                    animation: _pulseAnim,
-                                    builder: (_, __) => Transform.scale(
-                                      scale: _pulseAnim.value,
-                                      child: Container(
-                                        width: 78,
-                                        height: 78,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: t.isDark ? const Color(0xFF0D2035) : Colors.white,
-                                          border: Border.all(
-                                            color: const Color(0xFF00D5BE)
-                                                .withOpacity(0.5),
-                                            width: 1.2,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: const Color(0xFF00D5BE)
-                                                  .withOpacity(0.15 +
-                                                      0.2 *
-                                                          (_pulseAnim.value -
-                                                              0.9) /
-                                                          0.2),
-                                              blurRadius: 22,
-                                              spreadRadius: 3,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
+                                ),
+                              ),
+                              AnimatedBuilder(
+                                animation: _pulseAnim,
+                                builder: (_, __) => Transform.scale(
+                                  scale: _pulseAnim.value,
+                                  child: Container(
+                                    width: 78, height: 78,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: t.isDark ? const Color(0xFF0D2035) : Colors.white,
+                                      border: Border.all(
+                                          color: const Color(0xFF00D5BE).withOpacity(0.5),
+                                          width: 1.2),
+                                      boxShadow: [BoxShadow(
+                                        color: const Color(0xFF00D5BE).withOpacity(
+                                            0.15 + 0.2 * (_pulseAnim.value - 0.9) / 0.2),
+                                        blurRadius: 22, spreadRadius: 3,
+                                      )],
                                     ),
                                   ),
-                                  // Animated check icon
-                                  AnimatedBuilder(
-                                    animation: _checkDraw,
-                                    builder: (_, __) => Opacity(
-                                      opacity: _checkDraw.value,
-                                      child: Transform.scale(
-                                        scale: 0.6 +
-                                            0.4 * _checkDraw.value,
-                                        child: const Icon(
-                                          Icons.check_circle_outline,
-                                          color: Color(0xFF00D5BE),
-                                          size: 42,
-                                        ),
-                                      ),
-                                    ),
+                                ),
+                              ),
+                              AnimatedBuilder(
+                                animation: _checkDraw,
+                                builder: (_, __) => Opacity(
+                                  opacity: _checkDraw.value,
+                                  child: Transform.scale(
+                                    scale: 0.6 + 0.4 * _checkDraw.value,
+                                    child: const Icon(Icons.check_circle_outline,
+                                        color: Color(0xFF00D5BE), size: 42),
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 40),
-
-                          // Title
-                          FadeTransition(
-                            opacity: _titleFade,
-                            child: SlideTransition(
-                              position: _titleSlide,
-                              child: Text(
-                                'Verification Successful',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: t.textPrimary,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.3,
                                 ),
                               ),
+                            ]),
+                          ),
+                        ),
+
+                        const SizedBox(height: 40),
+
+                        FadeTransition(
+                          opacity: _titleFade,
+                          child: SlideTransition(
+                            position: _titleSlide,
+                            child: Text(
+                              'Verification Successful',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  color: t.textPrimary, fontSize: 24,
+                                  fontWeight: FontWeight.w600, letterSpacing: 0.3),
                             ),
                           ),
+                        ),
 
-                          const SizedBox(height: 14),
+                        const SizedBox(height: 14),
 
-                          FadeTransition(
-                            opacity: _subFade,
-                            child: SlideTransition(
-                              position: _subSlide,
-                              child: Builder(builder: (context) {
-                                final t = context.watch<ThemeProvider>().theme;
-                                return Text(
-                                'Your new password has been confirmed.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: t.textMuted,
-                                  fontSize: 13.5,
-                                  height: 1.5,
-                                ),
-                              );}),
+                        FadeTransition(
+                          opacity: _subFade,
+                          child: SlideTransition(
+                            position: _subSlide,
+                            child: Text(
+                              'Your new password has been confirmed.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  color: t.textMuted, fontSize: 13.5, height: 1.5),
                             ),
                           ),
+                        ),
 
-                          const SizedBox(height: 55),
+                        const SizedBox(height: 55),
 
-                          // Continue button
-                          FadeTransition(
-                            opacity: _btnFade,
-                            child: SlideTransition(
-                              position: _btnSlide,
-                              child: _PressableButton(
-                                label: 'Continue',
-                                onTap: () => Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) => const LoginScreen()),
-                                  (route) => false,
-                                ),
-                              ),
+                        // Continue → Login
+                        FadeTransition(
+                          opacity: _btnFade,
+                          child: SlideTransition(
+                            position: _btnSlide,
+                            child: _PressableButton(
+                              label: 'Continue',
+                              onTap: _goToLogin,
                             ),
                           ),
+                        ),
 
-                          const SizedBox(height: 12),
+                        const SizedBox(height: 12),
 
-                          // Back to login button
-                          FadeTransition(
-                            opacity: _btnFade,
-                            child: SlideTransition(
-                              position: _btnSlide,
-                              child: _SecondaryButton(
-                                label: 'Back to Login',
-                                onTap: () => Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) => const LoginScreen()),
-                                  (route) => false,
-                                ),
-                              ),
+                        // Back to Login
+                        FadeTransition(
+                          opacity: _btnFade,
+                          child: SlideTransition(
+                            position: _btnSlide,
+                            child: _SecondaryButton(
+                              label: 'Back to Login',
+                              onTap: _goToLogin,
                             ),
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ]),
                 ),
               ),
             ),
@@ -379,13 +314,10 @@ class _DriverOTPScreen7State extends State<DriverOTPScreen7>
     return positions.asMap().entries.map((entry) {
       final i = entry.key;
       final pos = entry.value;
-      final color =
-          i % 3 == 0 ? const Color(0xFFFF8904) : const Color(0xFF00D5BE);
+      final color = i % 3 == 0 ? const Color(0xFFFF8904) : const Color(0xFF00D5BE);
       return Positioned(
-        top: pos['top'],
-        bottom: pos['bottom'],
-        left: pos['left'],
-        right: pos['right'],
+        top: pos['top'], bottom: pos['bottom'],
+        left: pos['left'], right: pos['right'],
         child: AnimatedBuilder(
           animation: _dotsCtrl,
           builder: (_, __) {
@@ -395,16 +327,12 @@ class _DriverOTPScreen7State extends State<DriverOTPScreen7>
             return Transform.scale(
               scale: scale,
               child: Container(
-                width: 7,
-                height: 7,
+                width: 7, height: 7,
                 decoration: BoxDecoration(
                   color: color.withOpacity(opacity),
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                        color: color.withOpacity(opacity * 0.5),
-                        blurRadius: 5),
-                  ],
+                  boxShadow: [BoxShadow(
+                      color: color.withOpacity(opacity * 0.5), blurRadius: 5)],
                 ),
               ),
             );
@@ -415,7 +343,7 @@ class _DriverOTPScreen7State extends State<DriverOTPScreen7>
   }
 }
 
-// ── Primary pressable button ──
+// ── Primary button ──
 class _PressableButton extends StatefulWidget {
   final String label;
   final VoidCallback onTap;
@@ -433,57 +361,39 @@ class _PressableButtonState extends State<_PressableButton>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 110));
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 110));
     _scale = Tween<double>(begin: 1.0, end: 0.96).animate(_ctrl);
   }
 
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _ctrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTapDown: (_) => _ctrl.forward(),
-      onTapUp: (_) {
-        _ctrl.reverse();
-        widget.onTap();
-      },
+      onTapUp: (_) { _ctrl.reverse(); widget.onTap(); },
       onTapCancel: () => _ctrl.reverse(),
       child: AnimatedBuilder(
         animation: _scale,
-        builder: (_, child) =>
-            Transform.scale(scale: _scale.value, child: child),
+        builder: (_, child) => Transform.scale(scale: _scale.value, child: child),
         child: Container(
-          width: double.infinity,
-          height: 48,
+          width: double.infinity, height: 48,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [Color(0xFF17D4B4), Color(0xFF0E8FD4)],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
+              begin: Alignment.centerLeft, end: Alignment.centerRight,
             ),
             borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF00D5BE).withOpacity(0.3),
-                blurRadius: 14,
-                offset: const Offset(0, 5),
-              ),
-            ],
+            boxShadow: [BoxShadow(
+              color: const Color(0xFF00D5BE).withOpacity(0.3),
+              blurRadius: 14, offset: const Offset(0, 5),
+            )],
           ),
           alignment: Alignment.center,
-          child: Text(
-            widget.label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          child: Text(widget.label,
+              style: const TextStyle(
+                  color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ),
     );
@@ -508,49 +418,33 @@ class _SecondaryButtonState extends State<_SecondaryButton>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 110));
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 110));
     _scale = Tween<double>(begin: 1.0, end: 0.97).animate(_ctrl);
   }
 
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _ctrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTapDown: (_) => _ctrl.forward(),
-      onTapUp: (_) {
-        _ctrl.reverse();
-        widget.onTap();
-      },
+      onTapUp: (_) { _ctrl.reverse(); widget.onTap(); },
       onTapCancel: () => _ctrl.reverse(),
       child: AnimatedBuilder(
         animation: _scale,
-        builder: (_, child) =>
-            Transform.scale(scale: _scale.value, child: child),
+        builder: (_, child) => Transform.scale(scale: _scale.value, child: child),
         child: Container(
-          width: double.infinity,
-          height: 48,
+          width: double.infinity, height: 48,
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.04),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.1),
-              width: 0.8,
-            ),
+            border: Border.all(color: Colors.white.withOpacity(0.1), width: 0.8),
           ),
           alignment: Alignment.center,
-          child: Text(
-            widget.label,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.35),
-              fontSize: 15,
-            ),
-          ),
+          child: Text(widget.label,
+              style: TextStyle(
+                  color: Colors.white.withOpacity(0.35), fontSize: 15)),
         ),
       ),
     );

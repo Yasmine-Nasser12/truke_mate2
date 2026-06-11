@@ -1,521 +1,138 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '/providers/theme_provider.dart';
 
-// RN animations ported from RequestAcceptSuccess.tsx:
-// • initial={{ opacity:0, scale:0.9 }} type:"spring" stiffness:200 → wrapper
-// • initial={{ scale:0 }} type:"spring" stiffness:200 damping:10 → success icon
-// • 3 pulsing rings: scale[1,1.6] opacity[0.4,0] 1.5s infinite (offset 0/0.5/1s)
-// • Shimmer: x[-200→200] opacity[0,0.3,0] delay:0.5s → icon surface
-// • Confetti: 12 dots, y[0,-80,-120] opacity[0,1,0] rotate[0,360] stagger 0.1s each
-// • initial={{ opacity:0, y:10/20 }} → text + cards staggered (delay 0.7/0.8/0.9s)
-// • Shimmer sweep x[-300→300] 2s linear infinite → Track button
-// • whileTap scale:0.98 → both buttons
+// ══════════════════════════════════════════════════════════════════════════════
+//  TraderShipmentScheduled — trader_shipment_scheduled_screen.dart
+//  ✅ Matched 1:1 with ShipmentScheduledScreen.tsx (React Native / Framer Motion)
+//
+//  RN → Flutter animation map:
+//  • Page:          opacity:0→1  0.5s                     → _pageFade
+//  • Glow:          scale:[1,1.5,1.2] opacity:[0.4,0.8,0.4] 2s loop → _glowCtrl
+//  • Icon circle:   scale:0, rotate:-180→0  spring s:200 d:15 delay:0.2 → _iconCtrl
+//  • SVG path:      pathLength:0→1  delay:0.5              → _pathCtrl (dash trick)
+//  • Title+desc:    opacity:0, y:+20→0  0.6s  delay:0.6   → _textCtrl
+//  • Details card:  opacity:0, y:+40, scale:0.95→1  delay:0.8 ease[0.22,1,0.36,1] → _cardCtrl
+//  • Driver notice: opacity:0, x:-30→0  0.6s  delay:1.0   → _noticeCtrl
+//  • Track btn:     opacity:0, y:+20→0  delay:1.2 + whileHover scale:1.03 → _btn1Ctrl
+//  • Return btn:    opacity:0, y:+20→0  delay:1.3 + whileHover scale:1.02 → _btn2Ctrl
+//  • Shipment ID:   opacity:0→1  delay:1.5                → _idCtrl
+//  • whileTap:      scale:0.98  → _TapScaleButton
+//  • Route line:    gradient #00d5be→#00d3f2 + glowing dots
+//
+//  REMOVED (were in old Flutter, not in RN):
+//  ✗ 3 pulsing rings  → replaced with single glow blur
+//  ✗ Confetti 12 dots → not in RN
+//  ✗ Button shimmer   → not in RN
+//  ✗ Icon shimmer     → not in RN
+// ══════════════════════════════════════════════════════════════════════════════
 
-class TraderShipmentScheduled extends StatefulWidget {
-  final String pickup, dropoff, date, time, packages, weight;
-  const TraderShipmentScheduled({super.key,
-    required this.pickup, required this.dropoff,
-    required this.date, required this.time,
-    required this.packages, required this.weight});
+// ── Spring curve  (s:200, d:15 — same as RN) ─────────────────────────────────
+class _SpringCurve extends Curve {
+  const _SpringCurve();
 
   @override
-  State<TraderShipmentScheduled> createState() => _TraderShipmentScheduledState();
+  double transformInternal(double t) {
+    const s = 200.0, d = 15.0, m = 1.0;
+    final omega0 = math.sqrt(s / m);
+    final zeta   = d / (2 * math.sqrt(s * m));
+    if (zeta < 1) {
+      final omegaD = omega0 * math.sqrt(1 - zeta * zeta);
+      return 1 -
+          math.exp(-zeta * omega0 * t) *
+              (math.cos(omegaD * t) +
+                  (zeta * omega0 / omegaD) * math.sin(omegaD * t));
+    }
+    return 1 - math.exp(-omega0 * t) * (1 + omega0 * t);
+  }
 }
 
-class _TraderShipmentScheduledState extends State<TraderShipmentScheduled>
-    with TickerProviderStateMixin {
+// ── Ease [0.22,1,0.36,1] ─────────────────────────────────────────────────────
+const Cubic _kEaseSpring = Cubic(0.22, 1.0, 0.36, 1.0);
 
-  // Icon entrance: spring scale 0→1, stiffness 200 damping 10
-  late final AnimationController _iconCtrl;
-  late final Animation<double> _iconScale;
+// ── whileTap scale:0.98 ──────────────────────────────────────────────────────
+class _TapScaleButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+  final double hoverScale;
+  const _TapScaleButton({
+    required this.child,
+    required this.onTap,
+    this.hoverScale = 1.0,
+  });
 
-  // Wrapper: opacity+scale 0.9→1, spring stiffness 200
-  late final AnimationController _wrapCtrl;
-  late final Animation<double> _wrapFade, _wrapScale;
+  @override
+  State<_TapScaleButton> createState() => _TapScaleButtonState();
+}
 
-  // 3 pulsing rings
-  late final List<AnimationController> _ringCtrls;
-  late final List<Animation<double>> _ringScales, _ringOpacities;
-
-  // Shimmer on icon surface
-  late final AnimationController _iconShimmerCtrl;
-  late final Animation<double> _iconShimmerX, _iconShimmerOpacity;
-
-  // Confetti: 12 dots
-  late final List<AnimationController> _confettiCtrls;
-  late final List<Animation<double>> _confettiY, _confettiOpacity, _confettiRotate;
-
-  // Content entries: staggered opacity+y
-  late final List<AnimationController> _contentCtrls;
-  late final List<Animation<double>> _contentFades;
-  late final List<Animation<Offset>> _contentSlides;
-
-  // Button shimmer
-  late final AnimationController _btnShimmerCtrl;
-  late final Animation<double> _btnShimmerX;
-
-  String get _shipmentId {
-    final now = DateTime.now();
-    return 'TM-${now.millisecondsSinceEpoch.toRadixString(36).toUpperCase().substring(0, 8)}';
-  }
-
-  static const _confettiColors = [
-    Color(0xFF34C759), Color(0xFF00D5BE), Color(0xFFF59E0B), Color(0xFFFBBF24)
-  ];
+class _TapScaleButtonState extends State<_TapScaleButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _c;
+  late Animation<double> _s;
+  bool _hovering = false;
 
   @override
   void initState() {
     super.initState();
-
-    // Wrapper: opacity+scale spring 200ms
-    _wrapCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    _wrapFade  = CurvedAnimation(parent: _wrapCtrl, curve: Curves.easeOut);
-    _wrapScale = Tween<double>(begin: 0.9, end: 1.0)
-        .animate(CurvedAnimation(parent: _wrapCtrl, curve: Curves.elasticOut));
-
-    // Icon: spring scale 0→1, delay 200ms
-    _iconCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    _iconScale = Tween<double>(begin: 0.0, end: 1.0)
-        .animate(CurvedAnimation(parent: _iconCtrl, curve: Curves.elasticOut));
-
-    // 3 Pulsing rings: scale[1,1.6] opacity[0.4,0] 1.5s infinite
-    _ringCtrls = List.generate(3,
-        (_) => AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat());
-    _ringScales = _ringCtrls.map((c) =>
-        Tween<double>(begin: 1.0, end: 1.6)
-            .animate(CurvedAnimation(parent: c, curve: Curves.easeOut))).toList();
-    _ringOpacities = _ringCtrls.map((c) =>
-        Tween<double>(begin: 0.4, end: 0.0)
-            .animate(CurvedAnimation(parent: c, curve: Curves.easeOut))).toList();
-
-    // Icon shimmer: x[-100→100] opacity[0,0.3,0] 1.5s, delay 500ms
-    _iconShimmerCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500));
-    _iconShimmerX = Tween<double>(begin: -100, end: 100).animate(_iconShimmerCtrl);
-    _iconShimmerOpacity = TweenSequence([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.3), weight: 40),
-      TweenSequenceItem(tween: Tween(begin: 0.3, end: 0.0), weight: 60),
-    ]).animate(_iconShimmerCtrl);
-
-    // Confetti: 12 dots, stagger 100ms each
-    _confettiCtrls = List.generate(12,
-        (_) => AnimationController(vsync: this, duration: const Duration(milliseconds: 2000)));
-    _confettiY = _confettiCtrls.map((c) =>
-        Tween<double>(begin: 0, end: -120)
-            .animate(CurvedAnimation(parent: c, curve: Curves.easeOut))).toList();
-    _confettiOpacity = _confettiCtrls.map((c) =>
-        TweenSequence([
-          TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
-          TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 50),
-          TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 30),
-        ]).animate(c)).toList();
-    _confettiRotate = _confettiCtrls.map((c) =>
-        Tween<double>(begin: 0, end: 2 * 3.14159)
-            .animate(CurvedAnimation(parent: c, curve: Curves.easeOut))).toList();
-
-    // Content entries: 8 elements, delay 700ms + i*100ms
-    _contentCtrls = List.generate(8,
-        (_) => AnimationController(vsync: this, duration: const Duration(milliseconds: 400)));
-    _contentFades = _contentCtrls.map((c) =>
-        CurvedAnimation(parent: c, curve: Curves.easeOut) as Animation<double>).toList();
-    _contentSlides = _contentCtrls.map((c) =>
-        Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
-            .animate(CurvedAnimation(parent: c, curve: Curves.easeOut))).toList();
-
-    // Button shimmer: x[-300→300] 2s linear infinite
-    _btnShimmerCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000))
-      ..repeat();
-    _btnShimmerX = Tween<double>(begin: -300, end: 300).animate(_btnShimmerCtrl);
-
-    // Start sequence
-    _wrapCtrl.forward();
-    Future.delayed(const Duration(milliseconds: 200), () { if (mounted) _iconCtrl.forward(); });
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) _iconShimmerCtrl.forward();
-    });
-    for (int i = 0; i < 12; i++) {
-      Future.delayed(Duration(milliseconds: i * 100), () {
-        if (mounted) _confettiCtrls[i].forward();
-      });
-    }
-    // Ring delays: 0, 500, 1000ms
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) _ringCtrls[1].value = 0.33;
-    });
-    Future.delayed(const Duration(milliseconds: 1000), () {
-      if (mounted) _ringCtrls[2].value = 0.66;
-    });
-    // Content stagger
-    for (int i = 0; i < _contentCtrls.length; i++) {
-      Future.delayed(Duration(milliseconds: 700 + i * 100), () {
-        if (mounted) _contentCtrls[i].forward();
-      });
-    }
+    _c = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 100));
+    _s = Tween<double>(begin: 1.0, end: 0.98)
+        .animate(CurvedAnimation(parent: _c, curve: Curves.easeOut));
   }
 
   @override
-  void dispose() {
-    _wrapCtrl.dispose(); _iconCtrl.dispose();
-    for (final c in _ringCtrls) { c.dispose(); }
-    _iconShimmerCtrl.dispose();
-    for (final c in _confettiCtrls) { c.dispose(); }
-    for (final c in _contentCtrls) { c.dispose(); }
-    _btnShimmerCtrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _c.dispose(); super.dispose(); }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      backgroundColor: const Color(0xFF0F2334),
-      body: SafeArea(
-        child: ScaleTransition(
-          scale: _wrapScale,
-          child: FadeTransition(
-            opacity: _wrapFade,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                const SizedBox(height: 32),
-
-                // ── Success icon with confetti + rings ──
-                SizedBox(
-                  height: 160,
-                  child: Stack(alignment: Alignment.topCenter, children: [
-
-                    // Confetti: 12 dots (y[0,-120] opacity[0,1,0] rotate[0,2π])
-                    ...List.generate(12, (i) => AnimatedBuilder(
-                      animation: _confettiCtrls[i],
-                      builder: (_, __) => Positioned(
-                        left: MediaQuery.of(context).size.width * 0.5 - 80 +
-                              (20 + (i * 13.5)) - 24,
-                        top: 40 + _confettiY[i].value,
-                        child: Opacity(
-                          opacity: _confettiOpacity[i].value.clamp(0.0, 1.0),
-                          child: Transform.rotate(
-                            angle: _confettiRotate[i].value,
-                            child: Container(
-                              width: 8, height: 8,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: _confettiColors[i % 4])),
-                          ),
-                        ),
-                      ),
-                    )),
-
-                    // 3 Pulsing rings
-                    Positioned(
-                      top: 0, left: 0, right: 0,
-                      child: Center(child: SizedBox(
-                        width: 96, height: 96,
-                        child: Stack(alignment: Alignment.center, children: [
-                          ...List.generate(3, (i) => AnimatedBuilder(
-                            animation: _ringCtrls[i],
-                            builder: (_, __) => Container(
-                              width: 96 * _ringScales[i].value,
-                              height: 96 * _ringScales[i].value,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: const Color(0xFF34C759)
-                                    .withOpacity(_ringOpacities[i].value.clamp(0.0, 1.0))),
-                            ),
-                          )),
-
-                          // Main icon
-                          ScaleTransition(
-                            scale: _iconScale,
-                            child: Container(
-                              width: 96, height: 96,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF34C759), Color(0xFF30B0C7)],
-                                  begin: Alignment.topLeft, end: Alignment.bottomRight),
-                                boxShadow: [BoxShadow(
-                                    color: const Color(0xFF34C759).withOpacity(0.5),
-                                    blurRadius: 24, spreadRadius: 4)]),
-                              child: ClipOval(child: Stack(alignment: Alignment.center, children: [
-                                // Shimmer on icon
-                                AnimatedBuilder(
-                                  animation: _iconShimmerCtrl,
-                                  builder: (_, __) => Positioned(
-                                    left: _iconShimmerX.value - 30, top: 0, bottom: 0,
-                                    child: Opacity(
-                                      opacity: _iconShimmerOpacity.value.clamp(0.0, 1.0),
-                                      child: Container(width: 60,
-                                        decoration: BoxDecoration(gradient: LinearGradient(
-                                          colors: [Colors.transparent, Colors.white, Colors.transparent]))))),
-                                ),
-                                const Icon(Icons.check_circle_outline_rounded,
-                                    color: Colors.white, size: 52),
-                              ])),
-                            ),
-                          ),
-                        ]),
-                      )),
-                    ),
-                  ]),
-                ),
-
-                const SizedBox(height: 8),
-
-                // Text: opacity+y delay 0.7s
-                SlideTransition(position: _contentSlides[0], child: FadeTransition(
-                  opacity: _contentFades[0],
-                  child: const Text('Shipment Scheduled!',
-                    style: TextStyle(color: Colors.white, fontSize: 24,
-                        fontWeight: FontWeight.bold, letterSpacing: 0.3)),
-                )),
-                const SizedBox(height: 10),
-                SlideTransition(position: _contentSlides[1], child: FadeTransition(
-                  opacity: _contentFades[1],
-                  child: Text(
-                    'Your shipment has been confirmed and\na driver has been assigned',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white.withOpacity(0.5),
-                        fontSize: 13.5, height: 1.6)),
-                )),
-                const SizedBox(height: 28),
-
-                // Main card: opacity+y delay 0.9s
-                SlideTransition(position: _contentSlides[2], child: FadeTransition(
-                  opacity: _contentFades[2],
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0A1628).withOpacity(0.6),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                          color: const Color(0xFF00D5BE).withOpacity(0.2), width: 0.8)),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      // Route timeline
-                      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Column(children: [
-                          Container(width: 10, height: 10,
-                            decoration: const BoxDecoration(
-                                color: Color(0xFF00D5BE), shape: BoxShape.circle)),
-                          Container(width: 1.5, height: 44,
-                            color: const Color(0xFF00D5BE).withOpacity(0.3)),
-                          Container(width: 10, height: 10,
-                            decoration: const BoxDecoration(
-                                color: Color(0xFF0E8FD4), shape: BoxShape.circle)),
-                        ]),
-                        const SizedBox(width: 12),
-                        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('Pickup', style: TextStyle(
-                              color: Colors.white.withOpacity(0.4), fontSize: 11)),
-                          Text(widget.pickup, style: const TextStyle(
-                              color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 8),
-                          Text('Drop-off', style: TextStyle(
-                              color: Colors.white.withOpacity(0.4), fontSize: 11)),
-                          Text(widget.dropoff, style: const TextStyle(
-                              color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-                        ]),
-                      ]),
-                      Divider(color: const Color(0xFF00D5BE).withOpacity(0.15), height: 28),
-                      Row(children: [
-                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('Scheduled Date', style: TextStyle(
-                              color: Colors.white.withOpacity(0.4), fontSize: 11)),
-                          const SizedBox(height: 4),
-                          Row(children: [
-                            const Icon(Icons.calendar_month_outlined,
-                                color: Color(0xFF00D5BE), size: 14),
-                            const SizedBox(width: 5),
-                            Text(widget.date, style: const TextStyle(
-                                color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-                          ]),
-                        ])),
-                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('Time', style: TextStyle(
-                              color: Colors.white.withOpacity(0.4), fontSize: 11)),
-                          const SizedBox(height: 4),
-                          Text(widget.time, style: const TextStyle(
-                              color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-                        ])),
-                      ]),
-                      const SizedBox(height: 16),
-                      Row(children: [
-                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('Packages', style: TextStyle(
-                              color: Colors.white.withOpacity(0.4), fontSize: 11)),
-                          const SizedBox(height: 4),
-                          Row(children: [
-                            const Icon(Icons.widgets_outlined, color: Color(0xFF00D5BE), size: 14),
-                            const SizedBox(width: 5),
-                            Text(widget.packages, style: const TextStyle(
-                                color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-                          ]),
-                        ])),
-                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('Weight', style: TextStyle(
-                              color: Colors.white.withOpacity(0.4), fontSize: 11)),
-                          const SizedBox(height: 4),
-                          Text('${widget.weight} kg', style: const TextStyle(
-                              color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-                        ])),
-                      ]),
-                      Divider(color: const Color(0xFF00D5BE).withOpacity(0.15), height: 28),
-                      // Vehicle card
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF00D5BE).withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                              color: const Color(0xFF00D5BE).withOpacity(0.2), width: 0.8)),
-                        child: Row(children: [
-                          Container(width: 40, height: 40,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF00D5BE).withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(10)),
-                            child: const Icon(Icons.local_shipping_outlined,
-                                color: Color(0xFF00D5BE), size: 20)),
-                          const SizedBox(width: 12),
-                          const Expanded(child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text('Swift Pickup', style: TextStyle(
-                                color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                            Text('Pickup Truck', style: TextStyle(
-                                color: Color(0xFF00D5BE), fontSize: 12)),
-                          ])),
-                          const Text('\$240', style: TextStyle(
-                              color: Color(0xFF00D5BE), fontSize: 16, fontWeight: FontWeight.bold)),
-                        ]),
-                      ),
-                    ]),
-                  ),
-                )),
-                const SizedBox(height: 16),
-
-                // Driver info bar: delay 1.0s
-                SlideTransition(position: _contentSlides[3], child: FadeTransition(
-                  opacity: _contentFades[3],
-                  child: Container(
-                    width: double.infinity, height: 54,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0x1A00D3F2),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                          color: const Color(0xFF00D3F2).withOpacity(0.25), width: 0.8)),
-                    child: Row(children: [
-                      // Pulsing dot (InTransitScreen pattern: opacity[1,0.4,1] 1.5s infinite)
-                      _PulsingDot(color: const Color(0xFF00D3F2)),
-                      const SizedBox(width: 10),
-                      const Text('Driver will arrive at pickup in 15 minutes',
-                          style: TextStyle(color: Color(0xFF00D3F2), fontSize: 13)),
-                    ]),
-                  ),
-                )),
-                const SizedBox(height: 16),
-
-                // Track button: shimmer + whileTap
-                SlideTransition(position: _contentSlides[4], child: FadeTransition(
-                  opacity: _contentFades[4],
-                  child: _TapScaleButton(
-                    onTap: () => Navigator.pushNamedAndRemoveUntil(
-                        context, '/trader_home', (route) => false),
-                    child: Container(
-                      width: double.infinity, height: 56,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF00D5BE), Color(0xFF00D3F2)],
-                          begin: Alignment.centerLeft, end: Alignment.centerRight),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [BoxShadow(
-                            color: const Color(0xFF00D5BE).withOpacity(0.35),
-                            blurRadius: 16, offset: const Offset(0, 6))]),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Stack(alignment: Alignment.center, children: [
-                          // Shimmer x[-300→300] 2s linear infinite
-                          AnimatedBuilder(
-                            animation: _btnShimmerX,
-                            builder: (_, __) => Positioned(
-                              left: _btnShimmerX.value - 40, top: 0, bottom: 0,
-                              child: Container(width: 80,
-                                decoration: BoxDecoration(gradient: LinearGradient(
-                                  colors: [Colors.transparent,
-                                    Colors.white.withOpacity(0.2), Colors.transparent])))),
-                          ),
-                          const Text('Track Shipment', style: TextStyle(
-                              color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                        ]),
-                      ),
-                    ),
-                  ),
-                )),
-                const SizedBox(height: 12),
-
-                // Return to Home button: delay 1.1s
-                SlideTransition(position: _contentSlides[5], child: FadeTransition(
-                  opacity: _contentFades[5],
-                  child: _TapScaleButton(
-                    onTap: () => Navigator.pushNamedAndRemoveUntil(
-                        context, '/trader_home', (route) => false),
-                    child: Container(
-                      width: double.infinity, height: 56,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0A1628).withOpacity(0.4),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white.withOpacity(0.12), width: 0.8)),
-                      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(Icons.home_outlined,
-                            color: Colors.white.withOpacity(0.7), size: 20),
-                        const SizedBox(width: 8),
-                        Text('Return to Home', style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
-                            fontSize: 15, fontWeight: FontWeight.w500)),
-                      ]),
-                    ),
-                  ),
-                )),
-                const SizedBox(height: 20),
-
-                // Shipment ID: delay 1.2s
-                SlideTransition(position: _contentSlides[6], child: FadeTransition(
-                  opacity: _contentFades[6],
-                  child: Column(children: [
-                    Text('Shipment ID', style: TextStyle(
-                        color: Colors.white.withOpacity(0.3), fontSize: 11)),
-                    const SizedBox(height: 4),
-                    Text(_shipmentId, style: TextStyle(
-                        color: Colors.white.withOpacity(0.5), fontSize: 12,
-                        letterSpacing: 1.2, fontWeight: FontWeight.w500)),
-                  ]),
-                )),
-                const SizedBox(height: 24),
-              ]),
-            ),
-          ),
+  Widget build(BuildContext context) => MouseRegion(
+    onEnter: (_) => setState(() => _hovering = true),
+    onExit:  (_) => setState(() => _hovering = false),
+    child: GestureDetector(
+      onTapDown:   (_) => _c.forward(),
+      onTapUp:     (_) { _c.reverse(); widget.onTap(); },
+      onTapCancel: ()  => _c.reverse(),
+      child: ScaleTransition(
+        scale: _s,
+        child: AnimatedScale(
+          // whileHover scale
+          scale: _hovering ? widget.hoverScale : 1.0,
+          duration: const Duration(milliseconds: 150),
+          child: widget.child,
         ),
       ),
-    );
-  }
+    ),
+  );
 }
 
-// Pulsing dot: opacity[1,0.4,1] scale[1,1.2,1] 1.5s infinite
+// ── Pulsing dot (driver notice) ───────────────────────────────────────────────
 class _PulsingDot extends StatefulWidget {
   final Color color;
   const _PulsingDot({required this.color});
+
   @override
   State<_PulsingDot> createState() => _PulsingDotState();
 }
-class _PulsingDotState extends State<_PulsingDot> with SingleTickerProviderStateMixin {
-  late final AnimationController _c;
-  late final Animation<double> _opacity, _scale;
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _c;
+  late Animation<double> _opacity, _scale;
+
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat(reverse: true);
-    _opacity = Tween<double>(begin: 1.0, end: 0.4).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
-    _scale   = Tween<double>(begin: 1.0, end: 1.2).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
+    _c = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 1500))..repeat(reverse: true);
+    _opacity = Tween<double>(begin: 1.0, end: 0.4)
+        .animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
+    _scale = Tween<double>(begin: 1.0, end: 1.2)
+        .animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
   }
+
   @override
   void dispose() { _c.dispose(); super.dispose(); }
+
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: _c,
@@ -523,36 +140,660 @@ class _PulsingDotState extends State<_PulsingDot> with SingleTickerProviderState
       opacity: _opacity.value,
       child: Transform.scale(
         scale: _scale.value,
-        child: Container(width: 8, height: 8,
-          decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle)))));
+        child: Container(
+          width: 8, height: 8,
+          decoration: BoxDecoration(
+            color: widget.color,
+            shape: BoxShape.circle,
+            boxShadow: [BoxShadow(
+              color: widget.color.withOpacity(0.8),
+              blurRadius: 8, spreadRadius: 1)],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
-// whileTap scale:0.98
-class _TapScaleButton extends StatefulWidget {
-  final Widget child;
-  final VoidCallback onTap;
-  const _TapScaleButton({required this.child, required this.onTap});
+// ══════════════════════════════════════════════════════════════════════════════
+//  SCREEN
+// ══════════════════════════════════════════════════════════════════════════════
+class TraderShipmentScheduled extends StatefulWidget {
+  final String pickup, dropoff, date, time, packages, weight;
+
+  const TraderShipmentScheduled({
+    super.key,
+    this.pickup   = 'rt45',
+    this.dropoff  = '3434',
+    this.date     = '2025-12-02',
+    this.time     = '02:23',
+    this.packages = '1',
+    this.weight   = '11',
+  });
+
   @override
-  State<_TapScaleButton> createState() => _TapScaleButtonState();
+  State<TraderShipmentScheduled> createState() =>
+      _TraderShipmentScheduledState();
 }
-class _TapScaleButtonState extends State<_TapScaleButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c;
-  late final Animation<double> _s;
+
+class _TraderShipmentScheduledState extends State<TraderShipmentScheduled>
+    with TickerProviderStateMixin {
+
+  // Page fade (opacity:0→1, 0.5s)
+  late AnimationController _pageCtrl;
+  late Animation<double>   _pageFade;
+
+  // Glow: scale:[1,1.5,1.2] opacity:[0.4,0.8,0.4] 2s loop
+  late AnimationController _glowCtrl;
+  late Animation<double>   _glowScale;
+  late Animation<double>   _glowOpacity;
+
+  // Icon circle: scale:0, rotate:-180→0, spring s:200 d:15, delay:0.2
+  late AnimationController _iconCtrl;
+  late Animation<double>   _iconScale;
+  late Animation<double>   _iconRotate;
+  late Animation<double>   _iconFade;
+
+  // SVG path draw: pathLength:0→1, delay:0.5
+  late AnimationController _pathCtrl;
+  late Animation<double>   _pathProgress;
+
+  // Title + desc: opacity:0, y:+20→0, delay:0.6
+  late AnimationController _textCtrl;
+  late Animation<double>   _textFade;
+  late Animation<Offset>   _textSlide;
+
+  // Details card: opacity:0, y:+40, scale:0.95→1, delay:0.8
+  late AnimationController _cardCtrl;
+  late Animation<double>   _cardFade;
+  late Animation<Offset>   _cardSlide;
+  late Animation<double>   _cardScale;
+
+  // Driver notice: opacity:0, x:-30→0, delay:1.0
+  late AnimationController _noticeCtrl;
+  late Animation<double>   _noticeFade;
+  late Animation<Offset>   _noticeSlide;
+
+  // Track btn: delay:1.2
+  late AnimationController _btn1Ctrl;
+  late Animation<double>   _btn1Fade;
+  late Animation<Offset>   _btn1Slide;
+
+  // Return btn: delay:1.3
+  late AnimationController _btn2Ctrl;
+  late Animation<double>   _btn2Fade;
+  late Animation<Offset>   _btn2Slide;
+
+  // Shipment ID: opacity:0→1, delay:1.5
+  late AnimationController _idCtrl;
+  late Animation<double>   _idFade;
+
+  String get _shipmentId {
+    final now = DateTime.now();
+    return 'TM-${now.millisecondsSinceEpoch.toRadixString(36).toUpperCase().substring(0, 8)}';
+  }
+
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
-    _s = Tween<double>(begin: 1.0, end: 0.97)
-        .animate(CurvedAnimation(parent: _c, curve: Curves.easeOut));
+
+    // Page
+    _pageCtrl = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 500))..forward();
+    _pageFade = CurvedAnimation(parent: _pageCtrl, curve: Curves.easeOut);
+
+    // Glow: TweenSequence scale + opacity 2s loop
+    _glowCtrl = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 2000))..repeat();
+    _glowScale = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.5), weight: 40),
+      TweenSequenceItem(tween: Tween(begin: 1.5, end: 1.2), weight: 30),
+      TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0), weight: 30),
+    ]).animate(CurvedAnimation(parent: _glowCtrl, curve: Curves.easeInOut));
+    _glowOpacity = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.4, end: 0.8), weight: 40),
+      TweenSequenceItem(tween: Tween(begin: 0.8, end: 0.4), weight: 60),
+    ]).animate(CurvedAnimation(parent: _glowCtrl, curve: Curves.easeInOut));
+
+    // Icon: spring scale+rotate, delay:0.2
+    _iconCtrl = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 800));
+    _iconScale  = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _iconCtrl, curve: const _SpringCurve()));
+    _iconRotate = Tween<double>(begin: -math.pi, end: 0.0).animate(
+        CurvedAnimation(parent: _iconCtrl, curve: const _SpringCurve()));
+    _iconFade   = CurvedAnimation(parent: _iconCtrl, curve: Curves.easeOut);
+    Future.delayed(const Duration(milliseconds: 200),
+        () { if (mounted) _iconCtrl.forward(); });
+
+    // Path draw: pathLength 0→1, delay:0.5
+    _pathCtrl = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 800));
+    _pathProgress = CurvedAnimation(parent: _pathCtrl, curve: Curves.easeOut);
+    Future.delayed(const Duration(milliseconds: 500),
+        () { if (mounted) _pathCtrl.forward(); });
+
+    // Text: opacity+y, delay:0.6
+    _textCtrl  = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 600));
+    _textFade  = CurvedAnimation(parent: _textCtrl, curve: Curves.easeOut);
+    _textSlide = Tween<Offset>(
+            begin: const Offset(0, 0.15), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _textCtrl, curve: Curves.easeOut));
+    Future.delayed(const Duration(milliseconds: 600),
+        () { if (mounted) _textCtrl.forward(); });
+
+    // Card: opacity+y+scale, delay:0.8
+    _cardCtrl  = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 700));
+    _cardFade  = CurvedAnimation(parent: _cardCtrl, curve: Curves.easeOut);
+    _cardSlide = Tween<Offset>(
+            begin: const Offset(0, 0.25), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _cardCtrl, curve: _kEaseSpring));
+    _cardScale = Tween<double>(begin: 0.95, end: 1.0).animate(
+        CurvedAnimation(parent: _cardCtrl, curve: Curves.easeOut));
+    Future.delayed(const Duration(milliseconds: 800),
+        () { if (mounted) _cardCtrl.forward(); });
+
+    // Notice: opacity+x, delay:1.0
+    _noticeCtrl  = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 600));
+    _noticeFade  = CurvedAnimation(parent: _noticeCtrl, curve: Curves.easeOut);
+    _noticeSlide = Tween<Offset>(
+            begin: const Offset(-0.2, 0), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _noticeCtrl, curve: Curves.easeOut));
+    Future.delayed(const Duration(milliseconds: 1000),
+        () { if (mounted) _noticeCtrl.forward(); });
+
+    // Btn1: delay:1.2
+    _btn1Ctrl  = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 600));
+    _btn1Fade  = CurvedAnimation(parent: _btn1Ctrl, curve: Curves.easeOut);
+    _btn1Slide = Tween<Offset>(
+            begin: const Offset(0, 0.15), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _btn1Ctrl, curve: Curves.easeOut));
+    Future.delayed(const Duration(milliseconds: 1200),
+        () { if (mounted) _btn1Ctrl.forward(); });
+
+    // Btn2: delay:1.3
+    _btn2Ctrl  = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 600));
+    _btn2Fade  = CurvedAnimation(parent: _btn2Ctrl, curve: Curves.easeOut);
+    _btn2Slide = Tween<Offset>(
+            begin: const Offset(0, 0.15), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _btn2Ctrl, curve: Curves.easeOut));
+    Future.delayed(const Duration(milliseconds: 1300),
+        () { if (mounted) _btn2Ctrl.forward(); });
+
+    // ID: delay:1.5
+    _idCtrl  = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 600));
+    _idFade  = CurvedAnimation(parent: _idCtrl, curve: Curves.easeOut);
+    Future.delayed(const Duration(milliseconds: 1500),
+        () { if (mounted) _idCtrl.forward(); });
   }
+
   @override
-  void dispose() { _c.dispose(); super.dispose(); }
+  void dispose() {
+    _pageCtrl.dispose(); _glowCtrl.dispose(); _iconCtrl.dispose();
+    _pathCtrl.dispose(); _textCtrl.dispose(); _cardCtrl.dispose();
+    _noticeCtrl.dispose(); _btn1Ctrl.dispose(); _btn2Ctrl.dispose();
+    _idCtrl.dispose();
+    super.dispose();
+  }
+
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTapDown: (_) => _c.forward(),
-    onTapUp: (_) { _c.reverse(); widget.onTap(); },
-    onTapCancel: () => _c.reverse(),
-    child: ScaleTransition(scale: _s, child: widget.child),
+  Widget build(BuildContext context) {
+    // RN bg: gradient from-[rgba(28,48,65,0.92)] via-[rgba(28,52,73,1)] to-[rgba(28,48,65,0.92)]
+    return Scaffold(
+      resizeToAvoidBottomInset: false,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xEB1C3041),
+              Color(0xFF1C3449),
+              Color(0xEB1C3041),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: FadeTransition(
+          opacity: _pageFade,
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 32),
+
+                  // ── Success icon + glow ──────────────────────────────────
+                  SizedBox(
+                    height: 120,
+                    child: Center(
+                      child: SizedBox(
+                        width: 96, height: 96,
+                        child: Stack(alignment: Alignment.center, children: [
+
+                          // Glow blur: scale:[1,1.5,1.2] opacity:[0.4,0.8,0.4] 2s loop
+                          AnimatedBuilder(
+                            animation: _glowCtrl,
+                            builder: (_, __) => Transform.scale(
+                              scale: _glowScale.value,
+                              child: Opacity(
+                                opacity: _glowOpacity.value,
+                                child: Container(
+                                  width: 96, height: 96,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: const Color(0xFF00D5BE).withOpacity(0.2),
+                                    boxShadow: [BoxShadow(
+                                      color: const Color(0xFF00D5BE).withOpacity(0.3),
+                                      blurRadius: 64, spreadRadius: 16)],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Icon circle: spring scale:0→1 + rotate:-180→0
+                          AnimatedBuilder(
+                            animation: _iconCtrl,
+                            builder: (_, child) => Opacity(
+                              opacity: _iconFade.value,
+                              child: Transform.scale(
+                                scale: _iconScale.value,
+                                child: Transform.rotate(
+                                  angle: _iconRotate.value,
+                                  child: child,
+                                ),
+                              ),
+                            ),
+                            child: Container(
+                              width: 96, height: 96,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF009689), Color(0xFF00BBA7)],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
+                                boxShadow: [BoxShadow(
+                                  color: const Color(0xFF00D5BE).withOpacity(0.5),
+                                  blurRadius: 20, spreadRadius: 0)],
+                              ),
+                              // SVG path draw: pathLength:0→1
+                              child: AnimatedBuilder(
+                                animation: _pathCtrl,
+                                builder: (_, __) => CustomPaint(
+                                  painter: _CheckPainter(_pathProgress.value),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ]),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // ── Title + desc (opacity:0, y:+20→0, delay:0.6) ────────
+                  FadeTransition(
+                    opacity: _textFade,
+                    child: SlideTransition(
+                      position: _textSlide,
+                      child: Column(children: [
+                        const Text('Shipment Scheduled!',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: Color(0xFFF0FDF9),
+                                fontSize: 28,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.3)),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Your shipment has been confirmed and\na driver has been assigned',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: const Color(0xFFCBFBF1).withOpacity(0.5),
+                              fontSize: 15, height: 1.6),
+                        ),
+                      ]),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+
+                  // ── Details card (opacity:0, y:+40, scale:0.95→1, delay:0.8) ──
+                  FadeTransition(
+                    opacity: _cardFade,
+                    child: SlideTransition(
+                      position: _cardSlide,
+                      child: ScaleTransition(
+                        scale: _cardScale,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0A1628).withOpacity(0.6),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: const Color(0xFF00D5BE).withOpacity(0.2),
+                              width: 0.8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+
+                              // Route timeline: gradient line + glowing dots
+                              _buildRoute(),
+                              Divider(
+                                  color: const Color(0xFF00D5BE).withOpacity(0.2),
+                                  height: 28),
+
+                              // Date + Time row
+                              Row(children: [
+                                Expanded(child: _infoItem(
+                                  'Scheduled Date',
+                                  widget.date,
+                                  icon: Icons.calendar_month_outlined,
+                                )),
+                                Expanded(child: _infoItem('Time', widget.time)),
+                              ]),
+                              const SizedBox(height: 16),
+
+                              // Packages + Weight row
+                              Row(children: [
+                                Expanded(child: _infoItem(
+                                  'Packages', widget.packages,
+                                  icon: Icons.widgets_outlined,
+                                )),
+                                Expanded(child: _infoItem(
+                                    'Weight', '${widget.weight} lbs')),
+                              ]),
+                              Divider(
+                                  color: const Color(0xFF00D5BE).withOpacity(0.2),
+                                  height: 28),
+
+                              // Vehicle card
+                              _buildVehicleCard(),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Driver notice (opacity:0, x:-30→0, delay:1.0) ────────
+                  FadeTransition(
+                    opacity: _noticeFade,
+                    child: SlideTransition(
+                      position: _noticeSlide,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00D3F2).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xFF00D3F2).withOpacity(0.3),
+                            width: 0.8),
+                        ),
+                        child: Row(children: [
+                          const _PulsingDot(color: Color(0xFF00D3F2)),
+                          const SizedBox(width: 10),
+                          const Text(
+                            'Driver will arrive at pickup in 15 minutes',
+                            style: TextStyle(
+                                color: Color(0xFF00D3F2), fontSize: 13)),
+                        ]),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Track Shipment btn (opacity:0, y:+20→0, delay:1.2) ───
+                  FadeTransition(
+                    opacity: _btn1Fade,
+                    child: SlideTransition(
+                      position: _btn1Slide,
+                      child: _TapScaleButton(
+                        // whileHover: scale:1.03
+                        hoverScale: 1.03,
+                        onTap: () => Navigator.pushNamedAndRemoveUntil(
+                            context, '/trader_home', (_) => false),
+                        child: Container(
+                          width: double.infinity, height: 56,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFF009689), Color(0xFF00BBA7),
+                                Color(0xFF00B8DB),
+                              ],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [BoxShadow(
+                              color: const Color(0xFF00BBA7).withOpacity(0.25),
+                              blurRadius: 9, offset: const Offset(0, 6))],
+                          ),
+                          alignment: Alignment.center,
+                          child: const Text('Track Shipment',
+                              style: TextStyle(
+                                  color: Colors.white, fontSize: 17,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ── Return to Home btn (opacity:0, y:+20→0, delay:1.3) ───
+                  FadeTransition(
+                    opacity: _btn2Fade,
+                    child: SlideTransition(
+                      position: _btn2Slide,
+                      child: _TapScaleButton(
+                        // whileHover: scale:1.02
+                        hoverScale: 1.02,
+                        onTap: () => Navigator.pushNamedAndRemoveUntil(
+                            context, '/trader_home', (_) => false),
+                        child: Container(
+                          width: double.infinity, height: 56,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0A1628).withOpacity(0.6),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.12),
+                              width: 0.8),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.home_outlined,
+                                  color: Colors.white.withOpacity(0.7),
+                                  size: 20),
+                              const SizedBox(width: 8),
+                              Text('Return to Home',
+                                  style: TextStyle(
+                                      color: Colors.white.withOpacity(0.7),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Shipment ID (opacity:0→1, delay:1.5) ─────────────────
+                  FadeTransition(
+                    opacity: _idFade,
+                    child: Column(children: [
+                      Text('Shipment ID',
+                          style: TextStyle(
+                              color: const Color(0xFFCBFBF1).withOpacity(0.4),
+                              fontSize: 12)),
+                      const SizedBox(height: 4),
+                      Text(_shipmentId,
+                          style: TextStyle(
+                              color: const Color(0xFFCBFBF1).withOpacity(0.5),
+                              fontSize: 13,
+                              letterSpacing: 1.2,
+                              fontWeight: FontWeight.w500)),
+                    ]),
+                  ),
+                  const SizedBox(height: 32),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Route timeline: gradient line + glowing dots (matching RN exactly) ──────
+  Widget _buildRoute() {
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Timeline column: gradient line + 2 dots
+      Column(children: [
+        Container(width: 12, height: 12,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF00D5BE),
+            boxShadow: [BoxShadow(
+              color: const Color(0xFF00D5BE).withOpacity(0.8),
+              blurRadius: 8)],
+          )),
+        Container(
+          width: 2, height: 44,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF00D5BE), Color(0xFF00D3F2)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+        ),
+        Container(width: 12, height: 12,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF00D3F2),
+            boxShadow: [BoxShadow(
+              color: const Color(0xFF00D3F2).withOpacity(0.8),
+              blurRadius: 8)],
+          )),
+      ]),
+      const SizedBox(width: 16),
+      // Labels
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Pickup', style: TextStyle(
+            color: const Color(0xFFCBFBF1).withOpacity(0.5), fontSize: 11)),
+        Text(widget.pickup, style: const TextStyle(
+            color: Color(0xFFF0FDF9), fontSize: 15,
+            fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        Text('Drop-off', style: TextStyle(
+            color: const Color(0xFFCBFBF1).withOpacity(0.5), fontSize: 11)),
+        Text(widget.dropoff, style: const TextStyle(
+            color: Color(0xFFF0FDF9), fontSize: 15,
+            fontWeight: FontWeight.w500)),
+      ]),
+    ]);
+  }
+
+  // ── Info item ────────────────────────────────────────────────────────────────
+  Widget _infoItem(String label, String value, {IconData? icon}) =>
+    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: TextStyle(
+          color: const Color(0xFFCBFBF1).withOpacity(0.5), fontSize: 11)),
+      const SizedBox(height: 4),
+      Row(children: [
+        if (icon != null) ...[
+          Icon(icon, color: const Color(0xFF00D5BE), size: 14),
+          const SizedBox(width: 5),
+        ],
+        Text(value, style: const TextStyle(
+            color: Color(0xFFF0FDF9), fontSize: 13,
+            fontWeight: FontWeight.w500)),
+      ]),
+    ]);
+
+  // ── Vehicle card ─────────────────────────────────────────────────────────────
+  Widget _buildVehicleCard() => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    decoration: BoxDecoration(
+      color: const Color(0xFF0A1628).withOpacity(0.5),
+      borderRadius: BorderRadius.circular(16),
+      // no extra border — same as RN bg-[rgba(10,22,40,0.5)] rounded-[16px]
+    ),
+    child: Row(children: [
+      Container(
+        width: 48, height: 48,
+        decoration: BoxDecoration(
+          color: const Color(0xFF00D5BE).withOpacity(0.15),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+              color: const Color(0xFF00D5BE).withOpacity(0.3), width: 0.8),
+        ),
+        child: const Icon(Icons.local_shipping_outlined,
+            color: Color(0xFF00D5BE), size: 22),
+      ),
+      const SizedBox(width: 12),
+      const Expanded(child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Swift Pickup', style: TextStyle(
+              color: Color(0xFFF0FDF9), fontSize: 15,
+              fontWeight: FontWeight.w600)),
+          Text('Pickup Truck', style: TextStyle(
+              color: Color(0xFFCBFBF1), fontSize: 13)),
+        ],
+      )),
+      const Text('\$240', style: TextStyle(
+          color: Color(0xFF00D5BE), fontSize: 17,
+          fontWeight: FontWeight.w600)),
+    ]),
   );
+}
+
+// ── SVG path draw painter: draws checkmark with progress 0→1 ─────────────────
+// Matches RN: motion.path pathLength:0→1 on the checkmark SVG
+class _CheckPainter extends CustomPainter {
+  final double progress;
+  const _CheckPainter(this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+    final paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final cx = size.width  / 2;
+    final cy = size.height / 2;
+
+    // Checkmark path (scaled to fit circle)
+    // RN: "M16 32L28 44L48 20" in 56x56 viewBox → normalize to 96x96
+    final path = Path()
+      ..moveTo(cx - 18, cy + 2)
+      ..lineTo(cx - 4,  cy + 14)
+      ..lineTo(cx + 18, cy - 12);
+
+    final  metric = path.computeMetrics().first;
+    final extractPath = metric.extractPath(0, metric.length * progress);
+    canvas.drawPath(extractPath, paint);
+  }
+
+  @override
+  bool shouldRepaint(_CheckPainter old) => old.progress != progress;
 }

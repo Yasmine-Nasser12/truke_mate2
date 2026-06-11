@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '/providers/driver_provider.dart';
 import '/providers/theme_provider.dart';
 import '/models/driver_models.dart';
-import '/screen/driver/trip_assigned_screen.dart';
+import '/services/driver_service.dart';
 
 // ─── Floating animated background blobs ───────────────────────────────────
 class _FloatingBlobs extends StatefulWidget {
@@ -201,6 +201,9 @@ class AvailableTripsBrowseScreen extends StatefulWidget {
 class _AvailableTripsBrowseScreenState extends State<AvailableTripsBrowseScreen>
     with TickerProviderStateMixin {
 
+  final DriverService _service = DriverService();
+  bool _isLoading = false;
+
   // ── animation controllers ──
   late AnimationController _headerCtrl;
   late AnimationController _listCtrl;
@@ -208,7 +211,6 @@ class _AvailableTripsBrowseScreenState extends State<AvailableTripsBrowseScreen>
   late Animation<Offset>   _headerSlide;
   late Animation<double>   _listFade;
 
-  // per-card stagger
   final List<AnimationController> _cardCtrls  = [];
   final List<Animation<double>>   _cardFades  = [];
   final List<Animation<Offset>>   _cardSlides = [];
@@ -217,7 +219,6 @@ class _AvailableTripsBrowseScreenState extends State<AvailableTripsBrowseScreen>
   void initState() {
     super.initState();
 
-    // Header: opacity 0→1, y -20→0, 500ms
     _headerCtrl = AnimationController(vsync: this,
         duration: const Duration(milliseconds: 500))..forward();
     _headerFade  = CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOut);
@@ -225,15 +226,24 @@ class _AvailableTripsBrowseScreenState extends State<AvailableTripsBrowseScreen>
             begin: const Offset(0, -0.6), end: Offset.zero)
         .animate(CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOut));
 
-    // List fade (delay 200ms)
     _listCtrl = AnimationController(vsync: this,
         duration: const Duration(milliseconds: 400));
     _listFade = CurvedAnimation(parent: _listCtrl, curve: Curves.easeOut);
     Future.delayed(const Duration(milliseconds: 200),
         () { if (mounted) _listCtrl.forward(); });
 
-    // Card stagger: delay 300ms + index × 100ms
-    _buildCardAnims(3);
+    // ── Load trips from API ──
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadTrips());
+  }
+
+  Future<void> _loadTrips() async {
+    setState(() => _isLoading = true);
+    await context.read<DriverProvider>().loadAvailableTrips();
+    if (mounted) {
+      final count = context.read<DriverProvider>().availableTrips.length;
+      _buildCardAnims(count);
+      setState(() => _isLoading = false);
+    }
   }
 
   void _buildCardAnims(int count) {
@@ -260,9 +270,33 @@ class _AvailableTripsBrowseScreenState extends State<AvailableTripsBrowseScreen>
     super.dispose();
   }
 
-  void _handleAccept(BuildContext context, AvailableTrip trip) {
-    context.read<DriverProvider>().acceptTrip(trip);
-    Navigator.pushReplacementNamed(context, '/trip_assigned');
+  // ── Accept: POST /api/driver/trips/requests/{requestId}/accept ──
+  Future<void> _handleAccept(BuildContext context, AvailableTrip trip) async {
+    final result = await context.read<DriverProvider>().acceptTrip(trip);
+    if (!mounted) return;
+    if (result) {
+      Navigator.pushReplacementNamed(context, '/trip_assigned');
+    } else {
+      final err = context.read<DriverProvider>().error ?? 'Failed to accept trip';
+      // 409 = already has active trip / race condition
+      // 410 = expired or cancelled
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(err),
+        backgroundColor: Colors.redAccent,
+        duration: const Duration(seconds: 3),
+      ));
+    }
+  }
+
+  // ── Reject: POST /api/driver/trips/requests/{requestId}/reject ──
+  Future<void> _handleReject(BuildContext context, AvailableTrip trip) async {
+    await context.read<DriverProvider>().rejectTrip(trip);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Trip rejected'),
+      backgroundColor: Color(0xFF5F7E97),
+      duration: Duration(seconds: 2),
+    ));
   }
 
   @override
@@ -276,7 +310,6 @@ class _AvailableTripsBrowseScreenState extends State<AvailableTripsBrowseScreen>
       backgroundColor: t.bg,
       body: Stack(
         children: [
-          // ── animated background blobs ──
           const _FloatingBlobs(),
 
           SafeArea(
@@ -314,10 +347,37 @@ class _AvailableTripsBrowseScreenState extends State<AvailableTripsBrowseScreen>
                                       color: t.textPrimary,
                                       fontSize: 20,
                                       fontWeight: FontWeight.w700)),
-                              Text('${trips.length} trips near you',
-                                  style: TextStyle(
-                                      color: t.textMuted, fontSize: 13)),
+                              Text(
+                                _isLoading
+                                    ? 'Loading...'
+                                    : '${trips.length} trips near you',
+                                style: TextStyle(
+                                    color: t.textMuted, fontSize: 13)),
                             ],
+                          ),
+
+                          const Spacer(),
+
+                          // ── Refresh button ──
+                          _PressScale(
+                            onTap: _loadTrips,
+                            scale: 0.88,
+                            child: Container(
+                              width: 38, height: 38,
+                              decoration: BoxDecoration(
+                                color: t.card,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: t.border),
+                              ),
+                              child: _isLoading
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(10),
+                                      child: CircularProgressIndicator(
+                                          color: AppTheme.primary, strokeWidth: 2),
+                                    )
+                                  : Icon(Icons.refresh_rounded,
+                                      color: AppTheme.primary, size: 18),
+                            ),
                           ),
                         ],
                       ),
@@ -331,34 +391,39 @@ class _AvailableTripsBrowseScreenState extends State<AvailableTripsBrowseScreen>
                 Expanded(
                   child: FadeTransition(
                     opacity: _listFade,
-                    child: trips.isEmpty
-                        ? _emptyState(t)
-                        : ListView.separated(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            itemCount: trips.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
-                            itemBuilder: (ctx, i) {
-                              final fade  = i < _cardFades.length
-                                  ? _cardFades[i]
-                                  : const AlwaysStoppedAnimation(1.0);
-                              final slide = i < _cardSlides.length
-                                  ? _cardSlides[i]
-                                  : const AlwaysStoppedAnimation(Offset.zero);
-                              return FadeTransition(
-                                opacity: fade,
-                                child: SlideTransition(
-                                  position: slide,
-                                  child: _TripCard(
-                                    trip: trips[i],
-                                    theme: t,
-                                    onAccept: () => _handleAccept(ctx, trips[i]),
-                                    onReject: () =>
-                                        ctx.read<DriverProvider>().rejectTrip(trips[i]),
-                                  ),
+                    child: _isLoading && trips.isEmpty
+                        ? _loadingState(t)
+                        : trips.isEmpty
+                            ? _emptyState(t)
+                            : RefreshIndicator(
+                                color: AppTheme.primary,
+                                onRefresh: _loadTrips,
+                                child: ListView.separated(
+                                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                                  itemCount: trips.length,
+                                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                                  itemBuilder: (ctx, i) {
+                                    final fade  = i < _cardFades.length
+                                        ? _cardFades[i]
+                                        : const AlwaysStoppedAnimation(1.0);
+                                    final slide = i < _cardSlides.length
+                                        ? _cardSlides[i]
+                                        : const AlwaysStoppedAnimation(Offset.zero);
+                                    return FadeTransition(
+                                      opacity: fade,
+                                      child: SlideTransition(
+                                        position: slide,
+                                        child: _TripCard(
+                                          trip: trips[i],
+                                          theme: t,
+                                          onAccept: () => _handleAccept(ctx, trips[i]),
+                                          onReject: () => _handleReject(ctx, trips[i]),
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                              );
-                            },
-                          ),
+                              ),
                   ),
                 ),
 
@@ -368,6 +433,17 @@ class _AvailableTripsBrowseScreenState extends State<AvailableTripsBrowseScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _loadingState(AppTheme t) {
+    return Center(
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        const CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2.5),
+        const SizedBox(height: 16),
+        Text('Finding trips near you...',
+            style: TextStyle(color: t.textMuted, fontSize: 14)),
+      ]),
     );
   }
 
@@ -391,6 +467,20 @@ class _AvailableTripsBrowseScreenState extends State<AvailableTripsBrowseScreen>
           const SizedBox(height: 8),
           Text('Check back soon for new shipments',
               style: TextStyle(color: t.textMuted, fontSize: 13)),
+          const SizedBox(height: 20),
+          _PressScale(
+            onTap: _loadTrips,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+              ),
+              child: const Text('Refresh',
+                  style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
+            ),
+          ),
         ],
       ),
     );
@@ -398,7 +488,7 @@ class _AvailableTripsBrowseScreenState extends State<AvailableTripsBrowseScreen>
 }
 
 // ══════════════════════════════════════════════════════
-//  TRIP CARD  — original structure + animations
+//  TRIP CARD
 // ══════════════════════════════════════════════════════
 class _TripCard extends StatefulWidget {
   final AvailableTrip trip;
@@ -418,37 +508,64 @@ class _TripCard extends StatefulWidget {
 }
 
 class _TripCardState extends State<_TripCard>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   bool _expanded = false;
+
   late AnimationController _expandCtrl;
-  late Animation<double> _expandAnim;
+  late Animation<double>   _expandAnim;
+
+  late AnimationController _borderCtrl;
+  late Animation<Color?>   _borderAnim;
 
   @override
   void initState() {
     super.initState();
+
     _expandCtrl = AnimationController(vsync: this,
         duration: const Duration(milliseconds: 250));
     _expandAnim = CurvedAnimation(
         parent: _expandCtrl, curve: Curves.easeOutCubic);
+
+    _borderCtrl = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 3000))..repeat();
+    _borderAnim = TweenSequence<Color?>([
+      TweenSequenceItem(
+          tween: ColorTween(
+              begin: AppTheme.primary.withOpacity(0.15),
+              end: const Color(0xFFF59E0B).withOpacity(0.45)),
+          weight: 50),
+      TweenSequenceItem(
+          tween: ColorTween(
+              begin: const Color(0xFFF59E0B).withOpacity(0.45),
+              end: AppTheme.primary.withOpacity(0.15)),
+          weight: 50),
+    ]).animate(_borderCtrl);
   }
 
   @override
-  void dispose() { _expandCtrl.dispose(); super.dispose(); }
+  void dispose() {
+    _expandCtrl.dispose();
+    _borderCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final t     = widget.trip;
     final theme = widget.theme;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOutCubic,
-      decoration: BoxDecoration(
-        color: theme.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: AppTheme.primary.withOpacity(0.15), width: 0.8),
-        boxShadow: theme.cardShadow,
+    return AnimatedBuilder(
+      animation: _borderAnim,
+      builder: (_, child) => Container(
+        decoration: BoxDecoration(
+          color: theme.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+              color: _borderAnim.value ?? AppTheme.primary.withOpacity(0.15),
+              width: 0.8),
+          boxShadow: theme.cardShadow,
+        ),
+        child: child,
       ),
       child: Column(
         children: [
@@ -464,7 +581,6 @@ class _TripCardState extends State<_TripCard>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top row: ID + Price
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -491,24 +607,18 @@ class _TripCardState extends State<_TripCard>
 
                   const SizedBox(height: 12),
 
-                  // Route
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Column(children: [
-                        Container(
-                            width: 10, height: 10,
+                        Container(width: 10, height: 10,
                             decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: AppTheme.primary)),
-                        Container(
-                            width: 1.5, height: 32,
+                                shape: BoxShape.circle, color: AppTheme.primary)),
+                        Container(width: 1.5, height: 32,
                             color: AppTheme.primary.withOpacity(0.3)),
-                        Container(
-                            width: 10, height: 10,
+                        Container(width: 10, height: 10,
                             decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Color(0xFF0E8FD4))),
+                                shape: BoxShape.circle, color: Color(0xFF0E8FD4))),
                       ]),
                       const SizedBox(width: 12),
                       Expanded(
@@ -534,20 +644,17 @@ class _TripCardState extends State<_TripCard>
 
                   const SizedBox(height: 12),
 
-                  // Stats row
                   Row(
                     children: [
                       _statChip(Icons.route_outlined, t.distance, theme),
                       const SizedBox(width: 8),
-                      _statChip(Icons.access_time_outlined,
-                          t.estimatedTime, theme),
+                      _statChip(Icons.access_time_outlined, t.estimatedTime, theme),
                       const SizedBox(width: 8),
                       _statChip(Icons.monitor_weight_outlined,
                           '${t.weightTons} ton', theme),
                     ],
                   ),
 
-                  // Tags
                   if (t.isFragile || t.isRefrigerated) ...[
                     const SizedBox(height: 10),
                     Row(children: [
@@ -562,7 +669,6 @@ class _TripCardState extends State<_TripCard>
                     ]),
                   ],
 
-                  // Expand indicator — animated rotation
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -570,10 +676,8 @@ class _TripCardState extends State<_TripCard>
                       AnimatedRotation(
                         turns: _expanded ? 0.5 : 0.0,
                         duration: const Duration(milliseconds: 250),
-                        child: Icon(
-                          Icons.keyboard_arrow_down,
-                          color: theme.textMuted, size: 20,
-                        ),
+                        child: Icon(Icons.keyboard_arrow_down,
+                            color: theme.textMuted, size: 20),
                       ),
                     ],
                   ),
@@ -582,7 +686,7 @@ class _TripCardState extends State<_TripCard>
             ),
           ),
 
-          // ── Expanded Details (SizeTransition) ──
+          // ── Expanded Details ──
           SizeTransition(
             sizeFactor: _expandAnim,
             child: Column(children: [
@@ -592,7 +696,6 @@ class _TripCardState extends State<_TripCard>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Trader info
                     Row(children: [
                       Container(
                         width: 36, height: 36,
@@ -602,7 +705,7 @@ class _TripCardState extends State<_TripCard>
                         ),
                         child: Center(
                           child: Text(
-                            t.traderName.substring(0, 1),
+                            t.traderName.isNotEmpty ? t.traderName.substring(0, 1) : '?',
                             style: const TextStyle(
                                 color: AppTheme.primary,
                                 fontWeight: FontWeight.bold),
@@ -610,12 +713,9 @@ class _TripCardState extends State<_TripCard>
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
+                      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text('Trader',
-                            style: TextStyle(
-                                color: theme.textMuted, fontSize: 11)),
+                            style: TextStyle(color: theme.textMuted, fontSize: 11)),
                         Text(t.traderName,
                             style: TextStyle(
                                 color: theme.textPrimary,
@@ -624,12 +724,10 @@ class _TripCardState extends State<_TripCard>
                       ]),
                       const Spacer(),
                       Row(children: [
-                        const Icon(Icons.star,
-                            color: Color(0xFFF59E0B), size: 14),
+                        const Icon(Icons.star, color: Color(0xFFF59E0B), size: 14),
                         const SizedBox(width: 4),
                         Text(t.traderRating,
-                            style: TextStyle(
-                                color: theme.textPrimary, fontSize: 13)),
+                            style: TextStyle(color: theme.textPrimary, fontSize: 13)),
                       ]),
                     ]),
 
@@ -652,7 +750,6 @@ class _TripCardState extends State<_TripCard>
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Row(
               children: [
-                // Reject — press scale
                 Expanded(
                   child: _PressScale(
                     onTap: widget.onReject,
@@ -673,7 +770,6 @@ class _TripCardState extends State<_TripCard>
                   ),
                 ),
                 const SizedBox(width: 10),
-                // Accept — shimmer button
                 Expanded(
                   flex: 2,
                   child: _ShimmerBtn(
@@ -694,16 +790,13 @@ class _TripCardState extends State<_TripCard>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: theme.isDark
-            ? const Color(0xFF0D1F2D)
-            : const Color(0xFFF0F4F8),
+        color: theme.isDark ? const Color(0xFF0D1F2D) : const Color(0xFFF0F4F8),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         Icon(icon, color: AppTheme.primary, size: 13),
         const SizedBox(width: 5),
-        Text(label,
-            style: TextStyle(color: theme.textMuted, fontSize: 11)),
+        Text(label, style: TextStyle(color: theme.textMuted, fontSize: 11)),
       ]),
     );
   }
@@ -719,11 +812,8 @@ class _TripCardState extends State<_TripCard>
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon, color: color, size: 12),
         const SizedBox(width: 4),
-        Text(label,
-            style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: FontWeight.w600)),
+        Text(label, style: TextStyle(
+            color: color, fontSize: 11, fontWeight: FontWeight.w600)),
       ]),
     );
   }
@@ -732,13 +822,9 @@ class _TripCardState extends State<_TripCard>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label,
-            style: TextStyle(color: theme.textMuted, fontSize: 13)),
-        Text(value,
-            style: TextStyle(
-                color: theme.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w500)),
+        Text(label, style: TextStyle(color: theme.textMuted, fontSize: 13)),
+        Text(value, style: TextStyle(
+            color: theme.textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
       ],
     );
   }

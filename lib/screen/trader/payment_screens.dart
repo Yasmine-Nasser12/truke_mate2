@@ -1,66 +1,1047 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '/providers/theme_provider.dart';
+import '/screen/trader/trader_rating_screen.dart'; // ✅ import حقيقي
 
 // ══════════════════════════════════════════════════════
-//  PAYMENT SCREENS — with RN-matching animations
+//  COLORS & DURATIONS
 // ══════════════════════════════════════════════════════
-
 const Color _kTeal  = Color(0xFF00D5BE);
+const Color _kTeal2 = Color(0xFF00B8DB);
 const Color _kGreen = Color(0xFF009689);
+const Color _kGreen2= Color(0xFF00BBA7);
 const Color _kRed   = Color(0xFFEF4444);
 
-// ── Animation constants ──
 const Duration _kFast    = Duration(milliseconds: 300);
 const Duration _kMed     = Duration(milliseconds: 500);
 const Duration _kSlow    = Duration(milliseconds: 700);
 const Duration _kStagger = Duration(milliseconds: 80);
+
 const Curve _kEaseOutCubic = Curves.easeOutCubic;
 const Curve _kEaseOutBack  = Curves.easeOutBack;
-const Curve _kEaseInOut    = Curves.easeInOutCubic;
+const Curve _kSpring       = Curves.elasticOut;
 
-// ── Animated tap (RN TouchableOpacity) ──
-class _Tap extends StatefulWidget {
+Color _bg(bool d)     => d ? const Color(0xFF0A1628) : const Color(0xFFF5F8FA);
+Color _card(bool d)   => d ? const Color(0xFF0A1628).withOpacity(0.6) : Colors.white;
+Color _text(bool d)   => d ? const Color(0xFFF0FDFA) : const Color(0xFF1A2A3A);
+Color _muted(bool d)  => d ? const Color(0xFF8A9BB0) : const Color(0xFF8A9BB0);
+Color _border(bool d) => d ? const Color(0xFF00D5BE).withOpacity(0.15) : const Color(0xFFE2EAF0);
+Color _sub(bool d)    => d ? const Color(0xFF0D1F30) : const Color(0xFFF0F4F8);
+
+// ══════════════════════════════════════════════════════
+//  SHARED: Animated press
+// ══════════════════════════════════════════════════════
+class _Press extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
-  const _Tap({required this.child, this.onTap});
-  @override
-  State<_Tap> createState() => _TapState();
+  const _Press({required this.child, this.onTap});
+  @override State<_Press> createState() => _PressState();
 }
-class _TapState extends State<_Tap> with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _scale;
+class _PressState extends State<_Press> with SingleTickerProviderStateMixin {
+  late AnimationController _c;
+  late Animation<double> _s;
   @override
   void initState() {
     super.initState();
-    _ctrl  = AnimationController(vsync: this,
-        duration: const Duration(milliseconds: 120));
-    _scale = Tween<double>(begin: 1.0, end: 0.96)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _c = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 100));
+    _s = Tween<double>(begin: 1.0, end: 0.97)
+        .animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
   }
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  @override void dispose() { _c.dispose(); super.dispose(); }
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTapDown:   (_) => _ctrl.forward(),
-    onTapUp:     (_) { _ctrl.reverse(); widget.onTap?.call(); },
-    onTapCancel: ()  => _ctrl.reverse(),
-    child: ScaleTransition(scale: _scale, child: widget.child),
+    onTapDown:   (_) => _c.forward(),
+    onTapUp:     (_) { _c.reverse(); widget.onTap?.call(); },
+    onTapCancel: ()  => _c.reverse(),
+    child: ScaleTransition(scale: _s, child: widget.child),
   );
 }
 
-// ── Staggered list ──
-class _StaggeredList extends StatefulWidget {
+// ══════════════════════════════════════════════════════
+//  SHARED: Gradient button
+// ══════════════════════════════════════════════════════
+class _GradBtn extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+  final VoidCallback onTap;
+  const _GradBtn({required this.label, required this.onTap, this.icon});
+  @override
+  Widget build(BuildContext context) => _Press(
+    onTap: onTap,
+    child: Container(
+      width: double.infinity, height: 56,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+            colors: [_kGreen, _kGreen2, _kTeal2],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(
+            color: _kGreen2.withOpacity(0.35),
+            blurRadius: 16, offset: const Offset(0, 6))]),
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        if (icon != null) ...[
+          Icon(icon, color: Colors.white, size: 20),
+          const SizedBox(width: 8),
+        ],
+        Text(label, style: const TextStyle(
+            color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+      ])));
+}
+
+// ══════════════════════════════════════════════════════
+//  SHARED: Outline button
+// ══════════════════════════════════════════════════════
+class _OutlineBtn extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+  final Color iconColor;
+  final Color textColor;
+  final Color borderColor;
+  final Color bgColor;
+  final VoidCallback onTap;
+  const _OutlineBtn({
+    required this.label, required this.onTap,
+    this.icon, this.iconColor = _kTeal,
+    this.textColor = const Color(0xFFF0FDFA),
+    this.borderColor = const Color(0x26D5BE00),
+    this.bgColor = const Color(0x990A1628),
+  });
+  @override
+  Widget build(BuildContext context) => _Press(
+    onTap: onTap,
+    child: Container(
+      width: double.infinity, height: 56,
+      decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: borderColor.withOpacity(0.3))),
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        if (icon != null) ...[
+          Icon(icon, color: iconColor, size: 20),
+          const SizedBox(width: 8),
+        ],
+        Text(label, style: TextStyle(
+            color: textColor, fontSize: 16, fontWeight: FontWeight.w600)),
+      ])));
+}
+
+// ══════════════════════════════════════════════════════
+//  SHARED: Back button
+// ══════════════════════════════════════════════════════
+class _BackBtn extends StatelessWidget {
+  final VoidCallback onTap;
+  final bool isDark;
+  const _BackBtn({required this.onTap, required this.isDark});
+  @override
+  Widget build(BuildContext context) => _Press(
+    onTap: onTap,
+    child: Container(
+        width: 48, height: 48,
+        decoration: BoxDecoration(
+            color: isDark
+                ? const Color(0xFF0A1628).withOpacity(0.7)
+                : Colors.white,
+            shape: BoxShape.circle,
+            border: Border.all(color: _kTeal.withOpacity(0.25))),
+        child: const Icon(Icons.chevron_left_rounded,
+            color: _kTeal, size: 24)));
+}
+
+// ══════════════════════════════════════════════════════
+//  SHARED: Row label/value
+// ══════════════════════════════════════════════════════
+class _Row extends StatelessWidget {
+  final String label, value;
+  final Color kt, km;
+  const _Row({required this.label, required this.value,
+    required this.kt, required this.km});
+  @override
+  Widget build(BuildContext context) => Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(color: km, fontSize: 14)),
+        Flexible(child: Text(value, textAlign: TextAlign.right,
+            style: TextStyle(color: kt, fontSize: 14,
+                fontWeight: FontWeight.w600))),
+      ]);
+}
+
+// ══════════════════════════════════════════════════════
+//  1. PAYMENT PROCESSING
+// ══════════════════════════════════════════════════════
+class PaymentProcessingScreen extends StatefulWidget {
+  // ✅ بنمرر بيانات الـ driver عشان نوصلها للـ PaymentSuccess
+  final String driverName;
+  final String driverInitials;
+  final double amount;
+
+  const PaymentProcessingScreen({
+    super.key,
+    this.driverName     = 'Ahmed Hassan',
+    this.driverInitials = 'AH',
+    this.amount         = 240,
+  });
+
+  @override
+  State<PaymentProcessingScreen> createState() => _PaymentProcessingState();
+}
+
+class _PaymentProcessingState extends State<PaymentProcessingScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _spin, _pulse, _text;
+  late Animation<double> _pulseScale, _pulseOpacity, _textFade;
+  late Animation<Offset> _textSlide;
+
+  @override
+  void initState() {
+    super.initState();
+    _spin  = AnimationController(vsync: this,
+        duration: const Duration(seconds: 1))..repeat();
+    _pulse = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
+    _pulseScale   = Tween<double>(begin: 1.0, end: 1.4)
+        .animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut));
+    _pulseOpacity = Tween<double>(begin: 0.25, end: 0.6)
+        .animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut));
+    _text = AnimationController(vsync: this, duration: _kMed);
+    _textFade  = CurvedAnimation(parent: _text, curve: _kEaseOutCubic);
+    _textSlide = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _text, curve: _kEaseOutCubic));
+    Future.delayed(const Duration(milliseconds: 300),
+        () { if (mounted) _text.forward(); });
+    // ✅ بنمرر بيانات الـ driver للـ PaymentSuccess
+    Future.delayed(const Duration(milliseconds: 2500), () {
+      if (!mounted) return;
+      Navigator.pushReplacement(
+          context,
+          _fadeRoute(PaymentSuccessScreen(
+            driverName:     widget.driverName,
+            driverInitials: widget.driverInitials,
+            amount:         widget.amount,
+          )));
+    });
+  }
+
+  @override
+  void dispose() {
+    _spin.dispose(); _pulse.dispose(); _text.dispose();
+    super.dispose();
+  }
+
+  Color _textColor(bool d) =>
+      d ? const Color(0xFFF0FDFA) : const Color(0xFF1A2A3A);
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = context.watch<ThemeProvider>().isDark;
+    return Scaffold(
+      backgroundColor: _bg(isDark),
+      body: Center(child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+        AnimatedBuilder(
+          animation: Listenable.merge([_spin, _pulse]),
+          builder: (_, __) => SizedBox(
+            width: 120, height: 120,
+            child: Stack(alignment: Alignment.center, children: [
+              Opacity(
+                opacity: _pulseOpacity.value,
+                child: Transform.scale(
+                  scale: _pulseScale.value,
+                  child: Container(width: 100, height: 100,
+                      decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF34D399).withOpacity(0.3))))),
+              Transform.rotate(
+                angle: _spin.value * 2 * pi,
+                child: CustomPaint(
+                    painter: _ArcPainter(),
+                    size: const Size(80, 80))),
+            ])),
+        ),
+        const SizedBox(height: 48),
+        FadeTransition(
+          opacity: _textFade,
+          child: SlideTransition(
+            position: _textSlide,
+            child: Column(children: [
+              Text('Processing\nyour payment...',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: _textColor(isDark),
+                    fontSize: 28, fontWeight: FontWeight.bold,
+                    height: 1.3)),
+              const SizedBox(height: 16),
+              Text('Please wait while we process',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: _muted(isDark), fontSize: 15)),
+            ])),
+        ),
+      ])),
+    );
+  }
+}
+
+class _ArcPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawArc(
+      Rect.fromLTWH(4, 4, size.width - 8, size.height - 8),
+      -pi / 2, pi * 1.5, false,
+      Paint()
+        ..shader = const LinearGradient(colors: [_kGreen, _kTeal])
+            .createShader(Rect.fromLTWH(0, 0, 80, 80))
+        ..strokeWidth = 5
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round);
+  }
+  @override bool shouldRepaint(covariant CustomPainter o) => false;
+}
+
+// ══════════════════════════════════════════════════════
+//  2. PAYMENT SUCCESS
+//  ✅ FIX: بياخد driverName + driverInitials + amount
+//  ✅ FIX: Rate button بيودي لـ RateDriverScreen الحقيقية
+// ══════════════════════════════════════════════════════
+class PaymentSuccessScreen extends StatefulWidget {
+  final String driverName;
+  final String driverInitials;
+  final double amount;
+
+  const PaymentSuccessScreen({
+    super.key,
+    this.driverName     = 'Ahmed Hassan',
+    this.driverInitials = 'AH',
+    this.amount         = 240,
+  });
+
+  @override
+  State<PaymentSuccessScreen> createState() => _PaymentSuccessState();
+}
+
+class _PaymentSuccessState extends State<PaymentSuccessScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _icon, _amount, _receipt, _btns;
+  late Animation<double> _iconScale, _iconFade, _iconRotate,
+      _amountVal, _receiptFade;
+  late Animation<Offset> _receiptSlide;
+  late AnimationController _glow;
+  late Animation<double> _glowScale, _glowOpacity;
+  late List<Animation<double>> _btnFades;
+  late List<Animation<Offset>> _btnSlides;
+
+  String get _txnId {
+    const c = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final r = Random();
+    return 'TXN-' +
+        List.generate(8, (_) => c[r.nextInt(c.length)]).join();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _icon = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 800));
+    _iconScale  = Tween<double>(begin: 0.0, end: 1.0)
+        .animate(CurvedAnimation(parent: _icon, curve: _kSpring));
+    _iconFade   = CurvedAnimation(parent: _icon, curve: _kEaseOutCubic);
+    _iconRotate = Tween<double>(begin: -0.5, end: 0.0)
+        .animate(CurvedAnimation(parent: _icon, curve: _kSpring));
+
+    _glow = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 2000))..repeat(reverse: true);
+    _glowScale   = Tween<double>(begin: 1.0, end: 1.4)
+        .animate(CurvedAnimation(parent: _glow, curve: Curves.easeInOut));
+    _glowOpacity = Tween<double>(begin: 0.25, end: 0.55)
+        .animate(CurvedAnimation(parent: _glow, curve: Curves.easeInOut));
+
+    _amount = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 800));
+    // ✅ الـ amount بييجي من الـ widget parameter
+    _amountVal = Tween<double>(begin: 0, end: widget.amount)
+        .animate(CurvedAnimation(parent: _amount, curve: _kEaseOutCubic));
+
+    _receipt = AnimationController(vsync: this, duration: _kSlow);
+    _receiptFade  = CurvedAnimation(parent: _receipt, curve: _kEaseOutCubic);
+    _receiptSlide = Tween<Offset>(
+            begin: const Offset(0, 0.12), end: Offset.zero)
+        .animate(
+            CurvedAnimation(parent: _receipt, curve: _kEaseOutCubic));
+
+    const totalMs = 350 + 3 * 80;
+    _btns = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: totalMs));
+    _btnFades = List.generate(3, (i) {
+      final s = (i * 80) / totalMs;
+      final e = (s + 0.5).clamp(0.0, 1.0);
+      return Tween<double>(begin: 0, end: 1).animate(CurvedAnimation(
+          parent: _btns,
+          curve: Interval(s, e, curve: _kEaseOutCubic)));
+    });
+    _btnSlides = List.generate(3, (i) {
+      final s = (i * 80) / totalMs;
+      final e = (s + 0.55).clamp(0.0, 1.0);
+      return Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
+          .animate(CurvedAnimation(
+              parent: _btns,
+              curve: Interval(s, e, curve: _kEaseOutCubic)));
+    });
+
+    _runSequence();
+  }
+
+  void _runSequence() async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    if (mounted) _icon.forward();
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (mounted) { _amount.forward(); _receipt.forward(); }
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (mounted) _btns.forward();
+  }
+
+  @override
+  void dispose() {
+    _icon.dispose(); _glow.dispose(); _amount.dispose();
+    _receipt.dispose(); _btns.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = context.watch<ThemeProvider>().isDark;
+    final kT = _text(isDark), kM = _muted(isDark), kB = _border(isDark);
+    final now    = DateTime.now();
+    final txn    = _txnId;
+    final dateStr = _fmt(now);
+
+    // ✅ FIX: الـ 3 buttons مع navigation صح
+    final btns = <Map<String, dynamic>>[
+      {
+        'label': 'Rate Your Experience',
+        'icon':  Icons.star_outline_rounded,
+        // ✅ بيودي لـ RateDriverScreen الحقيقية مع بيانات الـ driver
+        'onTap': () => Navigator.push(
+            context,
+            _slideUpRoute(RateDriverScreen(
+              driverName:     widget.driverName,
+              driverInitials: widget.driverInitials,
+            ))),
+      },
+      {
+        'label': 'Download Invoice',
+        'icon':  Icons.download_rounded,
+        'onTap': () => Navigator.push(
+            context, _slideUpRoute(const InvoiceScreen())),
+      },
+      {
+        'label': 'Return to Home',
+        'icon':  Icons.home_outlined,
+        'onTap': () =>
+            Navigator.of(context).popUntil((r) => r.isFirst),
+      },
+    ];
+
+    return Scaffold(
+      backgroundColor: _bg(isDark),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(children: [
+            const SizedBox(height: 48),
+
+            // ── Check icon with glow ──
+            AnimatedBuilder(
+              animation: Listenable.merge([_icon, _glow]),
+              builder: (_, __) => SizedBox(
+                width: 140, height: 140,
+                child: Stack(alignment: Alignment.center, children: [
+                  Opacity(
+                    opacity: _glowOpacity.value * _iconFade.value,
+                    child: Transform.scale(
+                      scale: _glowScale.value,
+                      child: Container(
+                          width: 128, height: 128,
+                          decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF34D399)
+                                  .withOpacity(0.25))))),
+                  Transform.scale(
+                    scale: _iconScale.value,
+                    child: RotationTransition(
+                      turns: _iconRotate,
+                      child: Opacity(
+                        opacity: _iconFade.value.clamp(0.0, 1.0),
+                        child: Container(
+                          width: 112, height: 112,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(
+                                colors: [Color(0xFF34D399), Color(0xFF10B981)],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter),
+                            boxShadow: [BoxShadow(
+                                color: const Color(0xFF34D399)
+                                    .withOpacity(0.55),
+                                blurRadius: 30, spreadRadius: 4)]),
+                          child: const Icon(
+                              Icons.check_circle_outline_rounded,
+                              color: Colors.white, size: 58)),
+                      ),
+                    ),
+                  ),
+                ])),
+            ),
+            const SizedBox(height: 32),
+
+            // ── Title ──
+            FadeTransition(
+              opacity: _iconFade,
+              child: Column(children: [
+                Text('Payment Successful!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: kT, fontSize: 30,
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                Text(
+                    'Your payment has been processed successfully',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: kM, fontSize: 15)),
+              ]),
+            ),
+            const SizedBox(height: 32),
+
+            // ── Receipt card ──
+            FadeTransition(
+              opacity: _receiptFade,
+              child: SlideTransition(
+                position: _receiptSlide,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: _card(isDark),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: kB),
+                    boxShadow: isDark ? [] : [
+                      BoxShadow(color: Colors.black.withOpacity(0.05),
+                          blurRadius: 12, offset: const Offset(0, 4))]),
+                  child: Column(children: [
+                    Text('Amount Paid',
+                        style: TextStyle(color: kM, fontSize: 14)),
+                    const SizedBox(height: 8),
+                    // ✅ counter بيحسب من 0 للـ amount الحقيقي
+                    AnimatedBuilder(
+                      animation: _amountVal,
+                      builder: (_, __) => Text(
+                          '\$${_amountVal.value.toInt()}',
+                          style: const TextStyle(
+                              color: _kTeal, fontSize: 42,
+                              fontWeight: FontWeight.bold))),
+                    const SizedBox(height: 20),
+                    Divider(color: kB),
+                    const SizedBox(height: 16),
+                    _Row(label: 'Transaction ID', value: txn,
+                        kt: kT, km: kM),
+                    const SizedBox(height: 12),
+                    _Row(label: 'Date & Time', value: dateStr,
+                        kt: kT, km: kM),
+                    const SizedBox(height: 12),
+                    _Row(label: 'Payment Method',
+                        value: 'Visa **** 4532', kt: kT, km: kM),
+                    const SizedBox(height: 12),
+                    // ✅ بيعرض اسم الـ driver في الـ receipt
+                    _Row(label: 'Driver',
+                        value: widget.driverName, kt: kT, km: kM),
+                  ]),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Email confirmation banner ──
+            FadeTransition(
+              opacity: _receiptFade,
+              child: SlideTransition(
+                position: _receiptSlide,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                      color: const Color(0xFF34D399).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                          color: const Color(0xFF34D399).withOpacity(0.3))),
+                  child: const Text(
+                      'A receipt has been sent to your email',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: Color(0xFF34D399), fontSize: 14))),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // ── Action buttons ──
+            ...List.generate(3, (i) {
+              final label = btns[i]['label'] as String;
+              final icon  = btns[i]['icon']  as IconData;
+              final onTap = btns[i]['onTap'] as VoidCallback;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: FadeTransition(
+                  opacity: _btnFades[i],
+                  child: SlideTransition(
+                    position: _btnSlides[i],
+                    child: i == 0
+                        // ✅ Rate button — gradient مميز
+                        ? _GradBtn(label: label, icon: icon, onTap: onTap)
+                        : _OutlineBtn(
+                            label: label, icon: icon, onTap: onTap,
+                            iconColor: _kTeal,
+                            textColor: isDark
+                                ? const Color(0xFFF0FDFA)
+                                : const Color(0xFF1A2A3A),
+                            bgColor: isDark
+                                ? const Color(0xFF0A1628).withOpacity(0.6)
+                                : Colors.white,
+                            borderColor: _kTeal.withOpacity(0.3)),
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 24),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  String _fmt(DateTime t) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun',
+        'Jul','Aug','Sep','Oct','Nov','Dec'];
+    final h    = t.hour > 12 ? t.hour - 12 : (t.hour == 0 ? 12 : t.hour);
+    final ampm = t.hour >= 12 ? 'PM' : 'AM';
+    return '${months[t.month - 1]} ${t.day}, ${t.year} • '
+        '$h:${t.minute.toString().padLeft(2, '0')} $ampm';
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  3. INVOICE SCREEN  (unchanged)
+// ══════════════════════════════════════════════════════
+class InvoiceScreen extends StatefulWidget {
+  final String shipmentId, pickup, dropoff, date, driver,
+      vehicle, plate, paymentMethod;
+  final double basePrice, serviceFee, tax;
+  const InvoiceScreen({
+    super.key,
+    this.shipmentId    = 'TM-2I8KIDJ70',
+    this.pickup        = 'Maadi, Cairo',
+    this.dropoff       = 'Nasr City, Cairo',
+    this.date          = 'Apr 15, 2026 • 11:50 PM',
+    this.driver        = 'Ahmed Hassan',
+    this.vehicle       = 'Pickup Truck',
+    this.plate         = 'ABC-1234',
+    this.basePrice     = 200,
+    this.serviceFee    = 20,
+    this.tax           = 20,
+    this.paymentMethod = 'Visa **** 4532',
+  });
+  @override State<InvoiceScreen> createState() => _InvoiceState();
+}
+class _InvoiceState extends State<InvoiceScreen> with TickerProviderStateMixin {
+  late AnimationController _pageCtrl, _headerCtrl, _iconCtrl,
+      _cardCtrl, _btnsCtrl;
+  late Animation<double> _pageFade, _headerFade, _iconScale,
+      _iconFade, _cardFade, _btnsFade;
+  late Animation<Offset> _pageSlide, _headerSlide,
+      _cardSlide, _btnsSlide;
+
+  double get _total => widget.basePrice + widget.serviceFee + widget.tax;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageCtrl = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 450))..forward();
+    _pageFade  = CurvedAnimation(parent: _pageCtrl, curve: Curves.easeOut);
+    _pageSlide = Tween<Offset>(
+            begin: const Offset(0, 0.04), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _pageCtrl, curve: Curves.easeOut));
+    _headerCtrl = AnimationController(vsync: this, duration: _kMed)
+      ..forward();
+    _headerFade  = CurvedAnimation(parent: _headerCtrl, curve: _kEaseOutCubic);
+    _headerSlide = Tween<Offset>(
+            begin: const Offset(0, -0.06), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _headerCtrl, curve: _kEaseOutCubic));
+    _iconCtrl = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 600));
+    _iconScale = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _iconCtrl, curve: Curves.elasticOut));
+    _iconFade  = CurvedAnimation(parent: _iconCtrl, curve: Curves.easeOut);
+    _cardCtrl = AnimationController(vsync: this, duration: _kMed);
+    _cardFade  = CurvedAnimation(parent: _cardCtrl, curve: _kEaseOutCubic);
+    _cardSlide = Tween<Offset>(
+            begin: const Offset(0, 0.08), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _cardCtrl, curve: _kEaseOutCubic));
+    _btnsCtrl = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 450));
+    _btnsFade  = CurvedAnimation(parent: _btnsCtrl, curve: Curves.easeOut);
+    _btnsSlide = Tween<Offset>(
+            begin: const Offset(0, 0.3), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _btnsCtrl, curve: Curves.easeOut));
+    Future.delayed(const Duration(milliseconds: 200),
+        () { if (mounted) _iconCtrl.forward(); });
+    Future.delayed(const Duration(milliseconds: 300),
+        () { if (mounted) _cardCtrl.forward(); });
+    Future.delayed(const Duration(milliseconds: 600),
+        () { if (mounted) _btnsCtrl.forward(); });
+  }
+
+  @override
+  void dispose() {
+    _pageCtrl.dispose(); _headerCtrl.dispose(); _iconCtrl.dispose();
+    _cardCtrl.dispose(); _btnsCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = context.watch<ThemeProvider>().isDark;
+    final kT = _text(isDark), kM = _muted(isDark), kB = _border(isDark);
+    final kDiv  = isDark
+        ? const Color(0xFF1C3449)
+        : const Color(0xFFE2EAF0);
+    final kPaid = isDark
+        ? const Color(0xFF0F2A3A)
+        : const Color(0xFFF0FAFA);
+
+    return Scaffold(
+      backgroundColor: isDark
+          ? const Color(0xFF0A1628)
+          : const Color(0xFFF5F8FA),
+      body: FadeTransition(
+        opacity: _pageFade,
+        child: SlideTransition(
+          position: _pageSlide,
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+
+                FadeTransition(opacity: _headerFade,
+                  child: SlideTransition(position: _headerSlide,
+                    child: Row(children: [
+                      _BackBtn(
+                          onTap: () => Navigator.pop(context),
+                          isDark: isDark),
+                      const Spacer(),
+                      Text('Invoice', style: TextStyle(
+                          color: kT, fontSize: 22,
+                          fontWeight: FontWeight.bold)),
+                      const Spacer(),
+                      const SizedBox(width: 48),
+                    ]))),
+                const SizedBox(height: 24),
+
+                FadeTransition(opacity: _cardFade,
+                  child: SlideTransition(position: _cardSlide,
+                    child: Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: _card(isDark),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: kB),
+                        boxShadow: isDark ? [] : [BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4))]),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+
+                        Center(child: ScaleTransition(scale: _iconScale,
+                          child: FadeTransition(opacity: _iconFade,
+                            child: Container(width: 64, height: 64,
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                    colors: [_kTeal, _kTeal2],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight),
+                                shape: BoxShape.circle),
+                              child: const Icon(Icons.inventory_2_outlined,
+                                  color: Colors.white, size: 30))))),
+                        const SizedBox(height: 16),
+                        Center(child: Text('TruckMate Invoice',
+                            style: TextStyle(color: kT, fontSize: 20,
+                                fontWeight: FontWeight.bold))),
+                        const SizedBox(height: 4),
+                        Center(child: Text('INV-2026-0414-001',
+                            style: TextStyle(color: kM, fontSize: 13,
+                                letterSpacing: 1.2))),
+
+                        Divider(color: kDiv, height: 32),
+                        _Row(label: 'Invoice Date',
+                            value: widget.date, kt: kT, km: kM),
+                        const SizedBox(height: 12),
+                        _Row(label: 'Shipment ID',
+                            value: widget.shipmentId, kt: kT, km: kM),
+
+                        Divider(color: kDiv, height: 32),
+                        Text('Route Information', style: TextStyle(
+                            color: kT, fontSize: 14,
+                            fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 12),
+                        _routePt(isDark, isPickup: true,
+                            label: 'Pickup', val: widget.pickup),
+                        const SizedBox(height: 12),
+                        _routePt(isDark, isPickup: false,
+                            label: 'Drop-off', val: widget.dropoff),
+
+                        Divider(color: kDiv, height: 32),
+                        Text('Shipment Details', style: TextStyle(
+                            color: kT, fontSize: 14,
+                            fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 12),
+                        _Row(label: 'Distance',
+                            value: '12.5 km', kt: kT, km: kM),
+                        const SizedBox(height: 8),
+                        _Row(label: 'Packages',
+                            value: '3 items', kt: kT, km: kM),
+                        const SizedBox(height: 8),
+                        _Row(label: 'Total Weight',
+                            value: '25 lbs', kt: kT, km: kM),
+
+                        Divider(color: kDiv, height: 32),
+                        Text('Driver Information', style: TextStyle(
+                            color: kT, fontSize: 14,
+                            fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 12),
+                        _Row(label: 'Driver',
+                            value: widget.driver, kt: kT, km: kM),
+                        const SizedBox(height: 8),
+                        _Row(label: 'Vehicle',
+                            value: widget.vehicle, kt: kT, km: kM),
+                        const SizedBox(height: 8),
+                        _Row(label: 'License Plate',
+                            value: widget.plate, kt: kT, km: kM),
+
+                        Divider(color: kDiv, height: 32),
+                        _Row(label: 'Base Price',
+                            value: '\$${widget.basePrice.toInt()}',
+                            kt: kT, km: kM),
+                        const SizedBox(height: 8),
+                        _Row(label: 'Service Fee',
+                            value: '\$${widget.serviceFee.toInt()}',
+                            kt: kT, km: kM),
+                        const SizedBox(height: 8),
+                        _Row(label: 'Tax',
+                            value: '\$${widget.tax.toInt()}',
+                            kt: kT, km: kM),
+
+                        Divider(color: kDiv, height: 32),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Total Amount', style: TextStyle(
+                                color: kT, fontSize: 18,
+                                fontWeight: FontWeight.w600)),
+                            Text('\$${_total.toInt()}',
+                                style: const TextStyle(
+                                    color: _kTeal, fontSize: 28,
+                                    fontWeight: FontWeight.bold)),
+                          ]),
+                        const SizedBox(height: 20),
+
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                              color: kPaid,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: _kTeal.withOpacity(0.25))),
+                          child: Row(children: [
+                            const Icon(Icons.credit_card_rounded,
+                                color: _kTeal, size: 24),
+                            const SizedBox(width: 12),
+                            Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                              Text('Paid with',
+                                  style: TextStyle(
+                                      color: kM, fontSize: 12)),
+                              Text(widget.paymentMethod,
+                                  style: TextStyle(
+                                      color: kT, fontSize: 14,
+                                      fontWeight: FontWeight.w600)),
+                            ]),
+                          ]),
+                        ),
+                      ])),
+                )),
+                const SizedBox(height: 20),
+
+                FadeTransition(opacity: _btnsFade,
+                  child: SlideTransition(position: _btnsSlide,
+                    child: Column(children: [
+                      _GradBtn(label: 'Download PDF',
+                          icon: Icons.download_rounded, onTap: () {}),
+                      const SizedBox(height: 12),
+                      _OutlineBtn(
+                        label: 'Share Invoice',
+                        icon: Icons.share_rounded,
+                        onTap: () {},
+                        iconColor: _kTeal,
+                        textColor: _kTeal,
+                        bgColor: isDark
+                            ? const Color(0xFF0F2A3A)
+                            : Colors.white,
+                        borderColor: _kTeal.withOpacity(0.35)),
+                    ]))),
+                const SizedBox(height: 24),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _routePt(bool isDark,
+      {required bool isPickup,
+      required String label,
+      required String val}) {
+    final color = isPickup ? _kTeal : _kTeal2;
+    return Row(children: [
+      Container(
+        width: 32, height: 32,
+        decoration: BoxDecoration(
+            color: color.withOpacity(0.15),
+            border: Border.all(color: color.withOpacity(0.35)),
+            shape: BoxShape.circle),
+        child: isPickup
+            ? Center(child: Container(width: 8, height: 8,
+                decoration: BoxDecoration(
+                    shape: BoxShape.circle, color: color)))
+            : Icon(Icons.location_on_rounded, color: color, size: 16)),
+      const SizedBox(width: 12),
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: TextStyle(
+            color: _muted(isDark), fontSize: 12)),
+        Text(val, style: TextStyle(
+            color: _text(isDark), fontSize: 14,
+            fontWeight: FontWeight.w600)),
+      ]),
+    ]);
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  4. PAYMENT METHODS LIST  (unchanged)
+// ══════════════════════════════════════════════════════
+class PaymentMethodsListScreen extends StatefulWidget {
+  const PaymentMethodsListScreen({super.key});
+  @override
+  State<PaymentMethodsListScreen> createState() =>
+      _PaymentMethodsListState();
+}
+class _PaymentMethodsListState extends State<PaymentMethodsListScreen>
+    with TickerProviderStateMixin {
+  final _cards = <_CardData>[
+    _CardData(brand: 'Visa', last4: '4532', expiry: '12/25',
+        isDefault: true, color: const Color(0xFF3B5BF6)),
+    _CardData(
+        brand: 'Mastercard', last4: '8901', expiry: '08/26',
+        isDefault: false, color: const Color(0xFFFF6B35),
+        gradient: const LinearGradient(
+            colors: [Color(0xFFFF8C35), Color(0xFFE53935)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight)),
+  ];
+  late AnimationController _header, _btn;
+  late Animation<double> _headerFade, _btnFade;
+  late Animation<Offset> _headerSlide, _btnSlide;
+
+  @override
+  void initState() {
+    super.initState();
+    _header = AnimationController(vsync: this, duration: _kMed)
+      ..forward();
+    _headerFade  = CurvedAnimation(parent: _header, curve: _kEaseOutCubic);
+    _headerSlide = Tween<Offset>(
+            begin: const Offset(0, -0.06), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _header, curve: _kEaseOutCubic));
+    _btn = AnimationController(vsync: this, duration: _kMed);
+    _btnFade  = CurvedAnimation(parent: _btn, curve: _kEaseOutCubic);
+    _btnSlide = Tween<Offset>(
+            begin: const Offset(0, 0.2), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _btn, curve: _kEaseOutCubic));
+    Future.delayed(const Duration(milliseconds: 150),
+        () { if (mounted) _btn.forward(); });
+  }
+  @override void dispose() { _header.dispose(); _btn.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = context.watch<ThemeProvider>().isDark;
+    final kT = _text(isDark), kM = _muted(isDark), kB = _border(isDark);
+    return Scaffold(
+      backgroundColor: _bg(isDark),
+      body: SafeArea(child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+          const SizedBox(height: 20),
+          FadeTransition(opacity: _headerFade,
+            child: SlideTransition(position: _headerSlide,
+              child: Row(children: [
+                _BackBtn(onTap: () => Navigator.pop(context),
+                    isDark: isDark),
+                const SizedBox(width: 16),
+                Text('Payment Methods', style: TextStyle(
+                    color: kT, fontSize: 22,
+                    fontWeight: FontWeight.bold)),
+              ]))),
+          const SizedBox(height: 28),
+          FadeTransition(opacity: _btnFade,
+            child: SlideTransition(position: _btnSlide,
+              child: _GradBtn(label: '+ Add New Card',
+                  icon: Icons.add_rounded,
+                  onTap: () => Navigator.push(
+                      context,
+                      _slideUpRoute(const AddCardScreen()))))),
+          const SizedBox(height: 28),
+          Text('Saved Cards', style: TextStyle(
+              color: kM, fontSize: 15, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 16),
+          Expanded(child: _StaggeredCards(
+            count: _cards.length,
+            itemBuilder: (_, i) => Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: _CardTile(
+                data: _cards[i], isDark: isDark,
+                kT: kT, kM: kM, kB: kB,
+                onDelete: () => setState(() => _cards.removeAt(i)))),
+          )),
+        ]),
+      )),
+    );
+  }
+}
+
+class _StaggeredCards extends StatefulWidget {
   final int count;
   final IndexedWidgetBuilder itemBuilder;
-  final Duration initialDelay;
-  const _StaggeredList({required this.count, required this.itemBuilder,
-      this.initialDelay = const Duration(milliseconds: 200)});
-  @override
-  State<_StaggeredList> createState() => _StaggeredListState();
+  const _StaggeredCards(
+      {required this.count, required this.itemBuilder});
+  @override State<_StaggeredCards> createState() => _StaggeredCardsState();
 }
-class _StaggeredListState extends State<_StaggeredList>
+class _StaggeredCardsState extends State<_StaggeredCards>
     with TickerProviderStateMixin {
   late AnimationController _ctrl;
   late List<Animation<double>> _fades;
@@ -72,1185 +1053,607 @@ class _StaggeredListState extends State<_StaggeredList>
         milliseconds: 350 + widget.count * _kStagger.inMilliseconds);
     _ctrl = AnimationController(vsync: this, duration: total);
     _fades = List.generate(widget.count, (i) {
-      final s = (i * _kStagger.inMilliseconds) / total.inMilliseconds;
+      final s = (i * 80) / total.inMilliseconds;
       final e = (s + 0.5).clamp(0.0, 1.0);
       return Tween<double>(begin: 0, end: 1).animate(
           CurvedAnimation(parent: _ctrl,
               curve: Interval(s, e, curve: _kEaseOutCubic)));
     });
     _slides = List.generate(widget.count, (i) {
-      final s = (i * _kStagger.inMilliseconds) / total.inMilliseconds;
+      final s = (i * 80) / total.inMilliseconds;
       final e = (s + 0.55).clamp(0.0, 1.0);
-      return Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero)
+      return Tween<Offset>(
+              begin: const Offset(0, 0.1), end: Offset.zero)
           .animate(CurvedAnimation(parent: _ctrl,
               curve: Interval(s, e, curve: _kEaseOutCubic)));
     });
-    Future.delayed(widget.initialDelay, () { if (mounted) _ctrl.forward(); });
+    Future.delayed(const Duration(milliseconds: 300),
+        () { if (mounted) _ctrl.forward(); });
   }
+  @override void dispose() { _ctrl.dispose(); super.dispose(); }
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-  @override
-  Widget build(BuildContext context) => Column(
-    children: List.generate(widget.count, (i) => FadeTransition(
-      opacity: _fades[i],
-      child: SlideTransition(
-          position: _slides[i], child: widget.itemBuilder(context, i)),
-    )),
-  );
-}
-
-// ══════════════════════════════════════════════════════
-//  1. PAYMENT PROCESSING SCREEN
-// ══════════════════════════════════════════════════════
-class PaymentProcessingScreen extends StatefulWidget {
-  const PaymentProcessingScreen({super.key});
-  @override
-  State<PaymentProcessingScreen> createState() => _PaymentProcessingScreenState();
-}
-
-class _PaymentProcessingScreenState extends State<PaymentProcessingScreen>
-    with TickerProviderStateMixin {
-  // Spinner rotation (RN: Animated.loop on rotate)
-  late AnimationController _spinCtrl;
-  // Text fade in
-  late AnimationController _textCtrl;
-  late Animation<double> _textFade;
-  late Animation<Offset> _textSlide;
-
-  @override
-  void initState() {
-    super.initState();
-    _spinCtrl = AnimationController(vsync: this,
-        duration: const Duration(seconds: 1))..repeat();
-
-    _textCtrl  = AnimationController(vsync: this, duration: _kMed);
-    _textFade  = CurvedAnimation(parent: _textCtrl, curve: _kEaseOutCubic);
-    _textSlide = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _textCtrl, curve: _kEaseOutCubic));
-
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) _textCtrl.forward();
-    });
-
-    Future.delayed(const Duration(milliseconds: 2500), () {
-      if (!mounted) return;
-      Navigator.pushReplacement(context,
-          _fadeRoute(const PaymentSuccessScreen()));
-    });
-  }
-
-  @override
-  void dispose() { _spinCtrl.dispose(); _textCtrl.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = context.watch<ThemeProvider>().isDark;
-    final kBg   = isDark ? const Color(0xFF0B1A2C) : const Color(0xFFF5F8FA);
-    final kText = isDark ? Colors.white : const Color(0xFF1A2A3A);
-    final kMuted= isDark ? const Color(0xFF6B8A9E) : const Color(0xFF8A9BB0);
-
-    return Scaffold(
-      backgroundColor: kBg,
-      body: Center(child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Pulsing glow behind spinner (RN: Animated opacity on shadow)
-          _PulsingGlow(child: SizedBox(
-            width: 80, height: 80,
-            child: RotationTransition(
-              turns: _spinCtrl,
-              child: CustomPaint(painter: _SpinnerPainter()),
-            ),
-          )),
-          const SizedBox(height: 48),
-          FadeTransition(
-            opacity: _textFade,
+  Widget build(BuildContext context) => ListView(
+    children: List.generate(
+        widget.count,
+        (i) => FadeTransition(
+            opacity: _fades[i],
             child: SlideTransition(
-              position: _textSlide,
-              child: Column(children: [
-                Text('Processing\nyour payment...',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: kText, fontSize: 28,
-                        fontWeight: FontWeight.bold, height: 1.3)),
-                const SizedBox(height: 16),
-                Text('Please wait while we process',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: kMuted, fontSize: 15)),
-              ]),
-            ),
-          ),
-        ],
-      )),
-    );
-  }
-}
-
-// Pulsing glow widget (RN: Animated.loop on opacity/scale for glow)
-class _PulsingGlow extends StatefulWidget {
-  final Widget child;
-  const _PulsingGlow({required this.child});
-  @override
-  State<_PulsingGlow> createState() => _PulsingGlowState();
-}
-class _PulsingGlowState extends State<_PulsingGlow>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _scale, _opacity;
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(vsync: this,
-        duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
-    _scale   = Tween<double>(begin: 1.0, end: 1.15)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
-    _opacity = Tween<double>(begin: 0.3, end: 0.7)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
-  }
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _ctrl,
-    builder: (_, child) => Stack(alignment: Alignment.center, children: [
-      Opacity(
-        opacity: _opacity.value,
-        child: Transform.scale(
-          scale: _scale.value,
-          child: Container(
-            width: 100, height: 100,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _kTeal.withOpacity(0.2),
-            ),
-          ),
-        ),
-      ),
-      child!,
-    ]),
-    child: widget.child,
-  );
-}
-
-class _SpinnerPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.drawArc(
-      Rect.fromLTWH(4, 4, size.width - 8, size.height - 8),
-      -pi / 2, pi * 1.5, false,
-      Paint()
-        ..color = _kTeal
-        ..strokeWidth = 5
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-  }
-  @override
-  bool shouldRepaint(covariant CustomPainter o) => false;
+                position: _slides[i],
+                child: widget.itemBuilder(context, i)))));
 }
 
 // ══════════════════════════════════════════════════════
-//  2. PAYMENT SUCCESS SIMPLE SCREEN
+//  5. ADD CARD SCREEN  (unchanged)
 // ══════════════════════════════════════════════════════
-class PaymentSuccessSimpleScreen extends StatefulWidget {
-  const PaymentSuccessSimpleScreen({super.key});
-  @override
-  State<PaymentSuccessSimpleScreen> createState() =>
-      _PaymentSuccessSimpleScreenState();
+class AddCardScreen extends StatefulWidget {
+  const AddCardScreen({super.key});
+  @override State<AddCardScreen> createState() => _AddCardState();
 }
-
-class _PaymentSuccessSimpleScreenState extends State<PaymentSuccessSimpleScreen>
+class _AddCardState extends State<AddCardScreen>
     with TickerProviderStateMixin {
-  // Check icon scale bounce (RN: spring scale 0→1)
-  late AnimationController _iconCtrl;
-  late Animation<double> _iconScale, _iconFade;
-  // Text stagger
-  late AnimationController _textCtrl;
-  late Animation<double> _textFade;
-  late Animation<Offset> _textSlide;
-  // Button slide up
-  late AnimationController _btnCtrl;
-  late Animation<Offset> _btnSlide;
-  late Animation<double> _btnFade;
+  final _numCtrl  = TextEditingController();
+  final _nameCtrl = TextEditingController();
+  final _expCtrl  = TextEditingController();
+  final _cvvCtrl  = TextEditingController();
+  String _num = '', _name = '', _exp = '';
+
+  late AnimationController _header, _cardAnim, _form;
+  late Animation<double> _headerFade, _cardScale, _cardFade, _formFade;
+  late Animation<Offset> _headerSlide, _formSlide;
 
   @override
   void initState() {
     super.initState();
-    _iconCtrl  = AnimationController(vsync: this, duration: _kSlow);
-    _iconScale = Tween<double>(begin: 0.0, end: 1.0)
-        .animate(CurvedAnimation(parent: _iconCtrl, curve: _kEaseOutBack));
-    _iconFade  = CurvedAnimation(parent: _iconCtrl, curve: _kEaseOutCubic);
-
-    _textCtrl  = AnimationController(vsync: this, duration: _kMed);
-    _textFade  = CurvedAnimation(parent: _textCtrl, curve: _kEaseOutCubic);
-    _textSlide = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _textCtrl, curve: _kEaseOutCubic));
-
-    _btnCtrl  = AnimationController(vsync: this, duration: _kMed);
-    _btnSlide = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _btnCtrl, curve: _kEaseOutCubic));
-    _btnFade  = CurvedAnimation(parent: _btnCtrl, curve: _kEaseOutCubic);
-
-    _runSequence();
-  }
-
-  void _runSequence() async {
-    _iconCtrl.forward();
-    await Future.delayed(const Duration(milliseconds: 350));
-    _textCtrl.forward();
-    await Future.delayed(const Duration(milliseconds: 200));
-    _btnCtrl.forward();
+    _header = AnimationController(vsync: this, duration: _kMed)
+      ..forward();
+    _headerFade  = CurvedAnimation(parent: _header, curve: _kEaseOutCubic);
+    _headerSlide = Tween<Offset>(
+            begin: const Offset(0, -0.06), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _header, curve: _kEaseOutCubic));
+    _cardAnim = AnimationController(vsync: this, duration: _kSlow);
+    _cardScale = Tween<double>(begin: 0.85, end: 1.0).animate(
+        CurvedAnimation(parent: _cardAnim, curve: _kEaseOutBack));
+    _cardFade  = CurvedAnimation(parent: _cardAnim, curve: _kEaseOutCubic);
+    _form = AnimationController(vsync: this, duration: _kMed);
+    _formFade  = CurvedAnimation(parent: _form, curve: _kEaseOutCubic);
+    _formSlide = Tween<Offset>(
+            begin: const Offset(0, 0.15), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _form, curve: _kEaseOutCubic));
+    Future.delayed(const Duration(milliseconds: 100),
+        () { if (mounted) _cardAnim.forward(); });
+    Future.delayed(const Duration(milliseconds: 250),
+        () { if (mounted) _form.forward(); });
+    _numCtrl.addListener(()  => setState(() => _num  = _numCtrl.text));
+    _nameCtrl.addListener(() => setState(() => _name = _nameCtrl.text));
+    _expCtrl.addListener(()  => setState(() => _exp  = _expCtrl.text));
   }
 
   @override
   void dispose() {
-    _iconCtrl.dispose(); _textCtrl.dispose(); _btnCtrl.dispose();
+    _numCtrl.dispose(); _nameCtrl.dispose();
+    _expCtrl.dispose(); _cvvCtrl.dispose();
+    _header.dispose(); _cardAnim.dispose(); _form.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
-    final kBg   = isDark ? const Color(0xFF0B1A2C) : const Color(0xFFF5F8FA);
-    final kText = isDark ? Colors.white : const Color(0xFF1A2A3A);
-    final kMuted= isDark ? const Color(0xFF6B8A9E) : const Color(0xFF8A9BB0);
-
+    final kT = _text(isDark), kM = _muted(isDark), kB = _border(isDark);
+    final kField = isDark
+        ? const Color(0xFF112030)
+        : const Color(0xFFF0F4F8);
     return Scaffold(
-      backgroundColor: kBg,
-      body: Center(child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          // ── Check icon — bounce scale ──
-          ScaleTransition(
-            scale: _iconScale,
-            child: FadeTransition(
-              opacity: _iconFade,
-              child: Container(
-                width: 100, height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF009689), _kTeal],
-                    begin: Alignment.topLeft, end: Alignment.bottomRight),
-                  boxShadow: [BoxShadow(color: _kTeal.withOpacity(0.45),
-                      blurRadius: 30, spreadRadius: 5)],
-                ),
-                child: const Icon(Icons.check_circle_outline_rounded,
-                    color: Colors.white, size: 52),
-              ),
-            ),
-          ),
-          const SizedBox(height: 40),
-
-          // ── Text — fade + slide ──
-          FadeTransition(
-            opacity: _textFade,
-            child: SlideTransition(
-              position: _textSlide,
-              child: Column(children: [
-                Text('Payment\nSuccessful', textAlign: TextAlign.center,
-                    style: TextStyle(color: kText, fontSize: 30,
-                        fontWeight: FontWeight.bold, height: 1.3)),
-                const SizedBox(height: 16),
-                Text('Your payment has been processed',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: kMuted, fontSize: 16)),
-              ]),
-            ),
-          ),
-          const SizedBox(height: 80),
-
-          // ── Button — slide up ──
-          SlideTransition(
-            position: _btnSlide,
-            child: FadeTransition(
-              opacity: _btnFade,
-              child: _GradientBtn(
-                label: 'View Invoice',
-                onTap: () => Navigator.pushReplacement(context,
-                    _slideUpRoute(const PaymentSuccessScreen())),
-              ),
-            ),
-          ),
-        ]),
-      )),
-    );
-  }
-}
-
-// ══════════════════════════════════════════════════════
-//  3. PAYMENT FAILED SCREEN
-// ══════════════════════════════════════════════════════
-class PaymentFailedScreen extends StatefulWidget {
-  const PaymentFailedScreen({super.key});
-  @override
-  State<PaymentFailedScreen> createState() => _PaymentFailedScreenState();
-}
-
-class _PaymentFailedScreenState extends State<PaymentFailedScreen>
-    with TickerProviderStateMixin {
-  late AnimationController _iconCtrl, _textCtrl, _btnCtrl;
-  late Animation<double> _iconScale, _iconFade, _textFade, _btnFade;
-  late Animation<Offset> _textSlide, _btnSlide;
-
-  @override
-  void initState() {
-    super.initState();
-    _iconCtrl  = AnimationController(vsync: this, duration: _kSlow);
-    _iconScale = Tween<double>(begin: 0.0, end: 1.0)
-        .animate(CurvedAnimation(parent: _iconCtrl, curve: _kEaseOutBack));
-    _iconFade  = CurvedAnimation(parent: _iconCtrl, curve: _kEaseOutCubic);
-
-    _textCtrl  = AnimationController(vsync: this, duration: _kMed);
-    _textFade  = CurvedAnimation(parent: _textCtrl, curve: _kEaseOutCubic);
-    _textSlide = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _textCtrl, curve: _kEaseOutCubic));
-
-    _btnCtrl  = AnimationController(vsync: this, duration: _kMed);
-    _btnFade  = CurvedAnimation(parent: _btnCtrl, curve: _kEaseOutCubic);
-    _btnSlide = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _btnCtrl, curve: _kEaseOutCubic));
-
-    _runSequence();
-  }
-
-  void _runSequence() async {
-    _iconCtrl.forward();
-    await Future.delayed(const Duration(milliseconds: 300));
-    _textCtrl.forward();
-    await Future.delayed(const Duration(milliseconds: 200));
-    _btnCtrl.forward();
-  }
-
-  @override
-  void dispose() {
-    _iconCtrl.dispose(); _textCtrl.dispose(); _btnCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark  = context.watch<ThemeProvider>().isDark;
-    final kBg     = isDark ? const Color(0xFF0B1A2C) : const Color(0xFFF5F8FA);
-    final kCard   = isDark ? const Color(0xFF0F2030) : Colors.white;
-    final kText   = isDark ? Colors.white : const Color(0xFF1A2A3A);
-    final kMuted  = isDark ? const Color(0xFF6B8A9E) : const Color(0xFF8A9BB0);
-    final kBorder = isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFE2EAF0);
-
-    return Scaffold(
-      backgroundColor: kBg,
-      body: Center(child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          ScaleTransition(
-            scale: _iconScale,
-            child: FadeTransition(
-              opacity: _iconFade,
-              child: Container(
-                width: 100, height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle, color: _kRed,
-                  boxShadow: [BoxShadow(color: _kRed.withOpacity(0.45),
-                      blurRadius: 30, spreadRadius: 5)],
-                ),
-                child: const Icon(Icons.cancel_outlined,
-                    color: Colors.white, size: 52),
-              ),
-            ),
-          ),
-          const SizedBox(height: 40),
-          FadeTransition(
-            opacity: _textFade,
-            child: SlideTransition(
-              position: _textSlide,
-              child: Column(children: [
-                Text('Payment failed', textAlign: TextAlign.center,
-                    style: TextStyle(color: kText, fontSize: 30,
-                        fontWeight: FontWeight.bold)),
-                const SizedBox(height: 14),
-                Text('Please try again', textAlign: TextAlign.center,
-                    style: TextStyle(color: kMuted, fontSize: 16)),
-              ]),
-            ),
-          ),
-          const SizedBox(height: 60),
-          SlideTransition(
-            position: _btnSlide,
-            child: FadeTransition(
-              opacity: _btnFade,
-              child: Column(children: [
-                _GradientBtn(label: 'Retry Payment',
-                    onTap: () => Navigator.pushReplacement(context,
-                        _fadeRoute(const PaymentProcessingScreen()))),
-                const SizedBox(height: 14),
-                _Tap(
-                  onTap: () => Navigator.push(context,
-                      _slideUpRoute(const PaymentMethodsSelectScreen())),
-                  child: Container(
-                    width: double.infinity, height: 56,
-                    decoration: BoxDecoration(
-                      color: kCard,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: kBorder),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text('Change Method',
-                        style: TextStyle(color: kText, fontSize: 16,
-                            fontWeight: FontWeight.w500)),
-                  ),
-                ),
-              ]),
-            ),
-          ),
-        ]),
-      )),
-    );
-  }
-}
-
-// ══════════════════════════════════════════════════════
-//  4. PAYMENT METHODS LIST SCREEN
-// ══════════════════════════════════════════════════════
-class PaymentMethodsListScreen extends StatefulWidget {
-  const PaymentMethodsListScreen({super.key});
-  @override
-  State<PaymentMethodsListScreen> createState() =>
-      _PaymentMethodsListScreenState();
-}
-
-class _PaymentMethodsListScreenState extends State<PaymentMethodsListScreen>
-    with TickerProviderStateMixin {
-  final List<_CardData> _cards = [
-    _CardData(brand: 'Visa',       last4: '4532', expiry: '12/25',
-        isDefault: true,  color: const Color(0xFF3B5BF6)),
-    _CardData(brand: 'Mastercard', last4: '8901', expiry: '08/26',
-        isDefault: false, color: const Color(0xFFFF6B35)),
-  ];
-
-  // Header entry
-  late AnimationController _headerCtrl;
-  late Animation<double> _headerFade;
-  late Animation<Offset> _headerSlide;
-
-  // Button entry
-  late AnimationController _btnCtrl;
-  late Animation<double> _btnFade;
-  late Animation<Offset> _btnSlide;
-
-  void _deleteCard(int index) => setState(() => _cards.removeAt(index));
-
-  @override
-  void initState() {
-    super.initState();
-    _headerCtrl  = AnimationController(vsync: this, duration: _kMed);
-    _headerFade  = CurvedAnimation(parent: _headerCtrl, curve: _kEaseOutCubic);
-    _headerSlide = Tween<Offset>(begin: const Offset(0, -0.06), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _headerCtrl, curve: _kEaseOutCubic));
-
-    _btnCtrl  = AnimationController(vsync: this, duration: _kMed);
-    _btnFade  = CurvedAnimation(parent: _btnCtrl, curve: _kEaseOutCubic);
-    _btnSlide = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _btnCtrl, curve: _kEaseOutCubic));
-
-    _headerCtrl.forward();
-    Future.delayed(const Duration(milliseconds: 150), () {
-      if (mounted) _btnCtrl.forward();
-    });
-  }
-
-  @override
-  void dispose() { _headerCtrl.dispose(); _btnCtrl.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark  = context.watch<ThemeProvider>().isDark;
-    final kBg     = isDark ? const Color(0xFF0B1A2C) : const Color(0xFFF5F8FA);
-    final kCard   = isDark ? const Color(0xFF0D1F30) : Colors.white;
-    final kText   = isDark ? Colors.white : const Color(0xFF1A2A3A);
-    final kMuted  = isDark ? const Color(0xFF6B8A9E) : const Color(0xFF8A9BB0);
-    final kBorder = isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFE2EAF0);
-
-    return Scaffold(
-      backgroundColor: kBg,
-      body: SafeArea(child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const SizedBox(height: 20),
-
-          // ── Header ──
-          FadeTransition(
-            opacity: _headerFade,
-            child: SlideTransition(
-              position: _headerSlide,
+      backgroundColor: _bg(isDark),
+      body: SafeArea(child: Column(children: [
+        Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: FadeTransition(opacity: _headerFade,
+            child: SlideTransition(position: _headerSlide,
               child: Row(children: [
-                _CircleBackBtn(isDark: isDark, kBorder: kBorder),
+                _BackBtn(onTap: () => Navigator.pop(context),
+                    isDark: isDark),
                 const SizedBox(width: 16),
-                Text('Payment Methods', style: TextStyle(color: kText,
-                    fontSize: 22, fontWeight: FontWeight.bold)),
-              ]),
-            ),
-          ),
-          const SizedBox(height: 28),
-
-          // ── Add button ──
-          SlideTransition(
-            position: _btnSlide,
-            child: FadeTransition(
-              opacity: _btnFade,
-              child: _GradientBtn(
-                label: '+ Add New Card',
-                onTap: () => Navigator.push(context,
-                    _slideUpRoute(const AddCardScreen())),
-              ),
-            ),
-          ),
-          const SizedBox(height: 28),
-
-          Text('Saved Cards', style: TextStyle(color: kMuted, fontSize: 15,
-              fontWeight: FontWeight.w600)),
-          const SizedBox(height: 16),
-
-          // ── Cards list — staggered ──
-          Expanded(child: _StaggeredList(
-            count: _cards.length,
-            initialDelay: const Duration(milliseconds: 300),
-            itemBuilder: (_, i) => Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: _CardTile(
-                card: _cards[i], isDark: isDark,
-                kCard: kCard, kText: kText, kMuted: kMuted, kBorder: kBorder,
-                onDelete: () => _deleteCard(i),
-              ),
-            ),
-          )),
-        ]),
-      )),
-    );
-  }
-}
-
-// ══════════════════════════════════════════════════════
-//  5. PAYMENT SUCCESS FULL SCREEN
-// ══════════════════════════════════════════════════════
-class PaymentSuccessScreen extends StatefulWidget {
-  const PaymentSuccessScreen({super.key});
-  @override
-  State<PaymentSuccessScreen> createState() => _PaymentSuccessScreenState();
-}
-
-class _PaymentSuccessScreenState extends State<PaymentSuccessScreen>
-    with TickerProviderStateMixin {
-  // Check icon bounce
-  late AnimationController _iconCtrl;
-  late Animation<double> _iconScale, _iconFade;
-  // Amount counter (RN: Animated.timing on number)
-  late AnimationController _amountCtrl;
-  late Animation<double> _amountValue;
-  // Receipt card slide up
-  late AnimationController _receiptCtrl;
-  late Animation<Offset> _receiptSlide;
-  late Animation<double> _receiptFade;
-  // Bottom buttons stagger
-  late AnimationController _btnsCtrl;
-  late List<Animation<double>> _btnFades;
-  late List<Animation<Offset>> _btnSlides;
-
-  static const int _kBtns = 3;
-
-  String _generateTxnId() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    final rng = Random();
-    return 'TXN-' + List.generate(8, (_) => chars[rng.nextInt(chars.length)]).join();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _iconCtrl  = AnimationController(vsync: this, duration: _kSlow);
-    _iconScale = Tween<double>(begin: 0.0, end: 1.0)
-        .animate(CurvedAnimation(parent: _iconCtrl, curve: _kEaseOutBack));
-    _iconFade  = CurvedAnimation(parent: _iconCtrl, curve: _kEaseOutCubic);
-
-    _amountCtrl  = AnimationController(vsync: this,
-        duration: const Duration(milliseconds: 800));
-    _amountValue = Tween<double>(begin: 0, end: 240)
-        .animate(CurvedAnimation(parent: _amountCtrl, curve: _kEaseOutCubic));
-
-    _receiptCtrl  = AnimationController(vsync: this, duration: _kMed);
-    _receiptSlide = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _receiptCtrl, curve: _kEaseOutCubic));
-    _receiptFade  = CurvedAnimation(parent: _receiptCtrl, curve: _kEaseOutCubic);
-
-    final totalMs = 350 + _kBtns * _kStagger.inMilliseconds;
-    _btnsCtrl = AnimationController(vsync: this,
-        duration: Duration(milliseconds: totalMs));
-    _btnFades = List.generate(_kBtns, (i) {
-      final s = (i * _kStagger.inMilliseconds) / totalMs;
-      final e = (s + 0.5).clamp(0.0, 1.0);
-      return Tween<double>(begin: 0, end: 1).animate(
-          CurvedAnimation(parent: _btnsCtrl,
-              curve: Interval(s, e, curve: _kEaseOutCubic)));
-    });
-    _btnSlides = List.generate(_kBtns, (i) {
-      final s = (i * _kStagger.inMilliseconds) / totalMs;
-      final e = (s + 0.55).clamp(0.0, 1.0);
-      return Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
-          .animate(CurvedAnimation(parent: _btnsCtrl,
-              curve: Interval(s, e, curve: _kEaseOutCubic)));
-    });
-
-    _runSequence();
-  }
-
-  void _runSequence() async {
-    _iconCtrl.forward();
-    await Future.delayed(const Duration(milliseconds: 400));
-    _amountCtrl.forward();
-    _receiptCtrl.forward();
-    await Future.delayed(const Duration(milliseconds: 400));
-    _btnsCtrl.forward();
-  }
-
-  @override
-  void dispose() {
-    _iconCtrl.dispose(); _amountCtrl.dispose();
-    _receiptCtrl.dispose(); _btnsCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark  = context.watch<ThemeProvider>().isDark;
-    final kBg     = isDark ? const Color(0xFF0B1A2C) : const Color(0xFFF5F8FA);
-    final kCard   = isDark ? const Color(0xFF0D1F30) : Colors.white;
-    final kText   = isDark ? Colors.white : const Color(0xFF1A2A3A);
-    final kMuted  = isDark ? const Color(0xFF6B8A9E) : const Color(0xFF8A9BB0);
-    final kBorder = isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFE2EAF0);
-
-    final now    = DateTime.now();
-    final txnId  = _generateTxnId();
-    final dateStr= '${_month(now.month)} ${now.day}, ${now.year} • '
-        '${_hour(now.hour)}:${now.minute.toString().padLeft(2, '0')} '
-        '${now.hour >= 12 ? 'PM' : 'AM'}';
-
-    final btns = [
-      ('☆  Rate Your Experience', () {}),
-      ('↓  Download Invoice',      () {}),
-      ('⌂  Return to Home',
-          () => Navigator.of(context).popUntil((r) => r.isFirst)),
-    ];
-
-    return Scaffold(
-      backgroundColor: kBg,
-      body: SafeArea(child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(children: [
-          const SizedBox(height: 40),
-
-          // ── Check icon — bounce ──
-          ScaleTransition(
-            scale: _iconScale,
-            child: FadeTransition(
-              opacity: _iconFade,
-              child: Container(
-                width: 110, height: 110,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF009689), _kTeal],
-                    begin: Alignment.topLeft, end: Alignment.bottomRight),
-                  boxShadow: [BoxShadow(color: _kTeal.withOpacity(0.4),
-                      blurRadius: 35, spreadRadius: 6)],
-                ),
-                child: const Icon(Icons.check_circle_outline_rounded,
-                    color: Colors.white, size: 56),
-              ),
-            ),
-          ),
-          const SizedBox(height: 32),
-
-          Text('Payment Successful!', textAlign: TextAlign.center,
-              style: TextStyle(color: kText, fontSize: 28,
-                  fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          Text('Your payment has been processed successfully',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: kMuted, fontSize: 15)),
-          const SizedBox(height: 32),
-
-          // ── Receipt card — slide up ──
-          SlideTransition(
-            position: _receiptSlide,
-            child: FadeTransition(
-              opacity: _receiptFade,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: kCard,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: kBorder),
-                  boxShadow: isDark ? [] : [BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 12, offset: const Offset(0, 4))],
-                ),
-                child: Column(children: [
-                  Text('Amount Paid',
-                      style: TextStyle(color: kMuted, fontSize: 14)),
-                  const SizedBox(height: 8),
-                  // Animated counter (RN: Animated.timing on number value)
-                  AnimatedBuilder(
-                    animation: _amountValue,
-                    builder: (_, __) => Text(
-                      '\$${_amountValue.value.toInt()}',
-                      style: const TextStyle(color: _kTeal, fontSize: 40,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
+                Text('Add New Card', style: TextStyle(
+                    color: kT, fontSize: 22,
+                    fontWeight: FontWeight.bold)),
+              ])))),
+        const SizedBox(height: 24),
+        Expanded(child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(children: [
+            ScaleTransition(scale: _cardScale,
+              child: FadeTransition(opacity: _cardFade,
+                child: _CardPreview(
+                    number: _num, name: _name, expiry: _exp))),
+            const SizedBox(height: 28),
+            FadeTransition(opacity: _formFade,
+              child: SlideTransition(position: _formSlide,
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  _lbl('Card Number', kT),
+                  _fld(_numCtrl, '1234 5678 9012 3456',
+                      TextInputType.number, kT, kM, kField, kB,
+                      formatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        _CardFmt()
+                      ]),
+                  const SizedBox(height: 18),
+                  _lbl('Cardholder Name', kT),
+                  _fld(_nameCtrl, 'FULL NAME',
+                      TextInputType.name, kT, kM, kField, kB,
+                      capitalize: TextCapitalization.characters),
+                  const SizedBox(height: 18),
+                  Row(children: [
+                    Expanded(child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      _lbl('Expiry Date', kT),
+                      _fld(_expCtrl, 'MM/YY',
+                          TextInputType.datetime, kT, kM, kField, kB,
+                          formatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            _ExpiryFmt()
+                          ]),
+                    ])),
+                    const SizedBox(width: 16),
+                    Expanded(child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      _lbl('CVV', kT),
+                      _fld(_cvvCtrl, '•••',
+                          TextInputType.number, kT, kM, kField, kB,
+                          obscure: true,
+                          formatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(3)
+                          ]),
+                    ])),
+                  ]),
+                  const SizedBox(height: 28),
+                  _GradBtn(label: 'Add Card', onTap: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: const Text('Card added successfully!'),
+                        backgroundColor: _kTeal,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12))));
+                  }),
                   const SizedBox(height: 20),
-                  Divider(color: kBorder),
-                  const SizedBox(height: 16),
-                  _ReceiptRow(label: 'Transaction ID', value: txnId,
-                      kText: kText, kMuted: kMuted),
-                  const SizedBox(height: 12),
-                  _ReceiptRow(label: 'Date & Time', value: dateStr,
-                      kText: kText, kMuted: kMuted),
-                  const SizedBox(height: 12),
-                  _ReceiptRow(label: 'Payment Method', value: 'Visa **** 4532',
-                      kText: kText, kMuted: kMuted),
-                ]),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Email receipt info
-          SlideTransition(
-            position: _receiptSlide,
-            child: FadeTransition(
-              opacity: _receiptFade,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  color: kCard,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: kBorder),
-                ),
-                child: Center(child: Text(
-                    'A receipt has been sent to your email',
-                    style: TextStyle(color: kMuted, fontSize: 14))),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // ── Bottom buttons — staggered ──
-          ...List.generate(_kBtns, (i) {
-            final (label, onTap) = btns[i];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: FadeTransition(
-                opacity: _btnFades[i],
-                child: SlideTransition(
-                  position: _btnSlides[i],
-                  child: i == 0
-                    ? _GradientBtn(label: label, onTap: onTap)
-                    : _OutlineBtn(label: label, kCard: kCard,
-                          kText: kText, kBorder: kBorder, onTap: onTap),
-                ),
-              ),
-            );
-          }),
-          const SizedBox(height: 20),
-        ]),
-      )),
+                ]))),
+          ]),
+        )),
+      ])),
     );
   }
 
-  String _month(int m) {
-    const months = ['Jan','Feb','Mar','Apr','May','Jun',
-                    'Jul','Aug','Sep','Oct','Nov','Dec'];
-    return months[m - 1];
-  }
-  int _hour(int h) => h > 12 ? h - 12 : (h == 0 ? 12 : h);
+  Widget _lbl(String t, Color c) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(t, style: TextStyle(
+        color: c, fontSize: 14, fontWeight: FontWeight.w500)));
+
+  Widget _fld(TextEditingController ctrl, String hint,
+      TextInputType type, Color kT, Color kM, Color kField, Color kB,
+      {bool obscure = false,
+       List<TextInputFormatter>? formatters,
+       TextCapitalization capitalize = TextCapitalization.none}) =>
+    TextField(
+      controller: ctrl, keyboardType: type, obscureText: obscure,
+      inputFormatters: formatters, textCapitalization: capitalize,
+      style: TextStyle(color: kT, fontSize: 14),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: kM, fontSize: 14),
+        filled: true, fillColor: kField,
+        contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14, vertical: 16),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: kB)),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(
+                color: _kTeal, width: 1.5))));
 }
 
 // ══════════════════════════════════════════════════════
-//  6. PAYMENT METHODS SELECT SCREEN
+//  PAYMENT METHODS SELECT
+//  ✅ FIX: بيمرر driverName + price للـ PaymentProcessing
 // ══════════════════════════════════════════════════════
 class PaymentMethodsSelectScreen extends StatefulWidget {
   final String driverName;
+  final String driverInitials;
   final double price;
-  const PaymentMethodsSelectScreen({super.key,
-      this.driverName = '', this.price = 0});
+  const PaymentMethodsSelectScreen({
+    super.key,
+    this.driverName     = 'Ahmed Hassan',
+    this.driverInitials = 'AH',
+    this.price          = 240,
+  });
   @override
   State<PaymentMethodsSelectScreen> createState() =>
-      _PaymentMethodsSelectScreenState();
+      _PaymentMethodsSelectState();
 }
-
-class _PaymentMethodsSelectScreenState
-    extends State<PaymentMethodsSelectScreen> with TickerProviderStateMixin {
-  int _selected = 0;
-
+class _PaymentMethodsSelectState extends State<PaymentMethodsSelectScreen>
+    with TickerProviderStateMixin {
+  int _sel = 0;
   final _methods = [
     _PayMethod(icon: Icons.credit_card_rounded, name: 'Visa',
         sub: '**** **** **** 4532', isDefault: true),
     _PayMethod(icon: Icons.credit_card_rounded, name: 'Mastercard',
         sub: '**** **** **** 8901', isDefault: false),
     _PayMethod(icon: Icons.account_balance_wallet_outlined,
-        name: 'TruckMate Wallet', sub: '\$480.00 available', isDefault: false),
+        name: 'TruckMate Wallet',
+        sub: '\$480.00 available', isDefault: false),
   ];
-
-  // Header entry
-  late AnimationController _headerCtrl;
-  late Animation<double> _headerFade;
-  late Animation<Offset> _headerSlide;
-
-  // Confirm button slide up
-  late AnimationController _btnCtrl;
-  late Animation<Offset> _btnSlide;
-  late Animation<double> _btnFade;
+  late AnimationController _header, _btn;
+  late Animation<double> _headerFade, _btnFade;
+  late Animation<Offset> _headerSlide, _btnSlide;
 
   @override
   void initState() {
     super.initState();
-    _headerCtrl  = AnimationController(vsync: this, duration: _kMed);
-    _headerFade  = CurvedAnimation(parent: _headerCtrl, curve: _kEaseOutCubic);
-    _headerSlide = Tween<Offset>(begin: const Offset(0, -0.06), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _headerCtrl, curve: _kEaseOutCubic));
-
-    _btnCtrl  = AnimationController(vsync: this, duration: _kMed);
+    _header = AnimationController(vsync: this, duration: _kMed)
+      ..forward();
+    _headerFade  = CurvedAnimation(parent: _header, curve: _kEaseOutCubic);
+    _headerSlide = Tween<Offset>(
+            begin: const Offset(0, -0.06), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _header, curve: _kEaseOutCubic));
+    _btn = AnimationController(vsync: this, duration: _kMed);
+    _btnFade  = CurvedAnimation(parent: _btn, curve: _kEaseOutCubic);
     _btnSlide = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _btnCtrl, curve: _kEaseOutCubic));
-    _btnFade  = CurvedAnimation(parent: _btnCtrl, curve: _kEaseOutCubic);
-
-    _headerCtrl.forward();
-    Future.delayed(const Duration(milliseconds: 200), () {
-      if (mounted) _btnCtrl.forward();
-    });
+        .animate(CurvedAnimation(parent: _btn, curve: _kEaseOutCubic));
+    Future.delayed(const Duration(milliseconds: 200),
+        () { if (mounted) _btn.forward(); });
   }
-
   @override
-  void dispose() { _headerCtrl.dispose(); _btnCtrl.dispose(); super.dispose(); }
+  void dispose() { _header.dispose(); _btn.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
-    final isDark  = context.watch<ThemeProvider>().isDark;
-    final kBg     = isDark ? const Color(0xFF0B1A2C) : const Color(0xFFF5F8FA);
-    final kCard   = isDark ? const Color(0xFF0D1F30) : Colors.white;
-    final kText   = isDark ? Colors.white : const Color(0xFF1A2A3A);
-    final kMuted  = isDark ? const Color(0xFF6B8A9E) : const Color(0xFF8A9BB0);
-    final kBorder = isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFE2EAF0);
-
+    final isDark = context.watch<ThemeProvider>().isDark;
+    final kT = _text(isDark), kM = _muted(isDark), kB = _border(isDark);
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: _bg(isDark),
       body: SafeArea(child: Column(children: [
-
-        // ── Header ──
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-          child: FadeTransition(
-            opacity: _headerFade,
-            child: SlideTransition(
-              position: _headerSlide,
+        Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: FadeTransition(opacity: _headerFade,
+            child: SlideTransition(position: _headerSlide,
               child: Row(children: [
-                _CircleBackBtn(isDark: isDark, kBorder: kBorder),
+                _BackBtn(onTap: () => Navigator.pop(context),
+                    isDark: isDark),
                 const SizedBox(width: 16),
-                Text('Payment Methods', style: TextStyle(color: kText,
-                    fontSize: 22, fontWeight: FontWeight.bold)),
-              ]),
-            ),
-          ),
-        ),
+                Column(crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text('Payment Methods', style: TextStyle(
+                      color: kT, fontSize: 22,
+                      fontWeight: FontWeight.bold)),
+                  // ✅ بيعرض اسم الـ driver والسعر في الـ header
+                  Text('${widget.driverName} · \$${widget.price.toInt()}',
+                      style: TextStyle(color: kM, fontSize: 13)),
+                ]),
+              ])))),
         const SizedBox(height: 24),
-
-        // ── Methods list — staggered ──
         Expanded(child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: _StaggeredList(
+          child: _StaggeredCards(
             count: _methods.length + 1,
-            initialDelay: const Duration(milliseconds: 150),
             itemBuilder: (_, i) {
               if (i == _methods.length) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 14),
-                  child: _Tap(
-                    onTap: () => Navigator.push(context,
+                  child: GestureDetector(
+                    onTap: () => Navigator.push(
+                        context,
                         _slideUpRoute(const AddCardScreen())),
                     child: Container(
-                      width: double.infinity, height: 64,
+                      height: 64,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: kBorder),
-                      ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: kB)),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.add, color: _kTeal, size: 20),
-                          const SizedBox(width: 10),
-                          Text('Add New Payment Method',
-                              style: TextStyle(color: _kTeal, fontSize: 15,
-                                  fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                        Icon(Icons.add, color: _kTeal, size: 20),
+                        SizedBox(width: 10),
+                        Text('Add New Payment Method',
+                            style: TextStyle(
+                                color: _kTeal, fontSize: 15,
+                                fontWeight: FontWeight.w600)),
+                      ]))));
               }
-              final m = _methods[i];
-              final selected = _selected == i;
+              final m   = _methods[i];
+              final sel = _sel == i;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 14),
-                child: _Tap(
-                  onTap: () => setState(() => _selected = i),
+                child: GestureDetector(
+                  onTap: () => setState(() => _sel = i),
                   child: AnimatedContainer(
-                    duration: _kFast,
-                    curve: _kEaseOutCubic,
+                    duration: _kFast, curve: _kEaseOutCubic,
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: kCard,
+                      color: _card(isDark),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                          color: selected ? _kTeal : kBorder,
-                          width: selected ? 1.5 : 1),
-                      boxShadow: isDark ? [] : [BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 8, offset: const Offset(0, 2))],
-                    ),
+                          color: sel ? _kTeal : kB,
+                          width: sel ? 1.5 : 1.0)),
                     child: Row(children: [
-                      Container(
-                        width: 48, height: 48,
+                      Container(width: 48, height: 48,
                         decoration: BoxDecoration(
-                          color: _kTeal.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(m.icon, color: _kTeal, size: 22),
-                      ),
+                            color: _kTeal.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12)),
+                        child: Icon(m.icon, color: _kTeal, size: 22)),
                       const SizedBox(width: 14),
                       Expanded(child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(children: [
-                            Text(m.name, style: TextStyle(color: kText,
-                                fontSize: 16, fontWeight: FontWeight.w600)),
-                            if (m.isDefault) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: _kTeal.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                      color: _kTeal.withOpacity(0.4)),
-                                ),
-                                child: const Text('Default',
-                                    style: TextStyle(color: _kTeal,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600)),
-                              ),
-                            ],
-                          ]),
-                          const SizedBox(height: 4),
-                          Text(m.sub, style: TextStyle(
-                              color: kMuted, fontSize: 13)),
-                        ],
-                      )),
-                      if (selected)
-                        Container(
-                          width: 28, height: 28,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                        Row(children: [
+                          Text(m.name, style: TextStyle(
+                              color: kT, fontSize: 16,
+                              fontWeight: FontWeight.w600)),
+                          if (m.isDefault) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: _kTeal.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                    color: _kTeal.withOpacity(0.4))),
+                              child: const Text('Default',
+                                  style: TextStyle(
+                                      color: _kTeal, fontSize: 11,
+                                      fontWeight: FontWeight.w600))),
+                          ],
+                        ]),
+                        const SizedBox(height: 4),
+                        Text(m.sub,
+                            style: TextStyle(color: kM, fontSize: 13)),
+                      ])),
+                      if (sel)
+                        Container(width: 28, height: 28,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(color: _kTeal, width: 2),
-                            color: _kTeal.withOpacity(0.12),
-                          ),
+                            color: _kTeal.withOpacity(0.12)),
                           child: const Icon(Icons.check_rounded,
-                              color: _kTeal, size: 16),
-                        ),
-                    ]),
-                  ),
-                ),
-              );
+                              color: _kTeal, size: 16)),
+                    ]))));
             },
-          ),
-        )),
-
-        // ── Confirm button — slide up ──
-        SlideTransition(
-          position: _btnSlide,
-          child: FadeTransition(
-            opacity: _btnFade,
+          ))),
+        SlideTransition(position: _btnSlide,
+          child: FadeTransition(opacity: _btnFade,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-              child: _GradientBtn(
+              child: _GradBtn(
                 label: 'Confirm Payment Method',
-                onTap: () => Navigator.pushReplacement(context,
-                    _fadeRoute(const PaymentProcessingScreen())),
-              ),
-            ),
-          ),
-        ),
+                // ✅ FIX: بيمرر driverName + driverInitials + price
+                onTap: () => Navigator.pushReplacement(
+                    context,
+                    _fadeRoute(PaymentProcessingScreen(
+                      driverName:     widget.driverName,
+                      driverInitials: widget.driverInitials,
+                      amount:         widget.price,
+                    ))))))),
       ])),
     );
   }
 }
 
 // ══════════════════════════════════════════════════════
-//  ADD CARD SCREEN
+//  CARD PREVIEW (unchanged)
 // ══════════════════════════════════════════════════════
-class AddCardScreen extends StatefulWidget {
-  const AddCardScreen({super.key});
-  @override
-  State<AddCardScreen> createState() => _AddCardScreenState();
-}
+class _CardPreview extends StatelessWidget {
+  final String number, name, expiry;
+  const _CardPreview(
+      {required this.number, required this.name, required this.expiry});
 
-class _AddCardScreenState extends State<AddCardScreen>
-    with TickerProviderStateMixin {
-  final _numberCtrl = TextEditingController();
-  final _nameCtrl   = TextEditingController();
-  final _expiryCtrl = TextEditingController();
-  final _cvvCtrl    = TextEditingController();
-
-  // Card form — slide up from bottom (RN: spring translateY)
-  late AnimationController _formCtrl;
-  late Animation<Offset> _formSlide;
-  late Animation<double> _formFade;
-
-  // Header
-  late AnimationController _headerCtrl;
-  late Animation<double> _headerFade;
-  late Animation<Offset> _headerSlide;
-
-  @override
-  void initState() {
-    super.initState();
-    _headerCtrl  = AnimationController(vsync: this, duration: _kMed);
-    _headerFade  = CurvedAnimation(parent: _headerCtrl, curve: _kEaseOutCubic);
-    _headerSlide = Tween<Offset>(begin: const Offset(0, -0.06), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _headerCtrl, curve: _kEaseOutCubic));
-
-    _formCtrl  = AnimationController(vsync: this, duration: _kMed);
-    _formSlide = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _formCtrl, curve: _kEaseOutCubic));
-    _formFade  = CurvedAnimation(parent: _formCtrl, curve: _kEaseOutCubic);
-
-    _headerCtrl.forward();
-    Future.delayed(const Duration(milliseconds: 150), () {
-      if (mounted) _formCtrl.forward();
-    });
+  String _maskNumber(String raw) {
+    final d = raw.replaceAll(' ', '');
+    if (d.isEmpty) return '• • • •   • • • •   • • • •   • • • •';
+    final buf = StringBuffer();
+    for (int i = 0; i < d.length && i < 16; i++) {
+      if (i > 0 && i % 4 == 0) buf.write('   ');
+      buf.write(d[i]);
+    }
+    final remaining = 16 - d.length;
+    if (remaining > 0) {
+      final groups  = remaining ~/ 4;
+      final leftover = remaining % 4;
+      buf.write(d.length % 4 != 0 ? '  ' : '   ');
+      for (int g = 0; g < groups; g++) {
+        buf.write('• • • •');
+        if (g < groups - 1 || leftover > 0) buf.write('   ');
+      }
+      if (leftover > 0) {
+        buf.write(List.generate(leftover, (_) => '•').join(' '));
+      }
+    }
+    return buf.toString();
   }
 
   @override
-  void dispose() {
-    _numberCtrl.dispose(); _nameCtrl.dispose();
-    _expiryCtrl.dispose(); _cvvCtrl.dispose();
-    _headerCtrl.dispose(); _formCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark   = context.watch<ThemeProvider>().isDark;
-    final kBg      = isDark ? const Color(0xFF0B1A2C) : const Color(0xFFF5F8FA);
-    final kCard    = isDark ? const Color(0xFF0D1F30) : Colors.white;
-    final kText    = isDark ? Colors.white : const Color(0xFF1A2A3A);
-    final kMuted   = isDark ? const Color(0xFF6B8A9E) : const Color(0xFF8A9BB0);
-    final kBorder  = isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFE2EAF0);
-    final kFieldBg = isDark ? const Color(0xFF112030) : const Color(0xFFF0F4F8);
-
-    return Scaffold(
-      backgroundColor: kBg,
-      body: SafeArea(child: Column(children: [
-
-        // ── Header ──
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-          child: FadeTransition(
-            opacity: _headerFade,
-            child: SlideTransition(
-              position: _headerSlide,
-              child: Row(children: [
-                _CircleBackBtn(isDark: isDark, kBorder: kBorder),
-                const SizedBox(width: 16),
-                Text('Add New Card', style: TextStyle(color: kText,
-                    fontSize: 22, fontWeight: FontWeight.bold)),
+  Widget build(BuildContext context) => Container(
+    width: double.infinity, height: 195,
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+          colors: [_kGreen, _kTeal],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight),
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [BoxShadow(
+          color: _kTeal.withOpacity(0.4),
+          blurRadius: 24, offset: const Offset(0, 8))]),
+    child: Stack(children: [
+      Positioned(top: -30, left: -30,
+        child: Container(width: 130, height: 130,
+          decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.06)))),
+      Positioned(bottom: -20, right: -20,
+        child: Container(width: 160, height: 160,
+          decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.06)))),
+      Padding(padding: const EdgeInsets.all(24),
+        child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+            Container(width: 46, height: 34,
+              decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(6))),
+            const Icon(Icons.credit_card_rounded,
+                color: Colors.white, size: 28),
+          ]),
+          const SizedBox(height: 20),
+          Text(_maskNumber(number),
+            style: const TextStyle(
+                color: Colors.white, fontSize: 15,
+                fontWeight: FontWeight.w500, letterSpacing: 2)),
+          const Spacer(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Column(crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text('CARDHOLDER NAME',
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(0.65),
+                      fontSize: 10, letterSpacing: 1)),
+                const SizedBox(height: 2),
+                Text(name.isEmpty ? 'FULL NAME' : name.toUpperCase(),
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 14,
+                      fontWeight: FontWeight.w600, letterSpacing: 1)),
               ]),
-            ),
-          ),
-        ),
-        const SizedBox(height: 28),
+              Column(crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                Text('EXPIRES',
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(0.65),
+                      fontSize: 10, letterSpacing: 1)),
+                const SizedBox(height: 2),
+                Text(expiry.isEmpty ? 'MM/YY' : expiry,
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 14,
+                      fontWeight: FontWeight.w600)),
+              ]),
+            ]),
+        ])),
+    ]));
+}
 
-        // ── Form card — slide up ──
-        Expanded(child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: SlideTransition(
-            position: _formSlide,
-            child: FadeTransition(
-              opacity: _formFade,
-              child: Container(
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  color: kCard,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: kBorder),
-                  boxShadow: isDark ? [] : [BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 12, offset: const Offset(0, 4))],
-                ),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  _FieldLabel('Card Number', kText),
-                  _CardTextField(_numberCtrl, 'XXXX XXXX XXXX XXXX',
-                      TextInputType.number, kText, kMuted, kFieldBg, kBorder,
-                      icon: Icons.credit_card_rounded),
-                  const SizedBox(height: 18),
-                  _FieldLabel('Cardholder Name', kText),
-                  _CardTextField(_nameCtrl, 'Name on card',
-                      TextInputType.name, kText, kMuted, kFieldBg, kBorder,
-                      icon: Icons.person_outline),
-                  const SizedBox(height: 18),
-                  Row(children: [
-                    Expanded(child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _FieldLabel('Expiry Date', kText),
-                        _CardTextField(_expiryCtrl, 'MM/YY',
-                            TextInputType.datetime, kText, kMuted,
-                            kFieldBg, kBorder,
-                            icon: Icons.calendar_month_outlined),
-                      ])),
-                    const SizedBox(width: 16),
-                    Expanded(child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _FieldLabel('CVV', kText),
-                        _CardTextField(_cvvCtrl, '•••',
-                            TextInputType.number, kText, kMuted,
-                            kFieldBg, kBorder,
-                            icon: Icons.lock_outline, obscure: true),
-                      ])),
-                  ]),
-                  const SizedBox(height: 28),
-                  _GradientBtn(
-                    label: 'Add Card',
-                    onTap: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: const Text('Card added successfully!'),
-                        backgroundColor: _kTeal,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ));
-                    },
-                  ),
-                ]),
-              ),
-            ),
-          ),
-        )),
-        const SizedBox(height: 20),
+// ══════════════════════════════════════════════════════
+//  CARD TILE
+// ══════════════════════════════════════════════════════
+class _CardTile extends StatelessWidget {
+  final _CardData data;
+  final bool isDark;
+  final Color kT, kM, kB;
+  final VoidCallback onDelete;
+  const _CardTile({required this.data, required this.isDark,
+      required this.kT, required this.kM, required this.kB,
+      required this.onDelete});
+  @override
+  Widget build(BuildContext context) =>
+      Stack(clipBehavior: Clip.none, children: [
+    Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _card(isDark),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: kB),
+        boxShadow: isDark ? [] : [BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8, offset: const Offset(0, 2))]),
+      child: Row(children: [
+        Container(width: 54, height: 54,
+          decoration: BoxDecoration(
+            color: data.gradient == null ? data.color : null,
+            gradient: data.gradient,
+            borderRadius: BorderRadius.circular(14)),
+          child: const Icon(Icons.credit_card_rounded,
+              color: Colors.white, size: 26)),
+        const SizedBox(width: 16),
+        Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(data.brand, style: TextStyle(
+              color: kT, fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          Text('•••• •••• •••• ${data.last4}',
+              style: TextStyle(color: kM, fontSize: 14)),
+          const SizedBox(height: 2),
+          Text('Expires ${data.expiry}',
+              style: TextStyle(color: kM, fontSize: 13)),
+        ])),
+        _Press(onTap: onDelete,
+          child: Container(width: 40, height: 40,
+            decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _kRed.withOpacity(0.12)),
+            child: const Icon(Icons.delete_outline_rounded,
+                color: _kRed, size: 20))),
       ])),
-    );
+    if (data.isDefault)
+      Positioned(top: -1, right: -1,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+              horizontal: 14, vertical: 6),
+          decoration: const BoxDecoration(
+              color: _kTeal,
+              borderRadius: BorderRadius.only(
+                  topRight: Radius.circular(16),
+                  bottomLeft: Radius.circular(12))),
+          child: const Text('Default',
+              style: TextStyle(
+                  color: Colors.white, fontSize: 12,
+                  fontWeight: FontWeight.w600)))),
+  ]);
+}
+
+// ══════════════════════════════════════════════════════
+//  INPUT FORMATTERS
+// ══════════════════════════════════════════════════════
+class _CardFmt extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue o, TextEditingValue n) {
+    final d = n.text.replaceAll(' ', '');
+    if (d.length > 16) return o;
+    final buf = StringBuffer();
+    for (int i = 0; i < d.length; i++) {
+      if (i > 0 && i % 4 == 0) buf.write(' ');
+      buf.write(d[i]);
+    }
+    final s = buf.toString();
+    return TextEditingValue(
+        text: s,
+        selection: TextSelection.collapsed(offset: s.length));
+  }
+}
+
+class _ExpiryFmt extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue o, TextEditingValue n) {
+    final d = n.text.replaceAll('/', '');
+    if (d.length > 4) return o;
+    String f = d;
+    if (d.length >= 3)
+      f = '${d.substring(0, 2)}/${d.substring(2)}';
+    else if (d.length == 2 && o.text.length == 1) f = '$d/';
+    return TextEditingValue(
+        text: f,
+        selection: TextSelection.collapsed(offset: f.length));
   }
 }
 
@@ -1261,14 +1664,12 @@ Route<T> _slideUpRoute<T>(Widget child) => PageRouteBuilder<T>(
   pageBuilder: (_, __, ___) => child,
   transitionDuration: _kMed,
   reverseTransitionDuration: _kFast,
-  transitionsBuilder: (_, anim, __, child) {
-    final slide = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
-        .animate(CurvedAnimation(parent: anim, curve: _kEaseOutCubic));
-    return SlideTransition(position: slide,
-        child: FadeTransition(
-            opacity: CurvedAnimation(parent: anim, curve: _kEaseOutCubic),
-            child: child));
-  },
+  transitionsBuilder: (_, anim, __, child) => SlideTransition(
+    position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+        .animate(CurvedAnimation(parent: anim, curve: _kEaseOutCubic)),
+    child: FadeTransition(
+        opacity: CurvedAnimation(parent: anim, curve: _kEaseOutCubic),
+        child: child)),
 );
 
 Route<T> _fadeRoute<T>(Widget child) => PageRouteBuilder<T>(
@@ -1279,192 +1680,16 @@ Route<T> _fadeRoute<T>(Widget child) => PageRouteBuilder<T>(
 );
 
 // ══════════════════════════════════════════════════════
-//  SHARED WIDGETS
+//  DATA MODELS
 // ══════════════════════════════════════════════════════
-class _GradientBtn extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  const _GradientBtn({required this.label, required this.onTap});
-  @override
-  Widget build(BuildContext context) => _Tap(
-    onTap: onTap,
-    child: Container(
-      width: double.infinity, height: 56,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-            colors: [Color(0xFF009689), _kTeal],
-            begin: Alignment.centerLeft, end: Alignment.centerRight),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: _kTeal.withOpacity(0.35),
-            blurRadius: 16, offset: const Offset(0, 6))],
-      ),
-      alignment: Alignment.center,
-      child: Text(label, style: const TextStyle(color: Colors.white,
-          fontSize: 16, fontWeight: FontWeight.bold)),
-    ),
-  );
-}
-
-class _OutlineBtn extends StatelessWidget {
-  final String label;
-  final Color kCard, kText, kBorder;
-  final VoidCallback onTap;
-  const _OutlineBtn({required this.label, required this.kCard,
-      required this.kText, required this.kBorder, required this.onTap});
-  @override
-  Widget build(BuildContext context) => _Tap(
-    onTap: onTap,
-    child: Container(
-      width: double.infinity, height: 56,
-      decoration: BoxDecoration(color: kCard,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: kBorder)),
-      alignment: Alignment.center,
-      child: Text(label, style: TextStyle(color: kText,
-          fontSize: 16, fontWeight: FontWeight.w500)),
-    ),
-  );
-}
-
-class _CircleBackBtn extends StatelessWidget {
-  final bool isDark;
-  final Color kBorder;
-  const _CircleBackBtn({required this.isDark, required this.kBorder});
-  @override
-  Widget build(BuildContext context) => _Tap(
-    onTap: () => Navigator.pop(context),
-    child: Container(
-      width: 42, height: 42,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: isDark ? const Color(0xFF0D1F30) : Colors.white,
-        border: Border.all(color: kBorder),
-      ),
-      child: Icon(Icons.chevron_left_rounded,
-          color: isDark ? Colors.white : const Color(0xFF1A2A3A), size: 24),
-    ),
-  );
-}
-
-class _ReceiptRow extends StatelessWidget {
-  final String label, value;
-  final Color kText, kMuted;
-  const _ReceiptRow({required this.label, required this.value,
-      required this.kText, required this.kMuted});
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      Text(label, style: TextStyle(color: kMuted, fontSize: 14)),
-      Flexible(child: Text(value, textAlign: TextAlign.right,
-          style: TextStyle(color: kText, fontSize: 14,
-              fontWeight: FontWeight.w500))),
-    ],
-  );
-}
-
-class _CardTile extends StatelessWidget {
-  final _CardData card;
-  final bool isDark;
-  final Color kCard, kText, kMuted, kBorder;
-  final VoidCallback onDelete;
-  const _CardTile({required this.card, required this.isDark,
-      required this.kCard, required this.kText, required this.kMuted,
-      required this.kBorder, required this.onDelete});
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(
-      color: kCard, borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: kBorder),
-      boxShadow: isDark ? [] : [BoxShadow(
-          color: Colors.black.withOpacity(0.04),
-          blurRadius: 8, offset: const Offset(0, 2))],
-    ),
-    child: Row(children: [
-      Container(
-        width: 54, height: 54,
-        decoration: BoxDecoration(color: card.color,
-            borderRadius: BorderRadius.circular(14)),
-        child: const Icon(Icons.credit_card_rounded,
-            color: Colors.white, size: 26),
-      ),
-      const SizedBox(width: 16),
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Text(card.brand, style: TextStyle(color: kText,
-              fontSize: 16, fontWeight: FontWeight.w600)),
-          if (card.isDefault) ...[
-            const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                  color: _kTeal, borderRadius: BorderRadius.circular(20)),
-              child: const Text('Default', style: TextStyle(color: Colors.white,
-                  fontSize: 11, fontWeight: FontWeight.w600)),
-            ),
-          ],
-        ]),
-        const SizedBox(height: 6),
-        Text('•••• •••• •••• ${card.last4}',
-            style: TextStyle(color: kMuted, fontSize: 14)),
-        const SizedBox(height: 2),
-        Text('Expires ${card.expiry}',
-            style: TextStyle(color: kMuted, fontSize: 13)),
-      ])),
-      _Tap(
-        onTap: onDelete,
-        child: Container(
-          width: 42, height: 42,
-          decoration: BoxDecoration(
-              shape: BoxShape.circle, color: _kRed.withOpacity(0.12)),
-          child: Icon(Icons.delete_outline_rounded, color: _kRed, size: 20),
-        ),
-      ),
-    ]),
-  );
-}
-
-class _FieldLabel extends StatelessWidget {
-  final String text;
-  final Color kText;
-  const _FieldLabel(this.text, this.kText);
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text, style: TextStyle(color: kText,
-        fontSize: 14, fontWeight: FontWeight.w500)),
-  );
-}
-
-Widget _CardTextField(
-    TextEditingController ctrl, String hint, TextInputType type,
-    Color kText, Color kMuted, Color kFieldBg, Color kBorder,
-    {IconData? icon, bool obscure = false}) =>
-  TextField(
-    controller: ctrl, keyboardType: type, obscureText: obscure,
-    style: TextStyle(color: kText, fontSize: 14),
-    decoration: InputDecoration(
-      hintText: hint, hintStyle: TextStyle(color: kMuted, fontSize: 14),
-      prefixIcon: icon != null ? Icon(icon, color: _kTeal, size: 20) : null,
-      filled: true, fillColor: kFieldBg,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: kBorder)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _kTeal, width: 1.5)),
-    ),
-  );
-
-// ── Data models ──
 class _CardData {
   final String brand, last4, expiry;
   final bool isDefault;
   final Color color;
-  _CardData({required this.brand, required this.last4, required this.expiry,
-      required this.isDefault, required this.color});
+  final Gradient? gradient;
+  _CardData({required this.brand, required this.last4,
+      required this.expiry, required this.isDefault,
+      required this.color, this.gradient});
 }
 
 class _PayMethod {
@@ -1473,4 +1698,106 @@ class _PayMethod {
   final bool isDefault;
   _PayMethod({required this.icon, required this.name,
       required this.sub, required this.isDefault});
+}
+
+// ══════════════════════════════════════════════════════
+//  FAILED SCREEN  (unchanged)
+// ══════════════════════════════════════════════════════
+class PaymentFailedScreen extends StatefulWidget {
+  const PaymentFailedScreen({super.key});
+  @override
+  State<PaymentFailedScreen> createState() => _PaymentFailedState();
+}
+class _PaymentFailedState extends State<PaymentFailedScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _icon, _text, _btn;
+  late Animation<double> _iconScale, _iconFade, _textFade, _btnFade;
+  late Animation<Offset> _textSlide, _btnSlide;
+
+  @override
+  void initState() {
+    super.initState();
+    _icon = AnimationController(vsync: this, duration: _kSlow);
+    _iconScale = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _icon, curve: _kEaseOutBack));
+    _iconFade  = CurvedAnimation(parent: _icon, curve: _kEaseOutCubic);
+    _text = AnimationController(vsync: this, duration: _kMed);
+    _textFade  = CurvedAnimation(parent: _text, curve: _kEaseOutCubic);
+    _textSlide = Tween<Offset>(
+            begin: const Offset(0, 0.15), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _text, curve: _kEaseOutCubic));
+    _btn = AnimationController(vsync: this, duration: _kMed);
+    _btnFade  = CurvedAnimation(parent: _btn, curve: _kEaseOutCubic);
+    _btnSlide = Tween<Offset>(
+            begin: const Offset(0, 0.5), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _btn, curve: _kEaseOutCubic));
+    _icon.forward();
+    Future.delayed(const Duration(milliseconds: 300),
+        () { if (mounted) _text.forward(); });
+    Future.delayed(const Duration(milliseconds: 500),
+        () { if (mounted) _btn.forward(); });
+  }
+  @override
+  void dispose() {
+    _icon.dispose(); _text.dispose(); _btn.dispose();
+    super.dispose();
+  }
+
+  Color _textColor(bool d) =>
+      d ? const Color(0xFFF0FDFA) : const Color(0xFF1A2A3A);
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = context.watch<ThemeProvider>().isDark;
+    final kM = _muted(isDark), kB = _border(isDark);
+    return Scaffold(
+      backgroundColor: _bg(isDark),
+      body: Center(child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+          ScaleTransition(scale: _iconScale,
+            child: FadeTransition(opacity: _iconFade,
+              child: Container(width: 100, height: 100,
+                decoration: BoxDecoration(
+                    shape: BoxShape.circle, color: _kRed,
+                    boxShadow: [BoxShadow(
+                        color: _kRed.withOpacity(0.45),
+                        blurRadius: 30, spreadRadius: 5)]),
+                child: const Icon(Icons.cancel_outlined,
+                    color: Colors.white, size: 52)))),
+          const SizedBox(height: 40),
+          FadeTransition(opacity: _textFade,
+            child: SlideTransition(position: _textSlide,
+              child: Column(children: [
+                Text('Payment Failed', textAlign: TextAlign.center,
+                    style: TextStyle(
+                        color: _textColor(isDark), fontSize: 30,
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(height: 14),
+                Text('Please try again', textAlign: TextAlign.center,
+                    style: TextStyle(color: kM, fontSize: 16)),
+              ]))),
+          const SizedBox(height: 60),
+          SlideTransition(position: _btnSlide,
+            child: FadeTransition(opacity: _btnFade,
+              child: Column(children: [
+                _GradBtn(label: 'Retry Payment',
+                    onTap: () => Navigator.pushReplacement(
+                        context,
+                        _fadeRoute(const PaymentProcessingScreen()))),
+                const SizedBox(height: 14),
+                _OutlineBtn(
+                  label: 'Change Method', onTap: () =>
+                    Navigator.push(context,
+                        _slideUpRoute(const PaymentMethodsSelectScreen())),
+                  iconColor: _kTeal,
+                  textColor: _textColor(isDark),
+                  bgColor: _card(isDark),
+                  borderColor: kB),
+              ]))),
+        ]),
+      )),
+    );
+  }
 }

@@ -1,20 +1,15 @@
 // ════════════════════════════════════════════════════════════
-//  driver_trip_screens.dart  — Full Animations
-//  1. AvailableTripsScreen
-//  2. TripAvailableScreen      — border pulse + countdown
-//  3. RequestDetailsScreen     — stagger entrance
-//  4. RequestAcceptedScreen    — confetti + pulsing rings
-//  5. FindingShipmentsScreen   — rotating search + skeleton shimmer
-//  6. NoRequestsScreen         — pulsing radio waves
-//  7. RequestExpiredScreen     — clock crossing line
-//  8. ConnectionLostScreen     — shake + pulsing rings
-//  9. FailedToLoadScreen       — error rings
+//  driver_trip_screens.dart  — API CONNECTED VERSION
+//  ✅ نفس الشكل والأنيميشن بالظبط
+//  ✅ بيانات حقيقية من getAvailableRequests + getRequestDetails
+//  ✅ acceptRequest / rejectRequest
 // ════════════════════════════════════════════════════════════
 
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '/providers/theme_provider.dart';
+import '/services/driver_service.dart';
 import '/screen/driver/driver_pickup_screens.dart';
 
 // ── Shared Palette ──
@@ -34,7 +29,60 @@ Color _card(bool d)   => d ? const Color(0xFF0F2035) : Colors.white;
 Color _border(bool d) => d ? const Color(0xFF1A3550) : const Color(0xFFE2EAF0);
 Color _text(bool d)   => d ? Colors.white : const Color(0xFF1A2A3A);
 Color _muted(bool d)  => d ? const Color(0xFF6B8A9E) : const Color(0xFF8A9BB0);
-Color _chip(bool d)   => d ? const Color(0xFF112236) : const Color(0xFFEEF5FF);
+Color _chipBg(bool d) => d ? const Color(0xFF112236) : const Color(0xFFEEF5FF);
+
+void _showError(BuildContext context, String msg) {
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    content: Text(msg),
+    backgroundColor: Colors.redAccent,
+    behavior: SnackBarBehavior.floating,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  ));
+}
+
+// ══════════════════════════════════════════════════════
+//  DATA MODEL — من الـ API
+// ══════════════════════════════════════════════════════
+class TripData {
+  final String id, pickup, pickupAddr, dropoff, dropoffAddr;
+  final String distance, estTime, cargoType, trader, traderPhone;
+  final double price;
+  final int weightLbs, packages;
+  final String postedAgo, specialNotes;
+
+  const TripData({
+    required this.id,
+    required this.pickup, this.pickupAddr = '',
+    required this.dropoff, this.dropoffAddr = '',
+    required this.distance, required this.estTime,
+    required this.cargoType, required this.trader,
+    this.traderPhone = '',
+    required this.price,
+    this.weightLbs = 0, this.packages = 0,
+    this.postedAgo = '',
+    this.specialNotes = '',
+  });
+
+  factory TripData.fromApi(Map<String, dynamic> d) {
+    return TripData(
+      id: d['requestNumber'] ?? d['id'] ?? '',
+      pickup: d['pickupLocation'] ?? d['pickup']?['name'] ?? '',
+      pickupAddr: d['pickupAddress'] ?? d['pickup']?['address'] ?? '',
+      dropoff: d['dropoffLocation'] ?? d['dropoff']?['name'] ?? '',
+      dropoffAddr: d['dropoffAddress'] ?? d['dropoff']?['address'] ?? '',
+      distance: d['distance'] != null ? '${d['distance']} km' : 'N/A',
+      estTime: d['estimatedTime'] ?? d['eta'] ?? 'N/A',
+      cargoType: d['cargoType'] ?? d['shipmentType'] ?? 'General Cargo',
+      trader: d['traderName'] ?? d['trader']?['name'] ?? 'Trader',
+      traderPhone: d['traderPhone'] ?? d['trader']?['phone'] ?? '',
+      price: ((d['price'] ?? d['amount'] ?? 0) as num).toDouble(),
+      weightLbs: ((d['weight'] ?? 0) as num).toInt(),
+      packages: ((d['packages'] ?? d['packageCount'] ?? 0) as num).toInt(),
+      postedAgo: d['postedAgo'] ?? d['createdAt'] ?? '',
+      specialNotes: d['specialNotes'] ?? d['notes'] ?? '',
+    );
+  }
+}
 
 // ══════════════════════════════════════════════════════
 //  SHARED: GRADIENT BUTTON with shimmer
@@ -43,7 +91,9 @@ class _GradBtn extends StatefulWidget {
   final String label;
   final VoidCallback onTap;
   final IconData? icon;
-  const _GradBtn({required this.label, required this.onTap, this.icon});
+  final bool isLoading;
+  const _GradBtn({required this.label, required this.onTap,
+      this.icon, this.isLoading = false});
   @override
   State<_GradBtn> createState() => _GradBtnState();
 }
@@ -57,8 +107,7 @@ class _GradBtnState extends State<_GradBtn>
   void initState() {
     super.initState();
     _shimCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2000))
-      ..repeat();
+        vsync: this, duration: const Duration(milliseconds: 2000))..repeat();
     _shimAnim = Tween<double>(begin: -1.5, end: 1.5)
         .animate(CurvedAnimation(parent: _shimCtrl, curve: Curves.linear));
   }
@@ -69,11 +118,17 @@ class _GradBtnState extends State<_GradBtn>
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: widget.isLoading ? null : widget.onTap,
       child: Container(
         width: double.infinity, height: 56,
         decoration: BoxDecoration(
-          gradient: _kGrad,
+          gradient: LinearGradient(
+            colors: widget.isLoading
+                ? [_kTeal.withOpacity(0.5), _kTeal.withOpacity(0.4)]
+                : const [Color(0xFF009689), Color(0xFF00B8DB)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [BoxShadow(
             color: _kTeal.withOpacity(0.35),
@@ -81,30 +136,36 @@ class _GradBtnState extends State<_GradBtn>
           )],
         ),
         child: Stack(alignment: Alignment.center, children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: AnimatedBuilder(
-              animation: _shimAnim,
-              builder: (_, __) => Transform.translate(
-                offset: Offset(_shimAnim.value * 200, 0),
-                child: Container(width: 80,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.transparent, Colors.white24, Colors.transparent],
+          if (!widget.isLoading)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: AnimatedBuilder(
+                animation: _shimAnim,
+                builder: (_, __) => Transform.translate(
+                  offset: Offset(_shimAnim.value * 200, 0),
+                  child: Container(width: 80,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.transparent, Colors.white24, Colors.transparent],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-          Row(mainAxisSize: MainAxisSize.min, children: [
-            if (widget.icon != null) ...[
-              Icon(widget.icon, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-            ],
-            Text(widget.label, style: const TextStyle(
-                color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-          ]),
+          widget.isLoading
+              ? const SizedBox(width: 24, height: 24,
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2.5))
+              : Row(mainAxisSize: MainAxisSize.min, children: [
+                  if (widget.icon != null) ...[
+                    Icon(widget.icon, color: Colors.white, size: 20),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(widget.label, style: const TextStyle(
+                      color: Colors.white, fontSize: 16,
+                      fontWeight: FontWeight.bold)),
+                ]),
         ]),
       ),
     );
@@ -119,10 +180,8 @@ class _PulsingRings extends StatefulWidget {
   final Widget child;
   final double size;
   final int count;
-  const _PulsingRings({
-    required this.color, required this.child,
-    this.size = 100, this.count = 2,
-  });
+  const _PulsingRings({required this.color, required this.child,
+      this.size = 100, this.count = 2});
   @override
   State<_PulsingRings> createState() => _PulsingRingsState();
 }
@@ -184,58 +243,7 @@ Widget _backBtn(BuildContext ctx, bool d) => GestureDetector(
 );
 
 // ══════════════════════════════════════════════════════
-//  DATA MODEL
-// ══════════════════════════════════════════════════════
-class TripData {
-  final String id, pickup, pickupAddr, dropoff, dropoffAddr;
-  final String distance, estTime, cargoType, trader, traderPhone;
-  final double price;
-  final int weightLbs, packages;
-  final String postedAgo, specialNotes;
-
-  const TripData({
-    required this.id,
-    required this.pickup, this.pickupAddr = '',
-    required this.dropoff, this.dropoffAddr = '',
-    required this.distance, required this.estTime,
-    required this.cargoType, required this.trader,
-    this.traderPhone = '',
-    required this.price,
-    this.weightLbs = 0, this.packages = 0,
-    this.postedAgo = '',
-    this.specialNotes = '',
-  });
-}
-
-const _kTrips = [
-  TripData(
-    id: 'REQ-4522',
-    pickup: 'Cairo Distribution Hub', pickupAddr: '124 Nasr Road, Cairo',
-    dropoff: 'Alexandria Port Terminal', dropoffAddr: '45 Port Road, Alexandria',
-    distance: '120 km', estTime: '2 hr 30 min',
-    cargoType: 'Construction Materials', trader: 'Mohamed Hassan Trading Co.',
-    traderPhone: '+20 100 123 4567', price: 240,
-    weightLbs: 3200, packages: 12, postedAgo: '5 mins ago',
-    specialNotes: 'Handle with care - Fragile items. Contact before pickup.',
-  ),
-  TripData(
-    id: 'REQ-4523',
-    pickup: 'Maadi Warehouse', dropoff: 'New Cairo Industrial Zone',
-    distance: '35 km', estTime: '45 min',
-    cargoType: 'Electronics', trader: 'Tech Supplies Co.',
-    price: 85, weightLbs: 1200, postedAgo: '12 mins ago',
-  ),
-  TripData(
-    id: 'REQ-4524',
-    pickup: '6th October City Depot', dropoff: 'Giza Distribution Center',
-    distance: '28 km', estTime: '35 min',
-    cargoType: 'Food & Beverages', trader: 'Fresh Foods Ltd.',
-    price: 65, weightLbs: 2100, postedAgo: '18 mins ago',
-  ),
-];
-
-// ══════════════════════════════════════════════════════
-//  1. AVAILABLE TRIPS SCREEN
+//  1. AVAILABLE TRIPS SCREEN — بيجيب من API
 // ══════════════════════════════════════════════════════
 class AvailableTripsScreen extends StatefulWidget {
   const AvailableTripsScreen({super.key});
@@ -245,7 +253,15 @@ class AvailableTripsScreen extends StatefulWidget {
 
 class _AvailableTripsState extends State<AvailableTripsScreen>
     with SingleTickerProviderStateMixin {
+
+  final DriverService _driverService = DriverService();
+
   int _tab = 0;
+  bool _isLoading = true;
+  String? _error;
+  List<TripData> _trips = [];
+  String _sortBy = 'posted_desc';
+
   late AnimationController _listCtrl;
 
   @override
@@ -253,10 +269,56 @@ class _AvailableTripsState extends State<AvailableTripsScreen>
     super.initState();
     _listCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 800))..forward();
+    _loadAvailableRequests();
   }
 
   @override
   void dispose() { _listCtrl.dispose(); super.dispose(); }
+
+  Future<void> _loadAvailableRequests() async {
+    setState(() { _isLoading = true; _error = null; });
+
+    final result = await _driverService.getAvailableRequests(
+      page: 1, pageSize: 20, sortBy: _sortBy,
+    );
+
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      final raw = result['data']?['data'] ?? result['data'] ?? {};
+      final items = raw['requests'] ?? raw['items'] ?? raw['data'] ?? [];
+      final trips = (items as List)
+          .map((e) => TripData.fromApi(e as Map<String, dynamic>))
+          .toList();
+      setState(() { _trips = trips; _isLoading = false; });
+      _listCtrl.forward(from: 0);
+    } else {
+      setState(() {
+        _error = result['message'] ?? 'Failed to load trips';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadMyTrips() async {
+    setState(() { _isLoading = true; _error = null; });
+    final result = await _driverService.getMyTrips(status: 'active', page: 1, pageSize: 10);
+    if (!mounted) return;
+    if (result['success'] == true) {
+      final raw = result['data']?['data'] ?? result['data'] ?? {};
+      final items = raw['trips'] ?? raw['items'] ?? raw['data'] ?? [];
+      final trips = (items as List)
+          .map((e) => TripData.fromApi(e as Map<String, dynamic>))
+          .toList();
+      setState(() { _trips = trips; _isLoading = false; });
+      _listCtrl.forward(from: 0);
+    } else {
+      setState(() {
+        _error = result['message'];
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -266,13 +328,13 @@ class _AvailableTripsState extends State<AvailableTripsScreen>
       body: SafeArea(child: Column(
         crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-        // Header (slide from top)
         TweenAnimationBuilder<double>(
           tween: Tween(begin: -30, end: 0),
           duration: const Duration(milliseconds: 500),
           curve: Curves.easeOutCubic,
           builder: (_, v, child) => Transform.translate(
-            offset: Offset(0, v), child: Opacity(opacity: (1 + v / 30).clamp(0, 1), child: child)),
+            offset: Offset(0, v),
+            child: Opacity(opacity: (1 + v / 30).clamp(0, 1), child: child)),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -285,7 +347,6 @@ class _AvailableTripsState extends State<AvailableTripsScreen>
         ),
         const SizedBox(height: 20),
 
-        // Animated tabs
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Container(
@@ -301,16 +362,46 @@ class _AvailableTripsState extends State<AvailableTripsScreen>
         ),
         const SizedBox(height: 16),
 
-        Expanded(child: _tab == 0 ? _availableList(d) : _myTrips(d)),
+        Expanded(child: _buildBody(d)),
       ])),
     );
+  }
+
+  Widget _buildBody(bool d) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: _kTeal));
+    }
+    if (_error != null) {
+      return Center(child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.wifi_off_rounded, color: _muted(d), size: 48),
+          const SizedBox(height: 16),
+          Text(_error!, textAlign: TextAlign.center,
+              style: TextStyle(color: _muted(d), fontSize: 15)),
+          const SizedBox(height: 24),
+          _GradBtn(
+            label: 'Try Again',
+            icon: Icons.refresh_rounded,
+            onTap: _tab == 0 ? _loadAvailableRequests : _loadMyTrips,
+          ),
+        ]),
+      ));
+    }
+    if (_tab == 0) {
+      return _trips.isEmpty
+          ? const NoRequestsScreen()
+          : _availableList(d);
+    }
+    return _trips.isEmpty ? _emptyMyTrips(d) : _myTripsList(d);
   }
 
   Widget _tabBtn(String label, int idx, bool d) => Expanded(child:
     GestureDetector(
       onTap: () {
-        setState(() => _tab = idx);
-        _listCtrl.forward(from: 0);
+        setState(() { _tab = idx; _trips = []; });
+        if (idx == 0) _loadAvailableRequests();
+        else _loadMyTrips();
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
@@ -327,7 +418,7 @@ class _AvailableTripsState extends State<AvailableTripsScreen>
   Widget _availableList(bool d) {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: _kTrips.length,
+      itemCount: _trips.length,
       separatorBuilder: (_, __) => const SizedBox(height: 14),
       itemBuilder: (_, i) => AnimatedBuilder(
         animation: _listCtrl,
@@ -341,17 +432,42 @@ class _AvailableTripsState extends State<AvailableTripsScreen>
           );
         },
         child: _TripCard(
-          trip: _kTrips[i], isDark: d,
+          trip: _trips[i], isDark: d,
           onViewDetails: () => Navigator.push(context, MaterialPageRoute(
-              builder: (_) => RequestDetailsScreen(trip: _kTrips[i]))),
+              builder: (_) => RequestDetailsScreen(trip: _trips[i]))),
           onAccept: () => Navigator.push(context, MaterialPageRoute(
-              builder: (_) => TripAvailableScreen(trip: _kTrips[i]))),
+              builder: (_) => TripAvailableScreen(trip: _trips[i]))),
         ),
       ),
     );
   }
 
-  Widget _myTrips(bool d) => Center(
+  Widget _myTripsList(bool d) {
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      itemCount: _trips.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 14),
+      itemBuilder: (_, i) => AnimatedBuilder(
+        animation: _listCtrl,
+        builder: (_, child) {
+          final t = ((_listCtrl.value - i * 0.1) / 0.4).clamp(0.0, 1.0);
+          final curve = Curves.easeOutCubic.transform(t);
+          return Opacity(opacity: curve,
+              child: Transform.translate(
+                  offset: Offset(0, 20 * (1 - curve)), child: child));
+        },
+        child: _TripCard(
+          trip: _trips[i], isDark: d,
+          onViewDetails: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => RequestDetailsScreen(trip: _trips[i]))),
+          onAccept: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => PickupScreen(tripId: _trips[i].id))),
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyMyTrips(bool d) => Center(
     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       Icon(Icons.route_outlined, color: _muted(d), size: 56),
       const SizedBox(height: 16),
@@ -395,7 +511,6 @@ class _TripCardState extends State<_TripCard> {
                 color: Colors.black.withOpacity(0.06),
                 blurRadius: 10, offset: const Offset(0, 3))]),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // Price header
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -408,15 +523,13 @@ class _TripCardState extends State<_TripCard> {
                 Row(children: [
                   Text('${widget.trip.price.toInt()}', style: const TextStyle(
                       color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
-                  const Text(' EGP', style: TextStyle(
-                      color: Colors.black87, fontSize: 13)),
+                  const Text(' EGP', style: TextStyle(color: Colors.black87, fontSize: 13)),
                 ]),
               ]),
             ),
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                // Route
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Column(children: [
                     Container(width: 10, height: 10,
@@ -436,13 +549,14 @@ class _TripCardState extends State<_TripCard> {
                   ])),
                 ]),
                 const SizedBox(height: 12),
-                // Info chips
                 Row(children: [
                   _chip(Icons.location_on_outlined, 'Distance', widget.trip.distance, widget.isDark),
                   const SizedBox(width: 8),
                   _chip(Icons.access_time_rounded, 'Time', widget.trip.estTime, widget.isDark),
                   const SizedBox(width: 8),
-                  _chip(Icons.scale_outlined, 'Weight', '${widget.trip.weightLbs} lbs', widget.isDark),
+                  _chip(Icons.scale_outlined, 'Weight',
+                      widget.trip.weightLbs > 0 ? '${widget.trip.weightLbs} lbs' : 'N/A',
+                      widget.isDark),
                 ]),
                 const SizedBox(height: 12),
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -451,11 +565,11 @@ class _TripCardState extends State<_TripCard> {
                     Text(widget.trip.cargoType, style: TextStyle(
                         color: _text(widget.isDark), fontSize: 14, fontWeight: FontWeight.w600)),
                   ]),
-                  Text(widget.trip.postedAgo, style: const TextStyle(
-                      color: _kAmber, fontSize: 12)),
+                  if (widget.trip.postedAgo.isNotEmpty)
+                    Text(widget.trip.postedAgo, style: const TextStyle(
+                        color: _kAmber, fontSize: 12)),
                 ]),
                 const SizedBox(height: 14),
-                // Buttons
                 Row(children: [
                   Expanded(child: OutlinedButton(
                     onPressed: widget.onViewDetails,
@@ -495,7 +609,7 @@ class _TripCardState extends State<_TripCard> {
     Expanded(child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: _chip(d), borderRadius: BorderRadius.circular(10),
+        color: _chipBg(d), borderRadius: BorderRadius.circular(10),
         border: Border.all(color: _border(d))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -523,6 +637,11 @@ class TripAvailableScreen extends StatefulWidget {
 
 class _TripAvailableState extends State<TripAvailableScreen>
     with TickerProviderStateMixin {
+
+  final DriverService _driverService = DriverService();
+  bool _isAccepting = false;
+  bool _isDeclining = false;
+
   int _countdown = 45;
   late final _timer = Stream.periodic(const Duration(seconds: 1)).listen((_) {
     if (!mounted) return;
@@ -533,14 +652,9 @@ class _TripAvailableState extends State<TripAvailableScreen>
     }
   });
 
-  // Border color animation (teal → amber → teal)
   late AnimationController _borderCtrl;
   late Animation<Color?> _borderAnim;
-
-  // Card glow pulse
   late AnimationController _glowCtrl;
-
-  // Entrance stagger
   late AnimationController _entranceCtrl;
   late List<Animation<double>> _items;
 
@@ -550,10 +664,8 @@ class _TripAvailableState extends State<TripAvailableScreen>
     _borderCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 3000))..repeat();
     _borderAnim = TweenSequence<Color?>([
-      TweenSequenceItem(
-          tween: ColorTween(begin: _kTeal, end: _kAmber), weight: 50),
-      TweenSequenceItem(
-          tween: ColorTween(begin: _kAmber, end: _kTeal), weight: 50),
+      TweenSequenceItem(tween: ColorTween(begin: _kTeal, end: _kAmber), weight: 50),
+      TweenSequenceItem(tween: ColorTween(begin: _kAmber, end: _kTeal), weight: 50),
     ]).animate(_borderCtrl);
 
     _glowCtrl = AnimationController(
@@ -578,6 +690,35 @@ class _TripAvailableState extends State<TripAvailableScreen>
     super.dispose();
   }
 
+  Future<void> _handleAccept() async {
+    setState(() => _isAccepting = true);
+    _timer.cancel();
+    final result = await _driverService.acceptRequest(requestId: widget.trip.id);
+    if (!mounted) return;
+    setState(() => _isAccepting = false);
+    if (result['success'] == true) {
+      Navigator.pushReplacement(context,
+          MaterialPageRoute(builder: (_) => RequestAcceptedScreen(trip: widget.trip)));
+    } else {
+      final msg = result['message'] ?? 'Failed to accept';
+      // 409 = active trip / race, 410 = expired
+      if (result['statusCode'] == 410 || msg.toLowerCase().contains('expir')) {
+        Navigator.pushReplacement(context,
+            MaterialPageRoute(builder: (_) => const RequestExpiredScreen()));
+      } else {
+        _showError(context, msg);
+      }
+    }
+  }
+
+  Future<void> _handleDecline() async {
+    setState(() => _isDeclining = true);
+    _timer.cancel();
+    await _driverService.rejectRequest(requestId: widget.trip.id);
+    if (!mounted) return;
+    Navigator.pop(context);
+  }
+
   Widget _a(int i, Widget child) => AnimatedBuilder(
     animation: _items[i],
     builder: (_, __) => Opacity(
@@ -595,7 +736,6 @@ class _TripAvailableState extends State<TripAvailableScreen>
       body: SafeArea(child: Column(children: [
         const SizedBox(height: 16),
 
-        // NEW SHIPMENT badge
         _a(0, Center(child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
           decoration: BoxDecoration(
@@ -610,8 +750,7 @@ class _TripAvailableState extends State<TripAvailableScreen>
                   shape: BoxShape.circle, color: _kGreen,
                   boxShadow: [BoxShadow(
                     color: _kGreen.withOpacity(0.5 * _glowCtrl.value),
-                    blurRadius: 8,
-                  )],
+                    blurRadius: 8)],
                 ),
               ),
             ),
@@ -629,7 +768,6 @@ class _TripAvailableState extends State<TripAvailableScreen>
             style: TextStyle(color: _muted(d), fontSize: 13))),
         const SizedBox(height: 10),
 
-        // Distance badge
         _a(2, Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
@@ -648,7 +786,6 @@ class _TripAvailableState extends State<TripAvailableScreen>
         )),
         const SizedBox(height: 16),
 
-        // Main card with animated border
         Expanded(child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: _a(3, AnimatedBuilder(
@@ -662,7 +799,6 @@ class _TripAvailableState extends State<TripAvailableScreen>
               child: child,
             ),
             child: Column(children: [
-              // Price
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -676,7 +812,6 @@ class _TripAvailableState extends State<TripAvailableScreen>
                       color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
                 ]),
               ),
-              // Route + details
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(children: [
@@ -688,7 +823,6 @@ class _TripAvailableState extends State<TripAvailableScreen>
                     _infoChip(Icons.access_time_rounded, 'Est. Time', widget.trip.estTime, d),
                   ]),
                   const SizedBox(height: 14),
-                  // Shipment
                   Container(
                     width: double.infinity, padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
@@ -704,8 +838,10 @@ class _TripAvailableState extends State<TripAvailableScreen>
                       ]),
                       const SizedBox(height: 12),
                       _detailRow('Type', widget.trip.cargoType, d),
-                      const SizedBox(height: 8),
-                      _detailRow('Weight', '${widget.trip.weightLbs} lbs', d),
+                      if (widget.trip.weightLbs > 0) ...[
+                        const SizedBox(height: 8),
+                        _detailRow('Weight', '${widget.trip.weightLbs} lbs', d),
+                      ],
                     ]),
                   ),
                 ]),
@@ -714,7 +850,7 @@ class _TripAvailableState extends State<TripAvailableScreen>
           )),
         )),
 
-        // Countdown timer
+        // Countdown
         _a(4, Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Container(
@@ -726,15 +862,12 @@ class _TripAvailableState extends State<TripAvailableScreen>
               const Icon(Icons.access_time_rounded, color: _kAmber, size: 18),
               const SizedBox(width: 8),
               Text('Request expires in ', style: TextStyle(color: _muted(d), fontSize: 14)),
-              // Pulsing countdown
               AnimatedBuilder(
                 animation: _glowCtrl,
                 builder: (_, __) => Text('${_countdown}s', style: TextStyle(
                   color: _kAmber, fontSize: 16, fontWeight: FontWeight.bold,
                   shadows: [Shadow(
-                    color: _kAmber.withOpacity(0.5 * _glowCtrl.value),
-                    blurRadius: 8,
-                  )],
+                    color: _kAmber.withOpacity(0.5 * _glowCtrl.value), blurRadius: 8)],
                 )),
               ),
             ]),
@@ -746,23 +879,25 @@ class _TripAvailableState extends State<TripAvailableScreen>
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           child: Row(children: [
             Expanded(child: GestureDetector(
-              onTap: () => Navigator.pop(context),
+              onTap: _isDeclining ? null : _handleDecline,
               child: Container(
                 height: 56,
                 decoration: BoxDecoration(
                   color: _card(d), borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: _border(d))),
-                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(Icons.close, color: _muted(d), size: 18),
-                  const SizedBox(width: 6),
-                  Text('Decline', style: TextStyle(color: _muted(d), fontSize: 15)),
-                ]),
+                child: _isDeclining
+                    ? const Center(child: SizedBox(width: 20, height: 20,
+                        child: CircularProgressIndicator(color: _kTeal, strokeWidth: 2)))
+                    : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(Icons.close, color: _muted(d), size: 18),
+                        const SizedBox(width: 6),
+                        Text('Decline', style: TextStyle(color: _muted(d), fontSize: 15)),
+                      ]),
               ),
             )),
             const SizedBox(width: 12),
             Expanded(child: GestureDetector(
-              onTap: () => Navigator.pushReplacement(context,
-                  MaterialPageRoute(builder: (_) => RequestAcceptedScreen(trip: widget.trip))),
+              onTap: _isAccepting ? null : _handleAccept,
               child: Container(
                 height: 56,
                 decoration: BoxDecoration(
@@ -770,12 +905,15 @@ class _TripAvailableState extends State<TripAvailableScreen>
                   boxShadow: [BoxShadow(
                       color: _kTeal.withOpacity(0.35),
                       blurRadius: 14, offset: const Offset(0, 5))]),
-                child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(Icons.check, color: Colors.white, size: 18),
-                  SizedBox(width: 6),
-                  Text('Accept Trip', style: TextStyle(
-                      color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
-                ]),
+                child: _isAccepting
+                    ? const Center(child: SizedBox(width: 20, height: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
+                    : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(Icons.check, color: Colors.white, size: 18),
+                        SizedBox(width: 6),
+                        Text('Accept Trip', style: TextStyle(
+                            color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                      ]),
               ),
             )),
           ]),
@@ -787,7 +925,7 @@ class _TripAvailableState extends State<TripAvailableScreen>
 
 
 // ══════════════════════════════════════════════════════
-//  3. REQUEST DETAILS SCREEN — stagger entrance
+//  3. REQUEST DETAILS SCREEN — بيجيب تفاصيل من API
 // ══════════════════════════════════════════════════════
 class RequestDetailsScreen extends StatefulWidget {
   final TripData trip;
@@ -798,6 +936,13 @@ class RequestDetailsScreen extends StatefulWidget {
 
 class _RequestDetailsState extends State<RequestDetailsScreen>
     with SingleTickerProviderStateMixin {
+
+  final DriverService _driverService = DriverService();
+  bool _isAccepting = false;
+  bool _isDeclining = false;
+  TripData? _fullDetails;
+  bool _isLoadingDetails = true;
+
   late AnimationController _ctrl;
   late List<Animation<double>> _items;
 
@@ -812,6 +957,42 @@ class _RequestDetailsState extends State<RequestDetailsScreen>
       return CurvedAnimation(parent: _ctrl,
           curve: Interval(s, e, curve: Curves.easeOutCubic));
     });
+    _loadFullDetails();
+  }
+
+  Future<void> _loadFullDetails() async {
+    final result = await _driverService.getRequestDetails(requestId: widget.trip.id);
+    if (!mounted) return;
+    if (result['success'] == true) {
+      final raw = result['data']?['data'] ?? result['data'] ?? {};
+      setState(() {
+        _fullDetails = TripData.fromApi(raw);
+        _isLoadingDetails = false;
+      });
+    } else {
+      setState(() { _isLoadingDetails = false; });
+    }
+  }
+
+  Future<void> _handleAccept() async {
+    setState(() => _isAccepting = true);
+    final result = await _driverService.acceptRequest(requestId: widget.trip.id);
+    if (!mounted) return;
+    setState(() => _isAccepting = false);
+    if (result['success'] == true) {
+      Navigator.push(context, MaterialPageRoute(
+          builder: (_) => RequestAcceptedScreen(
+              trip: _fullDetails ?? widget.trip)));
+    } else {
+      _showError(context, result['message'] ?? 'Failed to accept');
+    }
+  }
+
+  Future<void> _handleDecline() async {
+    setState(() => _isDeclining = true);
+    await _driverService.rejectRequest(requestId: widget.trip.id);
+    if (!mounted) return;
+    Navigator.pop(context);
   }
 
   @override
@@ -829,10 +1010,11 @@ class _RequestDetailsState extends State<RequestDetailsScreen>
   @override
   Widget build(BuildContext context) {
     final d = context.watch<ThemeProvider>().isDark;
+    final trip = _fullDetails ?? widget.trip;
+
     return Scaffold(
       backgroundColor: _bg(d),
       body: SafeArea(child: Column(children: [
-        // Header
         _a(0, Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
           child: Row(children: [
@@ -841,149 +1023,152 @@ class _RequestDetailsState extends State<RequestDetailsScreen>
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Request Details', style: TextStyle(
                   color: _text(d), fontSize: 22, fontWeight: FontWeight.bold)),
-              Text(widget.trip.id, style: TextStyle(color: _muted(d), fontSize: 13)),
+              Text(trip.id, style: TextStyle(color: _muted(d), fontSize: 13)),
             ]),
           ]),
         )),
         const SizedBox(height: 16),
 
-        Expanded(child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(children: [
+        Expanded(child: _isLoadingDetails
+            ? const Center(child: CircularProgressIndicator(color: _kTeal))
+            : SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(children: [
 
-            // Payment card
-            _a(1, Container(
-              width: double.infinity, padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: _card(d), borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _kAmber.withOpacity(0.5), width: 1.5)),
-              child: Column(children: [
-                Text('Offered Payment', style: TextStyle(color: _muted(d), fontSize: 14)),
-                const SizedBox(height: 8),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.attach_money_rounded, color: _kAmber, size: 28),
-                  Text('${widget.trip.price.toInt()}', style: const TextStyle(
-                      color: _kAmber, fontSize: 36, fontWeight: FontWeight.bold)),
-                  const Text(' EGP', style: TextStyle(color: _kAmber, fontSize: 18)),
-                ]),
-                const SizedBox(height: 6),
-                Text('Posted ${widget.trip.postedAgo}',
-                    style: TextStyle(color: _muted(d), fontSize: 13)),
-              ]),
-            )),
-            const SizedBox(height: 14),
+                  _a(1, Container(
+                    width: double.infinity, padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: _card(d), borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _kAmber.withOpacity(0.5), width: 1.5)),
+                    child: Column(children: [
+                      Text('Offered Payment', style: TextStyle(color: _muted(d), fontSize: 14)),
+                      const SizedBox(height: 8),
+                      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        const Icon(Icons.attach_money_rounded, color: _kAmber, size: 28),
+                        Text('${trip.price.toInt()}', style: const TextStyle(
+                            color: _kAmber, fontSize: 36, fontWeight: FontWeight.bold)),
+                        const Text(' EGP', style: TextStyle(color: _kAmber, fontSize: 18)),
+                      ]),
+                      if (trip.postedAgo.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text('Posted ${trip.postedAgo}',
+                            style: TextStyle(color: _muted(d), fontSize: 13)),
+                      ],
+                    ]),
+                  )),
+                  const SizedBox(height: 14),
 
-            // Route card
-            _a(2, _sectionCard(d, Column(
-              crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                const Icon(Icons.location_on_outlined, color: _kTeal, size: 18),
-                const SizedBox(width: 8),
-                Text('Route', style: TextStyle(
-                    color: _text(d), fontSize: 17, fontWeight: FontWeight.bold)),
-              ]),
-              const SizedBox(height: 16),
-              _fullRoute(widget.trip, d),
-              const SizedBox(height: 16),
-              Row(children: [
-                _infoChip(Icons.location_on_outlined, 'Distance', widget.trip.distance, d),
-                const SizedBox(width: 10),
-                _infoChip(Icons.access_time_rounded, 'Est. Time', widget.trip.estTime, d),
-              ]),
-            ]))),
-            const SizedBox(height: 14),
+                  _a(2, _sectionCard(d, Column(
+                    crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      const Icon(Icons.location_on_outlined, color: _kTeal, size: 18),
+                      const SizedBox(width: 8),
+                      Text('Route', style: TextStyle(
+                          color: _text(d), fontSize: 17, fontWeight: FontWeight.bold)),
+                    ]),
+                    const SizedBox(height: 16),
+                    _fullRoute(trip, d),
+                    const SizedBox(height: 16),
+                    Row(children: [
+                      _infoChip(Icons.location_on_outlined, 'Distance', trip.distance, d),
+                      const SizedBox(width: 10),
+                      _infoChip(Icons.access_time_rounded, 'Est. Time', trip.estTime, d),
+                    ]),
+                  ]))),
+                  const SizedBox(height: 14),
 
-            // Cargo
-            _a(3, _sectionCard(d, Column(
-              crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                const Icon(Icons.inventory_2_outlined, color: _kTeal, size: 18),
-                const SizedBox(width: 8),
-                Text('Cargo Details', style: TextStyle(
-                    color: _text(d), fontSize: 17, fontWeight: FontWeight.bold)),
-              ]),
-              const SizedBox(height: 16),
-              _infoLine('Type', widget.trip.cargoType, d),
-              const SizedBox(height: 10),
-              _infoLine('Weight', '${widget.trip.weightLbs} lbs', d),
-              if (widget.trip.packages > 0) ...[
-                const SizedBox(height: 10),
-                _infoLine('Packages', '${widget.trip.packages} pallets', d),
-              ],
-            ]))),
-            const SizedBox(height: 14),
+                  _a(3, _sectionCard(d, Column(
+                    crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      const Icon(Icons.inventory_2_outlined, color: _kTeal, size: 18),
+                      const SizedBox(width: 8),
+                      Text('Cargo Details', style: TextStyle(
+                          color: _text(d), fontSize: 17, fontWeight: FontWeight.bold)),
+                    ]),
+                    const SizedBox(height: 16),
+                    _infoLine('Type', trip.cargoType, d),
+                    if (trip.weightLbs > 0) ...[
+                      const SizedBox(height: 10),
+                      _infoLine('Weight', '${trip.weightLbs} lbs', d),
+                    ],
+                    if (trip.packages > 0) ...[
+                      const SizedBox(height: 10),
+                      _infoLine('Packages', '${trip.packages} pallets', d),
+                    ],
+                  ]))),
+                  const SizedBox(height: 14),
 
-            // Trader
-            _a(4, Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: _card(d), borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _border(d))),
-              child: Row(children: [
-                Container(width: 48, height: 48,
-                  decoration: BoxDecoration(
-                    color: _kTeal.withOpacity(0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.person_outline_rounded, color: _kTeal, size: 24)),
-                const SizedBox(width: 14),
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Trader', style: TextStyle(color: _muted(d), fontSize: 12)),
-                  Text(widget.trip.trader, style: TextStyle(
-                      color: _text(d), fontSize: 15, fontWeight: FontWeight.w600)),
-                  if (widget.trip.traderPhone.isNotEmpty)
-                    Text(widget.trip.traderPhone, style: TextStyle(color: _muted(d), fontSize: 13)),
-                ]),
-              ]),
-            )),
+                  _a(4, Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: _card(d), borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _border(d))),
+                    child: Row(children: [
+                      Container(width: 48, height: 48,
+                        decoration: BoxDecoration(
+                          color: _kTeal.withOpacity(0.12), shape: BoxShape.circle),
+                        child: const Icon(Icons.person_outline_rounded, color: _kTeal, size: 24)),
+                      const SizedBox(width: 14),
+                      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Trader', style: TextStyle(color: _muted(d), fontSize: 12)),
+                        Text(trip.trader, style: TextStyle(
+                            color: _text(d), fontSize: 15, fontWeight: FontWeight.w600)),
+                        if (trip.traderPhone.isNotEmpty)
+                          Text(trip.traderPhone,
+                              style: TextStyle(color: _muted(d), fontSize: 13)),
+                      ]),
+                    ]),
+                  )),
 
-            // Special notes
-            if (widget.trip.specialNotes.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              _a(5, Container(
-                width: double.infinity, padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _kAmber.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _kAmber.withOpacity(0.3))),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    const Icon(Icons.note_outlined, color: _kAmber, size: 16),
-                    const SizedBox(width: 8),
-                    Text('SPECIAL NOTES', style: TextStyle(
-                        color: _kAmber.withOpacity(0.8), fontSize: 11,
-                        fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-                  ]),
-                  const SizedBox(height: 10),
-                  Text(widget.trip.specialNotes,
-                      style: TextStyle(color: _text(d), fontSize: 14, height: 1.5)),
+                  if (trip.specialNotes.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    _a(5, Container(
+                      width: double.infinity, padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _kAmber.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: _kAmber.withOpacity(0.3))),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Row(children: [
+                          const Icon(Icons.note_outlined, color: _kAmber, size: 16),
+                          const SizedBox(width: 8),
+                          Text('SPECIAL NOTES', style: TextStyle(
+                              color: _kAmber.withOpacity(0.8), fontSize: 11,
+                              fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                        ]),
+                        const SizedBox(height: 10),
+                        Text(trip.specialNotes,
+                            style: TextStyle(color: _text(d), fontSize: 14, height: 1.5)),
+                      ]),
+                    )),
+                  ],
+                  const SizedBox(height: 20),
                 ]),
               )),
-            ],
-            const SizedBox(height: 20),
-          ]),
-        )),
 
-        // Buttons
         _a(6, Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
           child: Row(children: [
             Expanded(child: GestureDetector(
-              onTap: () => Navigator.pop(context),
+              onTap: _isDeclining ? null : _handleDecline,
               child: Container(
                 height: 56,
                 decoration: BoxDecoration(
                   color: _card(d), borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: _border(d))),
-                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(Icons.close, color: _muted(d), size: 18),
-                  const SizedBox(width: 6),
-                  Text('Reject', style: TextStyle(color: _muted(d), fontSize: 15)),
-                ]),
+                child: _isDeclining
+                    ? const Center(child: SizedBox(width: 20, height: 20,
+                        child: CircularProgressIndicator(color: _kTeal, strokeWidth: 2)))
+                    : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(Icons.close, color: _muted(d), size: 18),
+                        const SizedBox(width: 6),
+                        Text('Reject', style: TextStyle(color: _muted(d), fontSize: 15)),
+                      ]),
               ),
             )),
             const SizedBox(width: 12),
             Expanded(child: GestureDetector(
-              onTap: () => Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => RequestAcceptedScreen(trip: widget.trip))),
+              onTap: _isAccepting ? null : _handleAccept,
               child: Container(
                 height: 56,
                 decoration: BoxDecoration(
@@ -991,12 +1176,15 @@ class _RequestDetailsState extends State<RequestDetailsScreen>
                   boxShadow: [BoxShadow(
                       color: _kTeal.withOpacity(0.35),
                       blurRadius: 14, offset: const Offset(0, 5))]),
-                child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(Icons.check, color: Colors.white, size: 18),
-                  SizedBox(width: 6),
-                  Text('Accept Request', style: TextStyle(
-                      color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
-                ]),
+                child: _isAccepting
+                    ? const Center(child: SizedBox(width: 20, height: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
+                    : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(Icons.check, color: Colors.white, size: 18),
+                        SizedBox(width: 6),
+                        Text('Accept Request', style: TextStyle(
+                            color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                      ]),
               ),
             )),
           ]),
@@ -1030,7 +1218,6 @@ class _RequestAcceptedState extends State<RequestAcceptedScreen>
   @override
   void initState() {
     super.initState();
-    final rng = Random();
     for (int i = 0; i < 12; i++) {
       _particles.add(_ConfettiParticle(
         color: [const Color(0xFF34C759), _kTeal, _kAmber,
@@ -1081,7 +1268,6 @@ class _RequestAcceptedState extends State<RequestAcceptedScreen>
     return Scaffold(
       backgroundColor: _bg(d),
       body: SafeArea(child: Stack(children: [
-        // Confetti
         ...List.generate(_particles.length, (i) {
           final p = _particles[i];
           return AnimatedBuilder(
@@ -1113,7 +1299,6 @@ class _RequestAcceptedState extends State<RequestAcceptedScreen>
           child: Column(children: [
             const SizedBox(height: 32),
 
-            // Icon with pulsing rings
             _a(0, AnimatedBuilder(
               animation: _iconAnim,
               builder: (_, child) => Transform.scale(scale: _iconAnim.value, child: child),
@@ -1144,7 +1329,6 @@ class _RequestAcceptedState extends State<RequestAcceptedScreen>
                 style: TextStyle(color: _muted(d), fontSize: 15))),
             const SizedBox(height: 28),
 
-            // Info card
             _a(2, Container(
               width: double.infinity, padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -1176,7 +1360,6 @@ class _RequestAcceptedState extends State<RequestAcceptedScreen>
                   ])),
                 ]),
                 Divider(color: _border(d), height: 24),
-                // Earnings
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1194,7 +1377,6 @@ class _RequestAcceptedState extends State<RequestAcceptedScreen>
             )),
             const SizedBox(height: 16),
 
-            // Next step
             _a(3, Container(
               width: double.infinity, padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -1207,8 +1389,7 @@ class _RequestAcceptedState extends State<RequestAcceptedScreen>
                     color: _kTeal.withOpacity(0.15), shape: BoxShape.circle),
                   child: const Icon(Icons.near_me_rounded, color: _kTeal, size: 22)),
                 const SizedBox(width: 14),
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('Next Step', style: TextStyle(
                       color: _text(d), fontSize: 15, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
@@ -1219,14 +1400,13 @@ class _RequestAcceptedState extends State<RequestAcceptedScreen>
             )),
             const SizedBox(height: 20),
 
+            // ✅ بيمرر الـ tripId للـ PickupScreen
             _a(4, _GradBtn(
               label: 'Go to Pickup',
               icon: Icons.near_me_rounded,
-              onTap: () => Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => const PickupScreen()),
-                (route) => false,
-              ),
+              onTap: () => Navigator.pushAndRemoveUntil(context,
+                  MaterialPageRoute(builder: (_) => PickupScreen(tripId: widget.trip.id)),
+                  (route) => false),
             )),
             const SizedBox(height: 28),
           ]),
@@ -1248,50 +1428,30 @@ class FindingShipmentsScreen extends StatefulWidget {
 
 class _FindingShipmentsState extends State<FindingShipmentsScreen>
     with TickerProviderStateMixin {
-  // Search icon rotation (linear infinite)
   late AnimationController _rotateCtrl;
-
-  // Truck badge bounce
   late AnimationController _bounceCtrl;
   late Animation<double> _bounceAnim;
-
-  // Skeleton shimmer
   late AnimationController _shimmerCtrl;
   late Animation<double> _shimmerAnim;
-
-  // Loading dots
-  late AnimationController _dotsCtrl;
-  int _dot = 0;
-
-  // Entrance
   late AnimationController _entranceCtrl;
   late List<Animation<double>> _items;
+  int _dot = 0;
 
   @override
   void initState() {
     super.initState();
-
-    // Search rotates 360° every 3s
     _rotateCtrl = AnimationController(
         vsync: this, duration: const Duration(seconds: 3))..repeat();
-
-    // Truck bounces y:[0,-4,0] scale:[1,1.1,1]
     _bounceCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1500))..repeat();
     _bounceAnim = Tween<double>(begin: 0, end: -4)
         .animate(CurvedAnimation(parent: _bounceCtrl, curve: Curves.easeInOut));
-
-    // Shimmer sweep
     _shimmerCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1500))..repeat();
     _shimmerAnim = Tween<double>(begin: -1.5, end: 1.5)
         .animate(CurvedAnimation(parent: _shimmerCtrl, curve: Curves.linear));
-
-    // Dots pulse
     Stream.periodic(const Duration(milliseconds: 500))
         .listen((_) { if (mounted) setState(() => _dot = (_dot + 1) % 3); });
-
-    // Entrance
     _entranceCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 800))..forward();
     _items = List.generate(6, (i) {
@@ -1327,10 +1487,7 @@ class _FindingShipmentsState extends State<FindingShipmentsScreen>
       backgroundColor: _bg(d),
       body: SafeArea(child: Column(children: [
         const SizedBox(height: 40),
-
-        // Animated icon
         _a(0, Stack(alignment: Alignment.bottomRight, children: [
-          // Outer rings
           _PulsingRings(
             color: _kTeal, size: 100, count: 2,
             child: Container(
@@ -1339,7 +1496,6 @@ class _FindingShipmentsState extends State<FindingShipmentsScreen>
                 shape: BoxShape.circle,
                 color: _kTeal.withOpacity(0.1),
                 border: Border.all(color: _kTeal.withOpacity(0.2))),
-              // Rotating search icon
               child: AnimatedBuilder(
                 animation: _rotateCtrl,
                 builder: (_, child) => Transform.rotate(
@@ -1348,29 +1504,23 @@ class _FindingShipmentsState extends State<FindingShipmentsScreen>
               ),
             ),
           ),
-          // Bouncing truck badge
           AnimatedBuilder(
             animation: _bounceCtrl,
             builder: (_, child) => Transform.translate(
               offset: Offset(0, _bounceAnim.value),
               child: Transform.scale(
-                scale: 1.0 + (_bounceCtrl.value * 0.1).abs(),
-                child: child),
+                scale: 1.0 + (_bounceCtrl.value * 0.1).abs(), child: child),
             ),
             child: Container(
               width: 32, height: 32,
-              decoration: const BoxDecoration(
-                  color: _kAmber, shape: BoxShape.circle),
-              child: const Icon(Icons.local_shipping_outlined,
-                  color: Colors.white, size: 16)),
+              decoration: const BoxDecoration(color: _kAmber, shape: BoxShape.circle),
+              child: const Icon(Icons.local_shipping_outlined, color: Colors.white, size: 16)),
           ),
         ])),
         const SizedBox(height: 24),
-
         _a(1, Text('Finding Nearby Shipments', style: TextStyle(
             color: _text(d), fontSize: 22, fontWeight: FontWeight.bold))),
         const SizedBox(height: 8),
-        // Pulsing loading text
         _a(1, AnimatedBuilder(
           animation: _shimmerCtrl,
           builder: (_, __) => Opacity(
@@ -1380,8 +1530,6 @@ class _FindingShipmentsState extends State<FindingShipmentsScreen>
           ),
         )),
         const SizedBox(height: 32),
-
-        // Skeleton cards with shimmer
         Expanded(child: ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           itemCount: 3,
@@ -1390,16 +1538,13 @@ class _FindingShipmentsState extends State<FindingShipmentsScreen>
             animation: _items[(i + 2).clamp(0, _items.length - 1)],
             builder: (_, child) {
               final v = _items[(i + 2).clamp(0, _items.length - 1)].value;
-              return Opacity(
-                opacity: v,
-                child: Transform.translate(offset: Offset(0, 20 * (1 - v)), child: child),
-              );
+              return Opacity(opacity: v,
+                  child: Transform.translate(
+                      offset: Offset(0, 20 * (1 - v)), child: child));
             },
             child: _SkeletonCard(isDark: d, shimmerAnim: _shimmerAnim, delay: i * 0.2),
           ),
         )),
-
-        // Loading dots
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 20),
           child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -1417,7 +1562,6 @@ class _FindingShipmentsState extends State<FindingShipmentsScreen>
   }
 }
 
-// Skeleton card with shimmer
 class _SkeletonCard extends StatelessWidget {
   final bool isDark;
   final Animation<double> shimmerAnim;
@@ -1437,7 +1581,6 @@ class _SkeletonCard extends StatelessWidget {
             color: _card(isDark), borderRadius: BorderRadius.circular(16),
             border: Border.all(color: _border(isDark))),
           child: Stack(children: [
-            // Content
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 _sk(50, 50, skBg, circle: true),
@@ -1456,11 +1599,9 @@ class _SkeletonCard extends StatelessWidget {
               Row(children: [
                 Expanded(child: _sk(double.infinity, 36, skBg)),
                 const SizedBox(width: 10),
-                Expanded(child: _sk(double.infinity, 36,
-                    _kTeal.withOpacity(0.2))),
+                Expanded(child: _sk(double.infinity, 36, _kTeal.withOpacity(0.2))),
               ]),
             ]),
-            // Shimmer overlay
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: Transform.translate(
@@ -1486,14 +1627,12 @@ class _SkeletonCard extends StatelessWidget {
         width: w, height: h,
         decoration: BoxDecoration(
           color: color,
-          borderRadius: circle
-              ? BorderRadius.circular(100)
-              : BorderRadius.circular(6)));
+          borderRadius: circle ? BorderRadius.circular(100) : BorderRadius.circular(6)));
 }
 
 
 // ══════════════════════════════════════════════════════
-//  6. NO REQUESTS SCREEN — pulsing radio waves
+//  6. NO REQUESTS SCREEN
 // ══════════════════════════════════════════════════════
 class NoRequestsScreen extends StatefulWidget {
   const NoRequestsScreen({super.key});
@@ -1503,32 +1642,24 @@ class NoRequestsScreen extends StatefulWidget {
 
 class _NoRequestsState extends State<NoRequestsScreen>
     with TickerProviderStateMixin {
-  // Radio wave pulse
   late AnimationController _waveCtrl;
-
-  // Inbox icon scale+rotate
   late AnimationController _iconCtrl;
   late Animation<double> _iconScaleAnim;
   late Animation<double> _iconRotateAnim;
-
-  // Entrance stagger
   late AnimationController _entranceCtrl;
   late List<Animation<double>> _items;
 
   @override
   void initState() {
     super.initState();
-
     _waveCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 2000))..repeat();
-
     _iconCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 3000))..repeat(reverse: true);
     _iconScaleAnim = Tween<double>(begin: 1.0, end: 1.1)
         .animate(CurvedAnimation(parent: _iconCtrl, curve: Curves.easeInOut));
     _iconRotateAnim = Tween<double>(begin: -0.087, end: 0.087)
         .animate(CurvedAnimation(parent: _iconCtrl, curve: Curves.easeInOut));
-
     _entranceCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 800))..forward();
     _items = List.generate(7, (i) {
@@ -1559,179 +1690,83 @@ class _NoRequestsState extends State<NoRequestsScreen>
   @override
   Widget build(BuildContext context) {
     final d = context.watch<ThemeProvider>().isDark;
-    return Scaffold(
-      backgroundColor: _bg(d),
-      body: SafeArea(child: Center(child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-
-          // Inbox with pulsing radio waves
-          _a(0, SizedBox(
-            width: 120, height: 120,
-            child: Stack(alignment: Alignment.center, children: [
-              // Outer wave
-              AnimatedBuilder(
-                animation: _waveCtrl,
-                builder: (_, __) {
-                  final t = _waveCtrl.value;
-                  return Transform.scale(
-                    scale: 1.0 + 0.6 * t,
-                    child: Container(
-                      width: 100, height: 100,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: _kTeal.withOpacity(0.4 * (1 - t)),
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              // Inner wave (delayed)
-              AnimatedBuilder(
-                animation: _waveCtrl,
-                builder: (_, __) {
-                  final t = (_waveCtrl.value + 0.4) % 1.0;
-                  return Transform.scale(
-                    scale: 1.0 + 0.3 * t,
-                    child: Container(
-                      width: 100, height: 100,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: _kTeal.withOpacity(0.3 * (1 - t)),
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              // Icon
-              AnimatedBuilder(
-                animation: _iconCtrl,
-                builder: (_, child) => Transform.scale(
-                  scale: _iconScaleAnim.value,
-                  child: Transform.rotate(
-                    angle: _iconRotateAnim.value,
-                    child: child,
-                  ),
-                ),
-                child: Container(
-                  width: 100, height: 100,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _card(d),
-                    border: Border.all(color: _kTeal.withOpacity(0.25)),
-                    boxShadow: [BoxShadow(
-                        color: _kTeal.withOpacity(0.12),
-                        blurRadius: 20, spreadRadius: 4)]),
-                  child: const Icon(Icons.move_to_inbox_outlined,
-                      color: _kTeal, size: 46)),
-              ),
-              // Green signal badge
-              Positioned(bottom: 2, right: 2, child: Container(
-                width: 30, height: 30,
-                decoration: const BoxDecoration(
-                    color: _kGreen, shape: BoxShape.circle),
-                child: const Icon(Icons.wifi_tethering_rounded,
-                    color: Colors.white, size: 16))),
-            ]),
-          )),
-          const SizedBox(height: 28),
-
-          _a(1, Text('No Requests Available', style: TextStyle(
-              color: _text(d), fontSize: 24, fontWeight: FontWeight.bold))),
-          const SizedBox(height: 10),
-          _a(1, Text('Stay online to receive new trips',
-              style: TextStyle(color: _muted(d), fontSize: 15))),
-          const SizedBox(height: 28),
-
-          // Online status card (slide from left)
-          _a(2, Container(
-            width: double.infinity, padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _card(d), borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: _border(d))),
-            child: Row(children: [
-              Container(
-                width: 44, height: 44,
-                decoration: BoxDecoration(
-                  color: _kGreen.withOpacity(0.12), shape: BoxShape.circle),
-                child: const Icon(Icons.wifi_tethering_rounded,
-                    color: _kGreen, size: 22)),
-              const SizedBox(width: 14),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text("You're Online & Ready", style: TextStyle(
-                    color: _text(d), fontSize: 15, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text("We'll notify you when new shipments are available",
-                    style: TextStyle(color: _muted(d), fontSize: 12, height: 1.4)),
-              ])),
-            ]),
-          )),
-          const SizedBox(height: 14),
-
-          // Zone card
-          _a(3, Container(
-            width: double.infinity, padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _card(d), borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: _border(d))),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('Current Zone', style: TextStyle(color: _muted(d), fontSize: 14)),
-              Text('Downtown Area', style: TextStyle(
-                  color: _text(d), fontSize: 14, fontWeight: FontWeight.bold)),
-            ]),
-          )),
-          const SizedBox(height: 20),
-
-          // Refresh + Go Offline
-          _a(4, Row(children: [
-            Expanded(child: _outlineBtn(
-              Icons.refresh_rounded, 'Refresh', _kTeal, d,
-              () => Navigator.pushReplacement(context,
-                  MaterialPageRoute(builder: (_) => const FindingShipmentsScreen())))),
-            const SizedBox(width: 12),
-            Expanded(child: _outlineBtn(
-              Icons.power_settings_new_rounded, 'Go Offline', _muted(d), d,
-              () => Navigator.popUntil(context, (r) => r.isFirst))),
-          ])),
-          const SizedBox(height: 14),
-
-          _a(5, _GradBtn(
-            label: 'Back to Home',
-            icon: Icons.arrow_back_rounded,
-            onTap: () => Navigator.popUntil(context, (r) => r.isFirst),
-          )),
-        ]),
-      ))),
-    );
+    return Center(child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        _a(0, SizedBox(
+          width: 120, height: 120,
+          child: Stack(alignment: Alignment.center, children: [
+            AnimatedBuilder(animation: _waveCtrl, builder: (_, __) {
+              final t = _waveCtrl.value;
+              return Transform.scale(scale: 1.0 + 0.6 * t,
+                child: Container(width: 100, height: 100,
+                  decoration: BoxDecoration(shape: BoxShape.circle,
+                    border: Border.all(color: _kTeal.withOpacity(0.4 * (1 - t)), width: 2))));
+            }),
+            AnimatedBuilder(animation: _waveCtrl, builder: (_, __) {
+              final t = (_waveCtrl.value + 0.4) % 1.0;
+              return Transform.scale(scale: 1.0 + 0.3 * t,
+                child: Container(width: 100, height: 100,
+                  decoration: BoxDecoration(shape: BoxShape.circle,
+                    border: Border.all(color: _kTeal.withOpacity(0.3 * (1 - t)), width: 2))));
+            }),
+            AnimatedBuilder(
+              animation: _iconCtrl,
+              builder: (_, child) => Transform.scale(scale: _iconScaleAnim.value,
+                child: Transform.rotate(angle: _iconRotateAnim.value, child: child)),
+              child: Container(
+                width: 100, height: 100,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: _card(d),
+                  border: Border.all(color: _kTeal.withOpacity(0.25)),
+                  boxShadow: [BoxShadow(color: _kTeal.withOpacity(0.12),
+                      blurRadius: 20, spreadRadius: 4)]),
+                child: const Icon(Icons.move_to_inbox_outlined, color: _kTeal, size: 46)),
+            ),
+            Positioned(bottom: 2, right: 2, child: Container(
+              width: 30, height: 30,
+              decoration: const BoxDecoration(color: _kGreen, shape: BoxShape.circle),
+              child: const Icon(Icons.wifi_tethering_rounded, color: Colors.white, size: 16))),
+          ]),
+        )),
+        const SizedBox(height: 28),
+        _a(1, Text('No Requests Available', style: TextStyle(
+            color: _text(d), fontSize: 24, fontWeight: FontWeight.bold))),
+        const SizedBox(height: 10),
+        _a(1, Text('Stay online to receive new trips',
+            style: TextStyle(color: _muted(d), fontSize: 15))),
+        const SizedBox(height: 28),
+        _a(2, Container(
+          width: double.infinity, padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: _card(d), borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _border(d))),
+          child: Row(children: [
+            Container(width: 44, height: 44,
+              decoration: BoxDecoration(color: _kGreen.withOpacity(0.12), shape: BoxShape.circle),
+              child: const Icon(Icons.wifi_tethering_rounded, color: _kGreen, size: 22)),
+            const SizedBox(width: 14),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text("You're Online & Ready", style: TextStyle(
+                  color: _text(d), fontSize: 15, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text("We'll notify you when new shipments are available",
+                  style: TextStyle(color: _muted(d), fontSize: 12, height: 1.4)),
+            ])),
+          ]),
+        )),
+        const SizedBox(height: 20),
+        _a(3, _GradBtn(
+          label: 'Back to Home',
+          icon: Icons.arrow_back_rounded,
+          onTap: () => Navigator.popUntil(context, (r) => r.isFirst),
+        )),
+      ]),
+    ));
   }
-
-  Widget _outlineBtn(IconData icon, String label, Color c, bool d, VoidCallback onTap) =>
-    GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 52,
-        decoration: BoxDecoration(
-          color: _card(d), borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _border(d))),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, color: c, size: 18),
-          const SizedBox(width: 6),
-          Text(label, style: TextStyle(
-              color: c, fontSize: 14, fontWeight: FontWeight.w600)),
-        ]),
-      ),
-    );
 }
 
 
 // ══════════════════════════════════════════════════════
-//  7. REQUEST EXPIRED SCREEN — clock crossing line
+//  7. REQUEST EXPIRED SCREEN
 // ══════════════════════════════════════════════════════
 class RequestExpiredScreen extends StatefulWidget {
   const RequestExpiredScreen({super.key});
@@ -1741,29 +1776,20 @@ class RequestExpiredScreen extends StatefulWidget {
 
 class _RequestExpiredState extends State<RequestExpiredScreen>
     with TickerProviderStateMixin {
-  // Crossing line scaleX 0→1
   late AnimationController _lineCtrl;
   late Animation<double> _lineAnim;
-
-  // Background opacity pulse
   late AnimationController _bgPulseCtrl;
-
-  // Entrance
   late AnimationController _entranceCtrl;
   late List<Animation<double>> _items;
 
   @override
   void initState() {
     super.initState();
-
     _lineCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 400))
-      ..forward(from: 0);
+        vsync: this, duration: const Duration(milliseconds: 400))..forward();
     _lineAnim = CurvedAnimation(parent: _lineCtrl, curve: Curves.easeOut);
-
     _bgPulseCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 2000))..repeat(reverse: true);
-
     _entranceCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 800))..forward();
     _items = List.generate(6, (i) {
@@ -1784,12 +1810,9 @@ class _RequestExpiredState extends State<RequestExpiredScreen>
 
   Widget _a(int i, Widget child) => AnimatedBuilder(
     animation: _items[i],
-    builder: (_, __) => Opacity(
-      opacity: _items[i].value,
+    builder: (_, __) => Opacity(opacity: _items[i].value,
       child: Transform.translate(
-          offset: Offset(0, 20 * (1 - _items[i].value)), child: child),
-    ),
-  );
+          offset: Offset(0, 20 * (1 - _items[i].value)), child: child)));
 
   @override
   Widget build(BuildContext context) {
@@ -1799,64 +1822,46 @@ class _RequestExpiredState extends State<RequestExpiredScreen>
       body: SafeArea(child: Center(child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-
-          // Clock with crossing line
           _a(0, AnimatedBuilder(
             animation: _bgPulseCtrl,
             builder: (_, child) => Container(
               width: 110, height: 110,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
+              decoration: BoxDecoration(shape: BoxShape.circle,
                 color: _muted(d).withOpacity(0.12 + 0.05 * _bgPulseCtrl.value),
                 border: Border.all(color: _muted(d).withOpacity(0.2))),
               child: child,
             ),
             child: Stack(alignment: Alignment.center, children: [
               Icon(Icons.access_time_rounded, color: _muted(d), size: 56),
-              // Animated crossing line
               AnimatedBuilder(
                 animation: _lineAnim,
                 builder: (_, __) => Transform.rotate(
                   angle: pi / 4,
-                  child: Transform.scale(
-                    scaleX: _lineAnim.value,
-                    child: Container(
-                      width: 80, height: 2.5,
-                      decoration: BoxDecoration(
-                        color: _muted(d),
-                        borderRadius: BorderRadius.circular(2)),
-                    ),
-                  ),
+                  child: Transform.scale(scaleX: _lineAnim.value,
+                    child: Container(width: 80, height: 2.5,
+                      decoration: BoxDecoration(color: _muted(d),
+                          borderRadius: BorderRadius.circular(2)))),
                 ),
               ),
             ]),
           )),
           const SizedBox(height: 28),
-
           _a(1, Text('Request Expired', style: TextStyle(
               color: _text(d), fontSize: 26, fontWeight: FontWeight.bold))),
           const SizedBox(height: 12),
           _a(2, Text('This shipment is no longer available',
               textAlign: TextAlign.center,
               style: TextStyle(color: _muted(d), fontSize: 15))),
-          const SizedBox(height: 8),
-          _a(2, Text(
-            'The trader may have assigned it to another driver or cancelled',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: _muted(d), fontSize: 14, height: 1.5))),
           const SizedBox(height: 28),
-
           _a(3, Container(
             width: double.infinity, padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _card(d), borderRadius: BorderRadius.circular(16),
+            decoration: BoxDecoration(color: _card(d), borderRadius: BorderRadius.circular(16),
               border: Border.all(color: _border(d))),
             child: Text('Stay online to receive new trip requests from nearby traders',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: _muted(d), fontSize: 14, height: 1.5)),
           )),
           const SizedBox(height: 24),
-
           _a(4, _GradBtn(
             label: 'Back to Home',
             icon: Icons.arrow_back_rounded,
@@ -1870,7 +1875,7 @@ class _RequestExpiredState extends State<RequestExpiredScreen>
 
 
 // ══════════════════════════════════════════════════════
-//  8. CONNECTION LOST SCREEN — shake + pulsing rings
+//  8. CONNECTION LOST SCREEN
 // ══════════════════════════════════════════════════════
 class ConnectionLostScreen extends StatefulWidget {
   const ConnectionLostScreen({super.key});
@@ -1880,28 +1885,18 @@ class ConnectionLostScreen extends StatefulWidget {
 
 class _ConnectionLostState extends State<ConnectionLostScreen>
     with TickerProviderStateMixin {
-  // Shake on wifi icon
   late AnimationController _shakeCtrl;
   late Animation<double> _shakeAnim;
-
-  // Retry button shimmer
   late AnimationController _shimmerCtrl;
   late Animation<double> _shimmerAnim;
-
-  // Red dot pulse
   late AnimationController _dotCtrl;
-
-  // Entrance
   late AnimationController _entranceCtrl;
   late List<Animation<double>> _items;
 
   @override
   void initState() {
     super.initState();
-
-    // Shake: rotate[0,-10,10,-10,0] once on load
-    _shakeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500));
+    _shakeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
     _shakeAnim = TweenSequence<double>([
       TweenSequenceItem(tween: Tween(begin: 0, end: -0.175), weight: 25),
       TweenSequenceItem(tween: Tween(begin: -0.175, end: 0.175), weight: 25),
@@ -1911,15 +1906,12 @@ class _ConnectionLostState extends State<ConnectionLostScreen>
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) _shakeCtrl.forward();
     });
-
     _shimmerCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 2000))..repeat();
     _shimmerAnim = Tween<double>(begin: -1.5, end: 1.5)
         .animate(CurvedAnimation(parent: _shimmerCtrl, curve: Curves.linear));
-
     _dotCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1500))..repeat(reverse: true);
-
     _entranceCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 800))..forward();
     _items = List.generate(7, (i) {
@@ -1941,12 +1933,9 @@ class _ConnectionLostState extends State<ConnectionLostScreen>
 
   Widget _a(int i, Widget child) => AnimatedBuilder(
     animation: _items[i],
-    builder: (_, __) => Opacity(
-      opacity: _items[i].value,
+    builder: (_, __) => Opacity(opacity: _items[i].value,
       child: Transform.translate(
-          offset: Offset(0, 20 * (1 - _items[i].value)), child: child),
-    ),
-  );
+          offset: Offset(0, 20 * (1 - _items[i].value)), child: child)));
 
   @override
   Widget build(BuildContext context) {
@@ -1956,25 +1945,17 @@ class _ConnectionLostState extends State<ConnectionLostScreen>
       body: SafeArea(child: Center(child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-
-          // Wifi icon with pulsing rings + shake
           _a(0, AnimatedBuilder(
             animation: _shakeAnim,
-            builder: (_, child) => Transform.rotate(
-                angle: _shakeAnim.value, child: child),
-            child: _PulsingRings(
-              color: _kRed, size: 110, count: 2,
-              child: Container(
-                width: 110, height: 110,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
+            builder: (_, child) => Transform.rotate(angle: _shakeAnim.value, child: child),
+            child: _PulsingRings(color: _kRed, size: 110, count: 2,
+              child: Container(width: 110, height: 110,
+                decoration: BoxDecoration(shape: BoxShape.circle,
                   color: _kRed.withOpacity(0.1),
                   border: Border.all(color: _kRed.withOpacity(0.3))),
-                child: const Icon(Icons.wifi_off_rounded, color: _kRed, size: 52)),
-            ),
+                child: const Icon(Icons.wifi_off_rounded, color: _kRed, size: 52))),
           )),
           const SizedBox(height: 28),
-
           _a(1, Text('Connection Lost', style: TextStyle(
               color: _text(d), fontSize: 26, fontWeight: FontWeight.bold))),
           const SizedBox(height: 10),
@@ -1982,27 +1963,20 @@ class _ConnectionLostState extends State<ConnectionLostScreen>
               textAlign: TextAlign.center,
               style: TextStyle(color: _muted(d), fontSize: 15))),
           const SizedBox(height: 24),
-
-          // Reasons card (slide from left)
           _a(2, Container(
             width: double.infinity, padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: _card(d), borderRadius: BorderRadius.circular(16),
+            decoration: BoxDecoration(color: _card(d), borderRadius: BorderRadius.circular(16),
               border: Border.all(color: _border(d))),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Possible Reasons:', style: TextStyle(
                   color: _text(d), fontSize: 15, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
-              ...[
-                'No internet connection',
-                'Server is temporarily unavailable',
-                'Your session may have expired',
-              ].map((r) => Padding(
+              ...['No internet connection', 'Server is temporarily unavailable',
+                  'Your session may have expired'].map((r) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(children: [
                   Container(width: 8, height: 8,
-                      decoration: const BoxDecoration(
-                          color: _kRed, shape: BoxShape.circle)),
+                      decoration: const BoxDecoration(color: _kRed, shape: BoxShape.circle)),
                   const SizedBox(width: 10),
                   Text(r, style: TextStyle(color: _muted(d), fontSize: 14)),
                 ]),
@@ -2010,59 +1984,39 @@ class _ConnectionLostState extends State<ConnectionLostScreen>
             ]),
           )),
           const SizedBox(height: 16),
-
-          // Pulsing offline dot
           _a(3, Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            AnimatedBuilder(
-              animation: _dotCtrl,
-              builder: (_, __) => Container(
-                width: 8, height: 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle, color: _kRed,
+            AnimatedBuilder(animation: _dotCtrl,
+              builder: (_, __) => Container(width: 8, height: 8,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: _kRed,
                   boxShadow: [BoxShadow(
-                    color: _kRed.withOpacity(0.5 * _dotCtrl.value),
-                    blurRadius: 6,
-                  )],
-                ),
-              ),
-            ),
+                    color: _kRed.withOpacity(0.5 * _dotCtrl.value), blurRadius: 6)]))),
             const SizedBox(width: 8),
             Text('Unable to connect', style: TextStyle(color: _muted(d), fontSize: 14)),
           ])),
           const SizedBox(height: 24),
-
-          // Retry button with rotating icon + shimmer
           _a(4, GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
               width: double.infinity, height: 56,
-              decoration: BoxDecoration(
-                gradient: _kGrad, borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(
-                    color: _kTeal.withOpacity(0.35),
+              decoration: BoxDecoration(gradient: _kGrad,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [BoxShadow(color: _kTeal.withOpacity(0.35),
                     blurRadius: 16, offset: const Offset(0, 6))]),
               child: Stack(alignment: Alignment.center, children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: AnimatedBuilder(
-                    animation: _shimmerAnim,
+                  child: AnimatedBuilder(animation: _shimmerAnim,
                     builder: (_, __) => Transform.translate(
                       offset: Offset(_shimmerAnim.value * 200, 0),
-                      child: Container(width: 80,
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Colors.transparent, Colors.white24, Colors.transparent],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                      child: Container(width: 80, decoration: const BoxDecoration(
+                        gradient: LinearGradient(colors: [
+                          Colors.transparent, Colors.white24, Colors.transparent]))))),
                 ),
                 const Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
                   SizedBox(width: 8),
-                  Text('Retry', style: TextStyle(
-                      color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text('Retry', style: TextStyle(color: Colors.white, fontSize: 16,
+                      fontWeight: FontWeight.bold)),
                 ]),
               ]),
             ),
@@ -2118,20 +2072,13 @@ class _FailedToLoadState extends State<FailedToLoadScreen>
   }
 
   @override
-  void dispose() {
-    _entranceCtrl.dispose();
-    _pulseCtrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _entranceCtrl.dispose(); _pulseCtrl.dispose(); super.dispose(); }
 
   Widget _a(int i, Widget child) => AnimatedBuilder(
     animation: _items[i],
-    builder: (_, __) => Opacity(
-      opacity: _items[i].value,
+    builder: (_, __) => Opacity(opacity: _items[i].value,
       child: Transform.translate(
-          offset: Offset(0, 20 * (1 - _items[i].value)), child: child),
-    ),
-  );
+          offset: Offset(0, 20 * (1 - _items[i].value)), child: child)));
 
   @override
   Widget build(BuildContext context) {
@@ -2141,30 +2088,18 @@ class _FailedToLoadState extends State<FailedToLoadScreen>
       body: SafeArea(child: Center(child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-
-          // Error rings
-          _a(0, _PulsingRings(
-            color: _kRed, size: 110, count: 2,
-            child: AnimatedBuilder(
-              animation: _pulseCtrl,
-              builder: (_, child) => Container(
-                width: 100, height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
+          _a(0, _PulsingRings(color: _kRed, size: 110, count: 2,
+            child: AnimatedBuilder(animation: _pulseCtrl,
+              builder: (_, child) => Container(width: 100, height: 100,
+                decoration: BoxDecoration(shape: BoxShape.circle,
                   color: _kRed.withOpacity(0.1 + 0.05 * _pulseCtrl.value)),
-                child: child,
-              ),
-              child: Container(
-                margin: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _kRed, width: 2)),
+                child: child),
+              child: Container(margin: const EdgeInsets.all(12),
+                decoration: BoxDecoration(shape: BoxShape.circle,
+                    border: Border.all(color: _kRed, width: 2)),
                 child: const Center(child: Text('!', style: TextStyle(
-                    color: _kRed, fontSize: 32, fontWeight: FontWeight.bold)))),
-            ),
-          )),
+                    color: _kRed, fontSize: 32, fontWeight: FontWeight.bold))))))),
           const SizedBox(height: 28),
-
           _a(1, Text(widget.title, textAlign: TextAlign.center,
               style: TextStyle(color: _text(d), fontSize: 26,
                   fontWeight: FontWeight.bold, height: 1.3))),
@@ -2172,7 +2107,6 @@ class _FailedToLoadState extends State<FailedToLoadScreen>
           _a(2, Text(widget.subtitle, textAlign: TextAlign.center,
               style: TextStyle(color: _muted(d), fontSize: 15, height: 1.5))),
           const SizedBox(height: 32),
-
           _a(3, _GradBtn(
             label: 'Retry',
             icon: Icons.refresh_rounded,
@@ -2210,7 +2144,7 @@ Widget _infoChip(IconData icon, String label, String value, bool d) =>
   Expanded(child: Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
     decoration: BoxDecoration(
-      color: _chip(d), borderRadius: BorderRadius.circular(12),
+      color: _chipBg(d), borderRadius: BorderRadius.circular(12),
       border: Border.all(color: _border(d))),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [

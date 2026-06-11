@@ -1,5 +1,6 @@
 // ════════════════════════════════════════════════════════════
 //  trip_assigned_screen.dart  — with animations
+//  ✅ بيانات حقيقية من الـ provider
 // ════════════════════════════════════════════════════════════
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -64,7 +65,6 @@ class _FloatingBlobsState extends State<_FloatingBlobs>
   }
 }
 
-// ─── Press-scale wrapper ───────────────────────────────────
 class _PressScale extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;
@@ -101,7 +101,6 @@ class _PressScaleState extends State<_PressScale>
   );
 }
 
-// ─── Shimmer Start Trip button ─────────────────────────────
 class _ShimmerStartBtn extends StatefulWidget {
   final VoidCallback onTap;
   const _ShimmerStartBtn({required this.onTap});
@@ -186,7 +185,6 @@ class TripAssignedScreen extends StatefulWidget {
 class _TripAssignedScreenState extends State<TripAssignedScreen>
     with TickerProviderStateMixin {
 
-  // ── controllers ──
   late AnimationController _headerCtrl;
   late AnimationController _badgeCtrl;
   final List<AnimationController> _sectionCtrls  = [];
@@ -197,17 +195,14 @@ class _TripAssignedScreenState extends State<TripAssignedScreen>
   void initState() {
     super.initState();
 
-    // Header slide from top
     _headerCtrl = AnimationController(vsync: this,
         duration: const Duration(milliseconds: 500))..forward();
 
-    // Assigned badge (delay 300ms)
     _badgeCtrl = AnimationController(vsync: this,
         duration: const Duration(milliseconds: 400));
     Future.delayed(const Duration(milliseconds: 300),
         () { if (mounted) _badgeCtrl.forward(); });
 
-    // 4 staggered sections: trip card, start btn, details btn, footer
     for (int i = 0; i < 4; i++) {
       final c = AnimationController(vsync: this,
           duration: const Duration(milliseconds: 450));
@@ -242,13 +237,22 @@ class _TripAssignedScreenState extends State<TripAssignedScreen>
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().theme.isDark;
     final user   = context.watch<UserProvider>();
-    final driver = context.watch<DriverProvider>();
-    final displayName = user.fullName.isNotEmpty ? user.fullName : 'Driver';
+    final driver = context.watch<DriverProvider>(); // ✅
 
-    // ── Adaptive Colors ──
+    // ✅ بيانات حقيقية من الـ provider
+    final displayName  = user.fullName.isNotEmpty ? user.fullName : 'Driver';
+    final trip         = driver.activeTrip;
+    final tripId       = trip?.id ?? 'SHP-0000';
+    final pickup       = trip?.origin ?? 'Pickup Location';
+    final dropoff      = trip?.destination ?? 'Drop-off Location';
+    final cargoType    = trip?.goodsType ?? 'General Cargo';
+    final traderName   = trip?.traderName ?? 'Trader';
+    final isFragile    = trip?.isFragile ?? false;
+    final weightTons   = trip?.weightTons ?? 0.0;
+    final price        = trip?.price ?? 0.0;
+
     final kBg     = isDark ? const Color(0xFF0D1F2D) : const Color(0xFFF5F8FA);
     final kCard   = isDark ? const Color(0xFF152232) : Colors.white;
-    final kDeep   = isDark ? const Color(0xFF0D1F2D) : const Color(0xFFF5F8FA);
     final kText   = isDark ? Colors.white            : const Color(0xFF1A2A3A);
     final kMuted  = isDark ? Colors.white.withOpacity(0.45) : const Color(0xFF7A8FA6);
     final kBorder = isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFE2EAF0);
@@ -260,9 +264,7 @@ class _TripAssignedScreenState extends State<TripAssignedScreen>
       backgroundColor: kBg,
       body: Stack(
         children: [
-          // ── animated blobs ──
           const _FloatingBlobs(),
-
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -271,199 +273,124 @@ class _TripAssignedScreenState extends State<TripAssignedScreen>
                 children: [
                   const SizedBox(height: 20),
 
-                  // ── Header (slide from top) ──
+                  // ── Header ──
                   FadeTransition(
-                    opacity: CurvedAnimation(
-                        parent: _headerCtrl, curve: Curves.easeOut),
+                    opacity: CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOut),
                     child: SlideTransition(
                       position: Tween<Offset>(
                               begin: const Offset(0, -0.5), end: Offset.zero)
-                          .animate(CurvedAnimation(
-                              parent: _headerCtrl, curve: Curves.easeOut)),
+                          .animate(CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOut)),
                       child: Row(children: [
                         Expanded(child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Welcome back',
-                                style: TextStyle(color: kMuted, fontSize: 13)),
+                            Text('Welcome back', style: TextStyle(color: kMuted, fontSize: 13)),
                             const SizedBox(height: 2),
-                            Text(displayName, style: TextStyle(
-                                color: kText, fontSize: 22,
-                                fontWeight: FontWeight.w800)),
+                            Text(displayName, style: TextStyle(color: kText, fontSize: 22, fontWeight: FontWeight.w800)),
                             const SizedBox(height: 4),
-                            Container(width: 60, height: 2,
-                                decoration: BoxDecoration(color: kCyan,
-                                    borderRadius: BorderRadius.circular(2))),
+                            Container(width: 60, height: 2, decoration: BoxDecoration(color: kCyan, borderRadius: BorderRadius.circular(2))),
                           ],
                         )),
                         _pill(kPillBg, Row(children: [
-                          const Icon(Icons.star,
-                              color: Color(0xFFF59E0B), size: 16),
+                          const Icon(Icons.star, color: Color(0xFFF59E0B), size: 16),
                           const SizedBox(width: 4),
-                          Text('4.8',
-                              style: TextStyle(color: kText, fontSize: 13)),
+                          Text('4.8', style: TextStyle(color: kText, fontSize: 13)),
                         ])),
                         const SizedBox(width: 8),
                         _pill(kPillBg, Row(children: [
                           Container(width: 8, height: 8,
-                              decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isDark
-                                      ? Colors.white38
-                                      : Colors.black26)),
+                              decoration: BoxDecoration(shape: BoxShape.circle,
+                                  color: isDark ? Colors.white38 : Colors.black26)),
                           const SizedBox(width: 6),
-                          Text('OFFLINE', style: TextStyle(color: kMuted,
-                              fontSize: 12, fontWeight: FontWeight.w600)),
+                          Text('OFFLINE', style: TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w600)),
                         ])),
                         const SizedBox(width: 8),
-                        Container(
-                          width: 38, height: 38,
-                          decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isDark
-                                  ? const Color(0xFF1E3040)
-                                  : const Color(0xFFF0F4F8)),
-                          child: Icon(Icons.person_outline,
-                              color: kMuted, size: 22),
-                        ),
+                        Container(width: 38, height: 38,
+                          decoration: BoxDecoration(shape: BoxShape.circle,
+                              color: isDark ? const Color(0xFF1E3040) : const Color(0xFFF0F4F8)),
+                          child: Icon(Icons.person_outline, color: kMuted, size: 22)),
                       ]),
                     ),
                   ),
                   const SizedBox(height: 16),
 
-                  // ── Assigned badge (fade in) ──
+                  // ── Assigned badge ──
                   FadeTransition(
-                    opacity: CurvedAnimation(
-                        parent: _badgeCtrl, curve: Curves.easeOut),
+                    opacity: CurvedAnimation(parent: _badgeCtrl, curve: Curves.easeOut),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                       decoration: BoxDecoration(
                         color: kCyan.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: kCyan.withOpacity(0.35)),
                       ),
-                      child: Text('Assigned', style: TextStyle(
-                          color: kCyan, fontSize: 13,
-                          fontWeight: FontWeight.w600)),
+                      child: Text('Assigned', style: TextStyle(color: kCyan, fontSize: 13, fontWeight: FontWeight.w600)),
                     ),
                   ),
                   const SizedBox(height: 24),
 
-                  // ── Trip Card (section 0) ──
+                  // ── Trip Card ──
                   _animated(0, Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: kCard,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: kBorder),
-                      boxShadow: isDark ? [] : [
-                        BoxShadow(color: Colors.black.withOpacity(0.05),
-                            blurRadius: 12, offset: const Offset(0, 4))],
+                      boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4))],
                     ),
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Trip Ready to Start', style: TextStyle(
-                                color: kCyan, fontSize: 15,
-                                fontWeight: FontWeight.w700)),
-                            Text('SHP-4521',
-                                style: TextStyle(color: kMuted, fontSize: 13)),
-                          ],
-                        ),
+                        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                          Text('Trip Ready to Start', style: TextStyle(color: kCyan, fontSize: 15, fontWeight: FontWeight.w700)),
+                          Text(tripId, style: TextStyle(color: kMuted, fontSize: 13)), // ✅ ID حقيقي
+                        ]),
                       ),
                       const SizedBox(height: 20),
                       _divider(kBorder),
 
-                      // ROUTE
+                      // ROUTE ✅ بيانات حقيقية
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          Text('ROUTE', style: TextStyle(
-                              color: kMuted, fontSize: 11,
-                              letterSpacing: 1.2,
-                              fontWeight: FontWeight.w600)),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text('ROUTE', style: TextStyle(color: kMuted, fontSize: 11, letterSpacing: 1.2, fontWeight: FontWeight.w600)),
                           const SizedBox(height: 16),
-                          Row(crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Column(children: [
-                              Container(
-                                width: 28, height: 28,
-                                decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Color(0xFF00D5BE)),
-                                child: const Icon(Icons.circle,
-                                    color: Colors.white, size: 10),
-                              ),
-                              Container(width: 2, height: 36,
-                                  color: kCyan.withOpacity(0.3)),
+                              Container(width: 28, height: 28,
+                                decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF00D5BE)),
+                                child: const Icon(Icons.circle, color: Colors.white, size: 10)),
+                              Container(width: 2, height: 36, color: kCyan.withOpacity(0.3)),
                             ]),
                             const SizedBox(width: 14),
-                            Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                              Text('Pickup Location',
-                                  style: TextStyle(
-                                      color: kMuted, fontSize: 12)),
+                            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text('Pickup Location', style: TextStyle(color: kMuted, fontSize: 12)),
                               const SizedBox(height: 4),
-                              Text('Maadi Distribution Center, Cairo',
-                                  style: TextStyle(color: kText,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600)),
+                              Text(pickup, style: TextStyle(color: kText, fontSize: 15, fontWeight: FontWeight.w600)), // ✅
                             ]),
                           ]),
                           const SizedBox(height: 4),
-                          Row(crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                            Container(
-                              width: 28, height: 28,
-                              decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: kCyan, width: 2)),
-                              child: const Icon(Icons.location_on,
-                                  color: Color(0xFF00D5BE), size: 14),
-                            ),
+                          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Container(width: 28, height: 28,
+                              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: kCyan, width: 2)),
+                              child: const Icon(Icons.location_on, color: Color(0xFF00D5BE), size: 14)),
                             const SizedBox(width: 14),
-                            Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                              Text('Drop-off Location',
-                                  style: TextStyle(
-                                      color: kMuted, fontSize: 12)),
+                            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text('Drop-off Location', style: TextStyle(color: kMuted, fontSize: 12)),
                               const SizedBox(height: 4),
-                              Text(
-                                driver.activeTrip?.destination ??
-                                    'New Cairo Tech Hub, Cairo',
-                                style: TextStyle(color: kText,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600)),
+                              Text(dropoff, style: TextStyle(color: kText, fontSize: 15, fontWeight: FontWeight.w600)), // ✅
                             ]),
                           ]),
                         ]),
                       ),
-
                       const SizedBox(height: 20),
                       _divider(kBorder),
 
                       // SCHEDULE
                       Padding(
-                        padding:
-                            const EdgeInsets.fromLTRB(20, 18, 20, 18),
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          Text('SCHEDULE', style: TextStyle(
-                              color: kMuted, fontSize: 11,
-                              letterSpacing: 1.2,
-                              fontWeight: FontWeight.w600)),
+                        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text('SCHEDULE', style: TextStyle(color: kMuted, fontSize: 11, letterSpacing: 1.2, fontWeight: FontWeight.w600)),
                           const SizedBox(height: 12),
                           Container(
                             width: double.infinity,
@@ -471,76 +398,67 @@ class _TripAssignedScreenState extends State<TripAssignedScreen>
                             decoration: BoxDecoration(
                               color: kCyan.withOpacity(0.08),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                  color: kCyan.withOpacity(0.2)),
+                              border: Border.all(color: kCyan.withOpacity(0.2)),
                             ),
-                            child: Text('Ready to start',
-                                style: TextStyle(
-                                    color: kCyan, fontSize: 14)),
+                            // ✅ وقت حقيقي من الباك
+                            child: Text(
+                              trip?.scheduledDate != null && trip!.scheduledDate.isNotEmpty
+                                  ? '${trip.scheduledDate} ${trip.scheduledTime}'
+                                  : 'Ready to start',
+                              style: TextStyle(color: kCyan, fontSize: 14)),
                           ),
                         ]),
                       ),
-
                       _divider(kBorder),
 
-                      // SHIPMENT INFO
+                      // SHIPMENT INFO ✅ بيانات حقيقية
                       Padding(
-                        padding:
-                            const EdgeInsets.fromLTRB(20, 18, 20, 20),
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          Text('SHIPMENT INFORMATION',
-                              style: TextStyle(
-                                  color: kMuted, fontSize: 11,
-                                  letterSpacing: 1.2,
-                                  fontWeight: FontWeight.w600)),
+                        padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text('SHIPMENT INFORMATION', style: TextStyle(color: kMuted, fontSize: 11, letterSpacing: 1.2, fontWeight: FontWeight.w600)),
                           const SizedBox(height: 16),
-                          _infoRow(kText, kMuted, 'Client', 'El-Ezz Steel'),
+                          _infoRow(kText, kMuted, 'Client', traderName), // ✅
                           const SizedBox(height: 12),
-                          _infoRow(kText, kMuted, 'Cargo Type',
-                              'Electronics – Fragile'),
+                          _infoRow(kText, kMuted, 'Cargo Type', cargoType), // ✅
                           const SizedBox(height: 12),
-                          _infoRow(kText, kMuted, 'Weight', '2,400 lbs'),
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: kAmber.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                  color: kAmber.withOpacity(0.35)),
+                          _infoRow(kText, kMuted, 'Weight', '${weightTons.toStringAsFixed(1)} tons'), // ✅
+                          const SizedBox(height: 12),
+                          _infoRow(kText, kMuted, 'Price', '${price.toStringAsFixed(0)} EGP'), // ✅
+                          if (isFragile) ...[
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: kAmber.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: kAmber.withOpacity(0.35)),
+                              ),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                Icon(Icons.warning_amber_rounded, color: kAmber, size: 14),
+                                const SizedBox(width: 6),
+                                Text('Fragile', style: TextStyle(color: kAmber, fontSize: 13, fontWeight: FontWeight.w600)),
+                              ]),
                             ),
-                            child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                              Icon(Icons.warning_amber_rounded,
-                                  color: kAmber, size: 14),
-                              const SizedBox(width: 6),
-                              Text('Fragile', style: TextStyle(
-                                  color: kAmber, fontSize: 13,
-                                  fontWeight: FontWeight.w600)),
-                            ]),
-                          ),
+                          ],
                         ]),
                       ),
                     ]),
                   )),
-
                   const SizedBox(height: 20),
 
-                  // ── Start Trip shimmer button (section 1) ──
+                  // ── Start Trip ✅ بيكلم الباك
                   _animated(1, _ShimmerStartBtn(
-                    onTap: () {
-                      context.read<DriverProvider>().startTrip();
-                      Navigator.push(context, MaterialPageRoute(
-                          builder: (_) => const TripActiveScreen()));
+                    onTap: () async {
+                      final success = await context.read<DriverProvider>().startTrip();
+                      if (success && mounted) {
+                        Navigator.push(context, MaterialPageRoute(
+                            builder: (_) => const TripActiveScreen()));
+                      }
                     },
                   )),
                   const SizedBox(height: 12),
 
-                  // ── View Full Details (section 2) ──
+                  // ── View Full Details ──
                   _animated(2, _PressScale(
                     onTap: () {},
                     child: Container(
@@ -551,25 +469,19 @@ class _TripAssignedScreenState extends State<TripAssignedScreen>
                         border: Border.all(color: kBorder),
                       ),
                       alignment: Alignment.center,
-                      child: Text('View Full Details',
-                          style: TextStyle(color: kMuted, fontSize: 15,
-                              fontWeight: FontWeight.w500)),
+                      child: Text('View Full Details', style: TextStyle(color: kMuted, fontSize: 15, fontWeight: FontWeight.w500)),
                     ),
                   )),
 
                   const SizedBox(height: 16),
 
-                  // ── Footer note (section 3) ──
+                  // ── Footer note ──
                   _animated(3, Row(children: [
                     Container(width: 8, height: 8,
-                        decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isDark
-                                ? Colors.white24
-                                : Colors.black12)),
+                        decoration: BoxDecoration(shape: BoxShape.circle,
+                            color: isDark ? Colors.white24 : Colors.black12)),
                     const SizedBox(width: 8),
-                    Text('Offline – Not receiving new trips',
-                        style: TextStyle(color: kMuted, fontSize: 12)),
+                    Text('Offline – Not receiving new trips', style: TextStyle(color: kMuted, fontSize: 12)),
                   ])),
 
                   const SizedBox(height: 30),
@@ -584,8 +496,7 @@ class _TripAssignedScreenState extends State<TripAssignedScreen>
 
   Widget _pill(Color bg, Widget child) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-    decoration: BoxDecoration(
-        color: bg, borderRadius: BorderRadius.circular(20)),
+    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
     child: child,
   );
 
@@ -594,7 +505,6 @@ class _TripAssignedScreenState extends State<TripAssignedScreen>
   Widget _infoRow(Color text, Color muted, String label, String value) =>
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         Text(label, style: TextStyle(color: muted, fontSize: 14)),
-        Text(value, style: TextStyle(color: text, fontSize: 14,
-            fontWeight: FontWeight.w600)),
+        Text(value, style: TextStyle(color: text, fontSize: 14, fontWeight: FontWeight.w600)),
       ]);
 }

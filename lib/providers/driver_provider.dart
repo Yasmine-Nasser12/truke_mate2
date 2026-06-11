@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import '/models/driver_models.dart';
+import '/services/api_service.dart';
 
 class DriverProvider with ChangeNotifier {
   // ── Online State ──
   bool _isOnline = false;
   bool get isOnline => _isOnline;
+
+  // ── Loading / Error ──
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
+
+  String? _error;
+  String? get error => _error;
 
   // ── Active Trip ──
   AvailableTrip? _activeTrip;
@@ -19,227 +27,359 @@ class DriverProvider with ChangeNotifier {
   );
   DailyStats get todayStats => _todayStats;
 
-  // ── Available Trips (من الـ Traders) ──
-  final List<AvailableTrip> _availableTrips = [
-    AvailableTrip(
-      id: 'SHP-5001',
-      traderName: 'Mohamed El-Sayed',
-      traderRating: '4.9',
-      origin: 'Maadi Distribution Center',
-      destination: 'New Cairo Tech Hub',
-      distance: '18.4 km',
-      estimatedTime: '35 min',
-      price: 320.0,
-      goodsType: 'Electronics – Fragile',
-      weightTons: 1.2,
-      isFragile: true,
-      isRefrigerated: false,
-      scheduledDate: '2026-03-11',
-      scheduledTime: '10:00',
-    ),
-    AvailableTrip(
-      id: 'SHP-5002',
-      traderName: 'Sara Hossam',
-      traderRating: '4.7',
-      origin: 'Nasr City Hub',
-      destination: 'Heliopolis Plaza',
-      distance: '8.2 km',
-      estimatedTime: '20 min',
-      price: 185.0,
-      goodsType: 'Food & Beverages',
-      weightTons: 0.8,
-      isFragile: false,
-      isRefrigerated: true,
-      scheduledDate: '2026-03-11',
-      scheduledTime: '11:30',
-    ),
-    AvailableTrip(
-      id: 'SHP-5003',
-      traderName: 'Ahmed Farouk',
-      traderRating: '4.5',
-      origin: 'Zamalek Station',
-      destination: '6th of October Terminal',
-      distance: '32.7 km',
-      estimatedTime: '55 min',
-      price: 490.0,
-      goodsType: 'Construction Materials',
-      weightTons: 5.0,
-      isFragile: false,
-      isRefrigerated: false,
-      scheduledDate: '2026-03-11',
-      scheduledTime: '09:00',
-    ),
-    AvailableTrip(
-      id: 'SHP-5004',
-      traderName: 'Nour Khaled',
-      traderRating: '4.8',
-      origin: 'Dokki Warehouse',
-      destination: 'Mohandessin Center',
-      distance: '4.1 km',
-      estimatedTime: '12 min',
-      price: 140.0,
-      goodsType: 'Medical Supplies',
-      weightTons: 0.3,
-      isFragile: true,
-      isRefrigerated: true,
-      scheduledDate: '2026-03-11',
-      scheduledTime: '14:00',
-    ),
-    AvailableTrip(
-      id: 'SHP-5005',
-      traderName: 'Karim Mostafa',
-      traderRating: '4.6',
-      origin: 'Shubra Depot',
-      destination: 'Downtown Cairo',
-      distance: '11.5 km',
-      estimatedTime: '28 min',
-      price: 255.0,
-      goodsType: 'Furniture',
-      weightTons: 2.1,
-      isFragile: false,
-      isRefrigerated: false,
-      scheduledDate: '2026-03-11',
-      scheduledTime: '13:00',
-    ),
-  ];
-
+  // ── Available Trips ──
+  List<AvailableTrip> _availableTrips = [];
   List<AvailableTrip> get availableTrips =>
       _availableTrips.where((t) => t.status == TripStatus.available).toList();
 
   // ── Recent Trips ──
-  final List<CompletedTrip> _recentTrips = [
-    const CompletedTrip(
-      id: 'SHP-4519',
-      date: 'Jan 30, 2026',
-      time: '2:30 PM',
-      origin: 'Nasr City Hub',
-      destination: 'Heliopolis Plaza',
-      earnings: 185.0,
-      miles: 8,
-      status: TripStatus.completed,
-    ),
-    const CompletedTrip(
-      id: 'SHP-4518',
-      date: 'Jan 30, 2026',
-      time: '11:15 AM',
-      origin: 'Zamalek Station',
-      destination: '6th of October Terminal',
-      earnings: 490.0,
-      miles: 32,
-      status: TripStatus.completed,
-    ),
-    const CompletedTrip(
-      id: 'SHP-4517',
-      date: 'Jan 29, 2026',
-      time: '3:00 PM',
-      origin: 'Maadi Center',
-      destination: 'New Cairo',
-      earnings: 320.0,
-      miles: 18,
-      status: TripStatus.completed,
-    ),
-    const CompletedTrip(
-      id: 'SHP-4516',
-      date: 'Jan 29, 2026',
-      time: '9:45 AM',
-      origin: 'Dokki Warehouse',
-      destination: 'Mohandessin',
-      earnings: 140.0,
-      miles: 4,
-      status: TripStatus.completed,
-    ),
-  ];
-
+  List<CompletedTrip> _recentTrips = [];
   List<CompletedTrip> get recentTrips => List.unmodifiable(_recentTrips);
 
   // ── Total Earnings ──
   double get totalEarnings =>
       _recentTrips.fold(0.0, (sum, t) => sum + t.earnings);
 
-  // ── Actions ──
-
-  void toggleOnline() {
-    _isOnline = !_isOnline;
+  // ══════════════════════════════════════════
+  //  LOAD HOME DATA  →  GET /api/driver/home
+  // ══════════════════════════════════════════
+  Future<void> loadHome() async {
+    _isLoading = true;
+    _error = null;
     notifyListeners();
-  }
 
-  void acceptTrip(AvailableTrip trip) {
-    // Mark as accepted
-    final index = _availableTrips.indexWhere((t) => t.id == trip.id);
-    if (index == -1) return;
-    _availableTrips[index].status = TripStatus.accepted;
-    _activeTrip = _availableTrips[index];
-    notifyListeners();
-  }
+    try {
+      final res = await ApiService().get('/api/driver/home');
+      final data = res.data;
 
-  void rejectTrip(AvailableTrip trip) {
-    final index = _availableTrips.indexWhere((t) => t.id == trip.id);
-    if (index == -1) return;
-    _availableTrips[index].status = TripStatus.cancelled;
-    notifyListeners();
-  }
+      if (data['success'] == true) {
+        final d = data['data'];
 
-  void startTrip() {
-    if (_activeTrip == null) return;
-    final index = _availableTrips.indexWhere((t) => t.id == _activeTrip!.id);
-    if (index != -1) {
-      _availableTrips[index].status = TripStatus.inProgress;
-      _activeTrip = _availableTrips[index];
+        // ── Status ──
+        _isOnline = d['status'] == 'Online';
+
+        // ── Active Trip ──
+        if (d['activeTrip'] != null) {
+          final t = d['activeTrip'];
+          _activeTrip = AvailableTrip(
+            id:             t['tripId']           ?? '',
+            traderName:     t['traderName']        ?? '',
+            traderRating:   t['traderRating']?.toString() ?? '0',
+            origin:         t['pickupLocation']    ?? '',
+            destination:    t['dropoffLocation']   ?? '',
+            distance:       t['distance']          ?? '',
+            estimatedTime:  t['estimatedTime']     ?? '',
+            price:          (t['price'] as num?)?.toDouble() ?? 0.0,
+            goodsType:      t['goodsType']         ?? '',
+            weightTons:     (t['weightTons'] as num?)?.toDouble() ?? 0.0,
+            isFragile:      t['isFragile']         ?? false,
+            isRefrigerated: t['isRefrigerated']    ?? false,
+            scheduledDate:  t['scheduledDate']     ?? '',
+            scheduledTime:  t['scheduledTime']     ?? '',
+          );
+          // Set status
+          final statusStr = (t['status'] ?? '').toString().toLowerCase();
+          if (statusStr == 'inprogress' || statusStr == 'intransit') {
+            _activeTrip!.status = TripStatus.inProgress;
+          } else {
+            _activeTrip!.status = TripStatus.accepted;
+          }
+        } else {
+          _activeTrip = null;
+        }
+
+        // ── Daily Stats ──
+        if (d['todayStats'] != null) {
+          final s = d['todayStats'];
+          _todayStats = DailyStats(
+            tripsCompleted: s['tripsCompleted'] ?? 0,
+            earnings:       (s['earnings'] as num?)?.toDouble() ?? 0.0,
+            onlineTime:     s['onlineTime'] ?? '0h 0m',
+          );
+        }
+
+        // ── Recent Trips ──
+        if (d['recentTrips'] != null) {
+          _recentTrips = (d['recentTrips'] as List).map((t) => CompletedTrip(
+            id:          t['tripId']           ?? '',
+            date:        t['earnedAtFormatted'] ?? '',
+            time:        t['earnedAtFormatted'] ?? '',
+            origin:      t['pickupLocation']   ?? '',
+            destination: t['dropoffLocation']  ?? '',
+            earnings:    (t['amountEGP'] as num?)?.toDouble() ?? 0.0,
+            miles:       0,
+            status:      TripStatus.completed,
+          )).toList();
+        }
+      }
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    notifyListeners();
   }
 
-  void completeTrip() {
-    if (_activeTrip == null) return;
+  // ══════════════════════════════════════════
+  //  TOGGLE ONLINE  →  PATCH /api/driver/status
+  // ══════════════════════════════════════════
+  Future<void> toggleOnline() async {
+    final newStatus = !_isOnline;
 
-    // Add to recent trips
+    // Optimistic UI update
+    _isOnline = newStatus;
+    notifyListeners();
+
+    try {
+      await ApiService().patch(
+        '/api/driver/status',
+        data: {'status': newStatus ? 'Online' : 'Offline'},
+      );
+    } catch (e) {
+      // Revert on failure
+      _isOnline = !newStatus;
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  // ══════════════════════════════════════════
+  //  LOAD AVAILABLE TRIPS
+  //  GET /api/driver/trips/available-requests
+  // ══════════════════════════════════════════
+  Future<void> loadAvailableTrips({int page = 1}) async {
+    try {
+      final res = await ApiService().get(
+        '/api/driver/trips/available-requests',
+        queryParams: {'page': page, 'pageSize': 20, 'sortBy': 'posted_desc'},
+      );
+      final data = res.data;
+
+      if (data['success'] == true && data['data'] != null) {
+        final list = data['data']['requests'] as List? ?? [];
+        _availableTrips = list.map((t) => AvailableTrip(
+          id:             t['requestId']       ?? t['tripId'] ?? '',
+          traderName:     t['traderName']       ?? '',
+          traderRating:   t['traderRating']?.toString() ?? '0',
+          origin:         t['pickupLocation']   ?? '',
+          destination:    t['dropoffLocation']  ?? '',
+          distance:       t['distance']?.toString() ?? '',
+          estimatedTime:  t['estimatedTime']    ?? '',
+          price:          (t['price'] as num?)?.toDouble() ?? 0.0,
+          goodsType:      t['goodsType']        ?? '',
+          weightTons:     (t['weightTons'] as num?)?.toDouble() ?? 0.0,
+          isFragile:      t['isFragile']        ?? false,
+          isRefrigerated: t['isRefrigerated']   ?? false,
+          scheduledDate:  t['scheduledDate']    ?? '',
+          scheduledTime:  t['scheduledTime']    ?? '',
+        )).toList();
+        notifyListeners();
+      }
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  // ══════════════════════════════════════════
+  //  ACCEPT TRIP
+  //  POST /api/driver/trips/requests/{requestId}/accept
+  // ══════════════════════════════════════════
+  Future<bool> acceptTrip(AvailableTrip trip) async {
+    try {
+      final res = await ApiService().post(
+        '/api/driver/trips/requests/${trip.id}/accept',
+      );
+      final data = res.data;
+
+      if (data['success'] == true) {
+        final index = _availableTrips.indexWhere((t) => t.id == trip.id);
+        if (index != -1) {
+          _availableTrips[index].status = TripStatus.accepted;
+          _activeTrip = _availableTrips[index];
+        }
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // ══════════════════════════════════════════
+  //  REJECT TRIP
+  //  POST /api/driver/trips/requests/{requestId}/reject
+  // ══════════════════════════════════════════
+  Future<bool> rejectTrip(AvailableTrip trip, {String? reason}) async {
+    try {
+      await ApiService().post(
+        '/api/driver/trips/requests/${trip.id}/reject',
+        data: reason != null ? {'reason': reason} : null,
+      );
+      final index = _availableTrips.indexWhere((t) => t.id == trip.id);
+      if (index != -1) {
+        _availableTrips[index].status = TripStatus.cancelled;
+      }
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // ══════════════════════════════════════════
+  //  START TRIP  →  POST /api/driver/trips/{tripId}/start
+  // ══════════════════════════════════════════
+  Future<bool> startTrip() async {
+    if (_activeTrip == null) return false;
+
+    try {
+      final res = await ApiService().post(
+        '/api/driver/trips/${_activeTrip!.id}/start',
+      );
+      if (res.data['success'] == true) {
+        final index = _availableTrips.indexWhere((t) => t.id == _activeTrip!.id);
+        if (index != -1) {
+          _availableTrips[index].status = TripStatus.inProgress;
+          _activeTrip = _availableTrips[index];
+        }
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // ══════════════════════════════════════════
+  //  COMPLETE TRIP  →  POST /api/driver/trips/{tripId}/mark-delivered
+  // ══════════════════════════════════════════
+  Future<bool> completeTrip() async {
+    if (_activeTrip == null) return false;
     final trip = _activeTrip!;
-    _recentTrips.insert(
-      0,
-      CompletedTrip(
-        id: trip.id,
-        date: _todayDate(),
-        time: _currentTime(),
-        origin: trip.origin,
-        destination: trip.destination,
-        earnings: trip.price,
-        miles: int.tryParse(
-                trip.distance.replaceAll(RegExp(r'[^0-9]'), '')) ??
-            0,
-        status: TripStatus.completed,
-      ),
-    );
 
-    // Update daily stats
-    _todayStats = DailyStats(
-      tripsCompleted: _todayStats.tripsCompleted + 1,
-      earnings: _todayStats.earnings + trip.price,
-      onlineTime: _todayStats.onlineTime,
-    );
+    try {
+      final res = await ApiService().post(
+        '/api/driver/trips/${trip.id}/mark-delivered',
+      );
+      if (res.data['success'] == true) {
+        _recentTrips.insert(
+          0,
+          CompletedTrip(
+            id:          trip.id,
+            date:        _todayDate(),
+            time:        _currentTime(),
+            origin:      trip.origin,
+            destination: trip.destination,
+            earnings:    trip.price,
+            miles:       int.tryParse(trip.distance.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0,
+            status:      TripStatus.completed,
+          ),
+        );
 
-    // Mark trip as completed
-    final index = _availableTrips.indexWhere((t) => t.id == trip.id);
-    if (index != -1) {
-      _availableTrips[index].status = TripStatus.completed;
+        _todayStats = DailyStats(
+          tripsCompleted: _todayStats.tripsCompleted + 1,
+          earnings:       _todayStats.earnings + trip.price,
+          onlineTime:     _todayStats.onlineTime,
+        );
+
+        final index = _availableTrips.indexWhere((t) => t.id == trip.id);
+        if (index != -1) {
+          _availableTrips[index].status = TripStatus.completed;
+        }
+        _activeTrip = null;
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
     }
+  }
 
-    _activeTrip = null;
-    notifyListeners();
+  // ══════════════════════════════════════════
+  //  ARRIVE AT PICKUP
+  //  POST /api/driver/trips/{tripId}/arrive-pickup
+  // ══════════════════════════════════════════
+  Future<bool> arriveAtPickup() async {
+    if (_activeTrip == null) return false;
+    try {
+      final res = await ApiService().post(
+        '/api/driver/trips/${_activeTrip!.id}/arrive-pickup',
+      );
+      return res.data['success'] == true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // ══════════════════════════════════════════
+  //  CONFIRM PICKUP
+  //  POST /api/driver/trips/{tripId}/confirm-pickup
+  // ══════════════════════════════════════════
+  Future<bool> confirmPickup() async {
+    if (_activeTrip == null) return false;
+    try {
+      final res = await ApiService().post(
+        '/api/driver/trips/${_activeTrip!.id}/confirm-pickup',
+      );
+      return res.data['success'] == true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // ══════════════════════════════════════════
+  //  START DELIVERY
+  //  POST /api/driver/trips/{tripId}/start-delivery
+  // ══════════════════════════════════════════
+  Future<bool> startDelivery() async {
+    if (_activeTrip == null) return false;
+    try {
+      final res = await ApiService().post(
+        '/api/driver/trips/${_activeTrip!.id}/start-delivery',
+      );
+      if (res.data['success'] == true) {
+        final index = _availableTrips.indexWhere((t) => t.id == _activeTrip!.id);
+        if (index != -1) {
+          _availableTrips[index].status = TripStatus.inProgress;
+          _activeTrip = _availableTrips[index];
+        }
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
   }
 
   // ── Helpers ──
   String _todayDate() {
     final now = DateTime.now();
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     return '${months[now.month - 1]} ${now.day}, ${now.year}';
   }
 
   String _currentTime() {
     final now = DateTime.now();
-    final h = now.hour > 12 ? now.hour - 12 : now.hour;
+    final h = now.hour > 12 ? now.hour - 12 : (now.hour == 0 ? 12 : now.hour);
     final m = now.minute.toString().padLeft(2, '0');
     final period = now.hour >= 12 ? 'PM' : 'AM';
     return '$h:$m $period';

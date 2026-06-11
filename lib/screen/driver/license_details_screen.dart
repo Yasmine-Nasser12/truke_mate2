@@ -1,4 +1,6 @@
-﻿import 'package:file_picker/file_picker.dart';
+﻿import 'dart:convert';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '/providers/theme_provider.dart';
@@ -16,7 +18,9 @@ class _LicenseDetailsScreenState extends State<LicenseDetailsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _licenseNumCtrl  = TextEditingController();
   final _licenseTypeCtrl = TextEditingController();
+
   String? _uploadedFileName;
+  String? _licenseImageBase64;   // ← ده اللي هيتبعت للباك
   bool _showFileError = false;
 
   @override
@@ -27,23 +31,51 @@ class _LicenseDetailsScreenState extends State<LicenseDetailsScreen> {
   }
 
   Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles();
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+      withData: true,   // ← مهم: بيجيب الـ bytes مباشرة
+    );
+
     if (result != null && result.files.isNotEmpty) {
-      setState(() { _uploadedFileName = result.files.first.name; _showFileError = false; });
+      final file = result.files.first;
+
+      // بيحول الصورة لـ Base64
+      String base64String;
+      if (file.bytes != null) {
+        // Mobile: bytes موجودة مباشرة
+        base64String = base64Encode(file.bytes!);
+      } else if (file.path != null) {
+        // Desktop/other: نقرأ من الـ path
+        final bytes = await File(file.path!).readAsBytes();
+        base64String = base64Encode(bytes);
+      } else {
+        return;
+      }
+
+      setState(() {
+        _uploadedFileName    = file.name;
+        _licenseImageBase64  = base64String;
+        _showFileError       = false;
+      });
     }
   }
 
   void _next() {
-    final formOk = _formKey.currentState!.validate();
-    final hasFile = _uploadedFileName != null;
+    final formOk  = _formKey.currentState!.validate();
+    final hasFile = _licenseImageBase64 != null;
     if (!hasFile) setState(() => _showFileError = true);
     if (!formOk || !hasFile) return;
+
     Navigator.push(context, MaterialPageRoute(
       builder: (_) => VehicleDetailsScreen(
-        fullName: widget.fullName, phone: widget.phone,
-        email: widget.email,     nationalId: widget.nationalId,
-        licenseNumber: _licenseNumCtrl.text,
-        licenseType: _licenseTypeCtrl.text,
+        fullName:           widget.fullName,
+        phone:              widget.phone,
+        email:              widget.email,
+        nationalId:         widget.nationalId,
+        licenseNumber:      _licenseNumCtrl.text,
+        licenseType:        _licenseTypeCtrl.text,
+        licenseImageBase64: _licenseImageBase64!, // ← بنبعته للـ screen الجاية
       )));
   }
 
@@ -102,17 +134,38 @@ class _LicenseDetailsScreenState extends State<LicenseDetailsScreen> {
                   child: Container(width: double.infinity, height: 58,
                     decoration: BoxDecoration(
                       color: t.fieldBg, borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: _showFileError ? Colors.redAccent : t.border)),
+                      border: Border.all(
+                        color: _showFileError
+                            ? Colors.redAccent
+                            : _licenseImageBase64 != null
+                                ? AppTheme.primary  // ← أخضر لما يتحمل
+                                : t.border,
+                        width: _licenseImageBase64 != null ? 1.5 : 1.0,
+                      )),
                     child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Icon(Icons.upload_outlined, color: AppTheme.primary, size: 22),
+                      Icon(
+                        _licenseImageBase64 != null
+                            ? Icons.check_circle_outline  // ← تم الرفع ✅
+                            : Icons.upload_outlined,
+                        color: _licenseImageBase64 != null
+                            ? AppTheme.primary
+                            : AppTheme.primary,
+                        size: 22),
                       const SizedBox(width: 10),
-                      Text(_uploadedFileName ?? 'Choose file...',
-                          style: TextStyle(color: t.textMuted, fontSize: 14)),
+                      Flexible(child: Text(
+                        _uploadedFileName ?? 'Choose file...',
+                        style: TextStyle(
+                          color: _licenseImageBase64 != null
+                              ? AppTheme.primary
+                              : t.textMuted,
+                          fontSize: 14),
+                        overflow: TextOverflow.ellipsis,
+                      )),
                     ]))),
-                if (_showFileError) Padding(
-                  padding: const EdgeInsets.only(top: 8, left: 12),
+                if (_showFileError) const Padding(
+                  padding: EdgeInsets.only(top: 8, left: 12),
                   child: Text('Please upload license file',
-                      style: const TextStyle(color: Colors.redAccent, fontSize: 12))),
+                      style: TextStyle(color: Colors.redAccent, fontSize: 12))),
 
                 const SizedBox(height: 30),
                 // ── Next button ──
@@ -200,7 +253,7 @@ class _ThemedField extends StatelessWidget {
     ]));
 }
 
-// ── Shared exports for vehicle_details_screen ──
+// ── Shared exports ──
 class DriverStepIndicator extends StatelessWidget {
   final int currentStep;
   const DriverStepIndicator({super.key, required this.currentStep});

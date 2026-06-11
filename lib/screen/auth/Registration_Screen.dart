@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '/providers/user_provider.dart';
 import '/providers/theme_provider.dart';
 import '/screen/driver/license_details_screen.dart';
+import '/services/auth_service.dart'; // ✅ إضافة
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -20,6 +21,9 @@ class _RegistrationScreenState extends State<RegistrationScreen>
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _idCtrl    = TextEditingController();
+  bool _loading    = false; // ✅ إضافة
+
+  final AuthService _authService = AuthService(); // ✅ إضافة
 
   @override
   void initState() {
@@ -35,6 +39,50 @@ class _RegistrationScreenState extends State<RegistrationScreen>
     _nameCtrl.dispose(); _phoneCtrl.dispose();
     _emailCtrl.dispose(); _idCtrl.dispose();
     super.dispose();
+  }
+
+  // ✅ الفنكشن دي اتغيرت بس
+  Future<void> _onNext() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _loading = true);
+
+    // بعت الـ OTP للموبايل
+    final result = await _authService.sendOtp(
+  phone: _phoneCtrl.text.trim(),
+  email: _emailCtrl.text.trim(),
+);
+
+    if (!mounted) return;
+    setState(() => _loading = false);
+
+    if (result['success']) {
+      context.read<UserProvider>().update(
+        fullName: _nameCtrl.text.trim(),
+        phone: _phoneCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
+        nationalId: _idCtrl.text.trim(),
+      );
+
+      Navigator.push(context, MaterialPageRoute(
+        builder: (_) => LicenseDetailsScreen(
+          fullName: _nameCtrl.text,
+          phone: _phoneCtrl.text,
+          email: _emailCtrl.text,
+          nationalId: _idCtrl.text,
+        ),
+      ));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'حدث خطأ، حاول مجدداً'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+    }
   }
 
   @override
@@ -145,43 +193,12 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                                 ? 'Must be 14 digits' : null,
                           ),
                           const SizedBox(height: 15),
-                          _NextButton(theme: t, onTap: () async {
-                            if (_formKey.currentState!.validate()) {
-                              final prefs =
-                                  await SharedPreferences.getInstance();
-                              final registered =
-                                  prefs.getStringList('registeredEmails') ?? [];
-                              final email =
-                                  _emailCtrl.text.trim().toLowerCase();
-                              final isTrader =
-                                  registered.any((e) => e == '${email}:trader');
-                              if (isTrader) {
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        'This email is already registered as a Trader!'),
-                                    backgroundColor: Colors.redAccent),
-                                );
-                                return;
-                              }
-                              context.read<UserProvider>().update(
-                                fullName: _nameCtrl.text.trim(),
-                                phone: _phoneCtrl.text.trim(),
-                                email: _emailCtrl.text.trim(),
-                                nationalId: _idCtrl.text.trim(),
-                              );
-                              if (!context.mounted) return;
-                              Navigator.push(context, MaterialPageRoute(
-                                builder: (_) => LicenseDetailsScreen(
-                                  fullName: _nameCtrl.text,
-                                  phone: _phoneCtrl.text,
-                                  email: _emailCtrl.text,
-                                  nationalId: _idCtrl.text,
-                                ),
-                              ));
-                            }
-                          }),
+                          // ✅ الزرار بقى بيشيل loading
+                          _NextButton(
+                            theme: t,
+                            loading: _loading,
+                            onTap: _onNext,
+                          ),
                         ],
                       ),
                     ),
@@ -326,11 +343,12 @@ class RegInputField extends StatelessWidget {
   }
 }
 
-// ── Next Button ──
+// ── Next Button ✅ بقى بيشيل loading ──
 class _NextButton extends StatelessWidget {
   final AppTheme theme;
   final VoidCallback onTap;
-  const _NextButton({required this.theme, required this.onTap});
+  final bool loading;
+  const _NextButton({required this.theme, required this.onTap, this.loading = false});
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -345,22 +363,27 @@ class _NextButton extends StatelessWidget {
             blurRadius: 15, offset: const Offset(0, 5))],
         ),
         child: ElevatedButton(
-          onPressed: onTap,
+          onPressed: loading ? null : onTap,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16))),
-          child: const Text('Next',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,
-                  color: Colors.white)),
+          child: loading
+              ? const SizedBox(width: 24, height: 24,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation(Colors.white)))
+              : const Text('Next',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,
+                      color: Colors.white)),
         ),
       ),
     );
   }
 }
 
-// ── Legacy exports (used by other screens) ──
+// ── Legacy exports ──
 class CustomGlowBackButton extends StatelessWidget {
   final VoidCallback onPressed;
   const CustomGlowBackButton({super.key, required this.onPressed});

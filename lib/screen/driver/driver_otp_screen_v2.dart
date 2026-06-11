@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '/screen/driver/driver_otp_screen.dart';
 import '/screen/auth/select_role.dart';
 import '/providers/theme_provider.dart';
+import '/services/auth_service.dart'; // ✅
 
 class DriverOtpScreenV2 extends StatefulWidget {
   const DriverOtpScreenV2({super.key});
@@ -16,6 +17,10 @@ class _DriverOtpScreenV2State extends State<DriverOtpScreenV2>
   late final AnimationController _pulseCtrl, _rotateCtrl, _dotsCtrl, _entranceCtrl;
   late final Animation<double> _pulseAnim, _iconFade, _cardFade;
   late final Animation<Offset> _iconSlide, _cardSlide;
+
+  final _phoneCtrl = TextEditingController(); // ✅
+  bool _loading = false; // ✅
+  final AuthService _authService = AuthService(); // ✅
 
   @override
   void initState() {
@@ -33,9 +38,54 @@ class _DriverOtpScreenV2State extends State<DriverOtpScreenV2>
 
   @override
   void dispose() {
+    _phoneCtrl.dispose(); // ✅
     _pulseCtrl.dispose(); _rotateCtrl.dispose();
     _dotsCtrl.dispose(); _entranceCtrl.dispose();
     super.dispose();
+  }
+
+  // ✅ بيبعت للباك POST /register/forgot-password
+  Future<void> _generateOtp() async {
+    if (_phoneCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter your mobile number.'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _loading = true);
+
+    final result = await _authService.forgotPassword(
+      phone: _phoneCtrl.text.trim(),
+    );
+
+    if (!mounted) return;
+    setState(() => _loading = false);
+
+    // ✅ بعد — ضيفي السطرين دول قبل الـ if
+
+if (result['success']) {
+  Navigator.push(context, MaterialPageRoute(
+    builder: (_) => DriverOtpScreen(
+      flowStep: OtpFlowStep.first,
+      phone: _phoneCtrl.text.trim(),
+    ),
+  ));
+} else {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(result['message'] ?? 'Something went wrong.'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+    }
   }
 
   @override
@@ -51,7 +101,6 @@ class _DriverOtpScreenV2State extends State<DriverOtpScreenV2>
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
             child: IntrinsicHeight(child: Column(children: [
               const Spacer(flex: 1),
-              // Shield icon
               FadeTransition(opacity: _iconFade, child: SlideTransition(position: _iconSlide,
                 child: SizedBox(width: 130, height: 130, child: Stack(alignment: Alignment.center, children: [
                   AnimatedBuilder(animation: _rotateCtrl, builder: (_, __) => Transform.rotate(angle: _rotateCtrl.value * 2 * pi,
@@ -70,7 +119,6 @@ class _DriverOtpScreenV2State extends State<DriverOtpScreenV2>
                   ..._buildDots(),
                 ])))),
               const Spacer(flex: 2),
-              // Card
               FadeTransition(opacity: _cardFade, child: SlideTransition(position: _cardSlide,
                 child: Center(child: Container(
                   width: 319.5,
@@ -94,10 +142,15 @@ class _DriverOtpScreenV2State extends State<DriverOtpScreenV2>
                     Align(alignment: Alignment.centerLeft,
                       child: Text('Enter Mobile Number', style: TextStyle(color: t.textMuted, fontSize: 13.5))),
                     const SizedBox(height: 8),
-                    _ThemedTextField(theme: t),
+                    // ✅ بقى بيحفظ الرقم
+                    _ThemedTextField(theme: t, controller: _phoneCtrl),
                     const SizedBox(height: 20),
-                    _AnimatedButton(label: 'Generate OTP', onTap: () => Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const DriverOtpScreen(flowStep: OtpFlowStep.first)))),
+                    // ✅ بقى بيكلم الباك
+                    _AnimatedButton(
+                      label: 'Generate OTP',
+                      loading: _loading,
+                      onTap: _generateOtp,
+                    ),
                     const SizedBox(height: 18),
                     Column(children: [
                       Text("Don't Have An Account?", style: TextStyle(color: t.textMuted, fontSize: 13)),
@@ -139,7 +192,8 @@ class _DriverOtpScreenV2State extends State<DriverOtpScreenV2>
 
 class _ThemedTextField extends StatefulWidget {
   final AppTheme theme;
-  const _ThemedTextField({required this.theme});
+  final TextEditingController controller; // ✅
+  const _ThemedTextField({required this.theme, required this.controller});
   @override State<_ThemedTextField> createState() => _ThemedTextFieldState();
 }
 class _ThemedTextFieldState extends State<_ThemedTextField> {
@@ -153,7 +207,10 @@ class _ThemedTextFieldState extends State<_ThemedTextField> {
     return AnimatedContainer(duration: const Duration(milliseconds: 250),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(10),
         boxShadow: _focused ? [BoxShadow(color: const Color(0xFF00D5BE).withOpacity(0.25), blurRadius: 14, spreadRadius: 1)] : []),
-      child: TextField(focusNode: _focus, keyboardType: TextInputType.phone,
+      child: TextField(
+        focusNode: _focus,
+        controller: widget.controller, // ✅
+        keyboardType: TextInputType.phone,
         style: TextStyle(color: t.textPrimary, fontSize: 15),
         decoration: InputDecoration(
           hintText: '1234 - 567 - 890',
@@ -168,8 +225,10 @@ class _ThemedTextFieldState extends State<_ThemedTextField> {
 }
 
 class _AnimatedButton extends StatefulWidget {
-  final String label; final VoidCallback onTap;
-  const _AnimatedButton({required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+  final bool loading; // ✅
+  const _AnimatedButton({required this.label, required this.onTap, this.loading = false});
   @override State<_AnimatedButton> createState() => _AnimatedButtonState();
 }
 class _AnimatedButtonState extends State<_AnimatedButton> with SingleTickerProviderStateMixin {
@@ -180,8 +239,8 @@ class _AnimatedButtonState extends State<_AnimatedButton> with SingleTickerProvi
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => _ctrl.forward(),
-      onTapUp: (_) { _ctrl.reverse(); widget.onTap(); },
+      onTapDown: widget.loading ? null : (_) => _ctrl.forward(),
+      onTapUp: widget.loading ? null : (_) { _ctrl.reverse(); widget.onTap(); },
       onTapCancel: () => _ctrl.reverse(),
       child: AnimatedBuilder(animation: _scale, builder: (_, child) => Transform.scale(scale: _scale.value, child: child),
         child: Container(width: double.infinity, height: 52,
@@ -190,6 +249,9 @@ class _AnimatedButtonState extends State<_AnimatedButton> with SingleTickerProvi
             borderRadius: BorderRadius.circular(14),
             boxShadow: [BoxShadow(color: const Color(0xFF00D5BE).withOpacity(0.3), blurRadius: 18, offset: const Offset(0, 6))]),
           alignment: Alignment.center,
-          child: Text(widget.label, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)))));
+          child: widget.loading
+              ? const SizedBox(width: 22, height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation(Colors.white)))
+              : Text(widget.label, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)))));
   }
 }
