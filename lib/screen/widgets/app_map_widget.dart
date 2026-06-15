@@ -116,7 +116,14 @@ class _AppMapWidgetState extends State<AppMapWidget>
         widget.pickupLocation!.isEmpty ||
         widget.dropoffLocation == null ||
         widget.dropoffLocation!.isEmpty) {
-      setState(() => _loading = false);
+      // ✅ Fallback to default route: Fayoum to Port Said
+      setState(() {
+        _pickupLatLng = const LatLng(29.3084, 30.8428); // Fayoum
+        _dropoffLatLng = const LatLng(31.2653, 32.3019); // Port Said
+        _loading = false;
+      });
+      _moveCameraToFitRoute();
+      if (widget.showLiveTracking) _startLiveTracking();
       return;
     }
 
@@ -138,34 +145,46 @@ class _AppMapWidgetState extends State<AppMapWidget>
     });
 
     if (_pickupLatLng != null && _dropoffLatLng != null) {
-      final centerLat =
-          (_pickupLatLng!.latitude + _dropoffLatLng!.latitude) / 2;
-      final centerLng =
-          (_pickupLatLng!.longitude + _dropoffLatLng!.longitude) / 2;
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) _mapController.move(LatLng(centerLat, centerLng), 12.0);
-      });
-
+      _moveCameraToFitRoute();
       if (widget.showLiveTracking) _startLiveTracking();
     }
   }
 
+  void _moveCameraToFitRoute() {
+    if (_pickupLatLng == null || _dropoffLatLng == null) return;
+    final centerLat = (_pickupLatLng!.latitude + _dropoffLatLng!.latitude) / 2;
+    final centerLng = (_pickupLatLng!.longitude + _dropoffLatLng!.longitude) / 2;
+
+    double zoom = 12.0;
+    try {
+      final distance = Geolocator.distanceBetween(
+        _pickupLatLng!.latitude,
+        _pickupLatLng!.longitude,
+        _dropoffLatLng!.latitude,
+        _dropoffLatLng!.longitude,
+      );
+      if (distance > 150000) {
+        zoom = 8.0;
+      } else if (distance > 80000) {
+        zoom = 9.0;
+      } else if (distance > 30000) {
+        zoom = 10.5;
+      } else if (distance > 10000) {
+        zoom = 12.0;
+      } else {
+        zoom = 13.5;
+      }
+    } catch (_) {}
+
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) _mapController.move(LatLng(centerLat, centerLng), zoom);
+    });
+  }
+
   void _startLiveTracking() {
     if (_pickupLatLng == null || _dropoffLatLng == null) return;
-    _liveProgress = 0;
-    _truckPosition = _pickupLatLng;
     _liveTimer?.cancel();
-    _liveTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (!mounted) { timer.cancel(); return; }
-      _liveProgress += 0.05;
-      if (_liveProgress >= 1.0) { _liveProgress = 1.0; timer.cancel(); }
-      setState(() => _truckPosition = LatLng(
-        _pickupLatLng!.latitude +
-            (_dropoffLatLng!.latitude - _pickupLatLng!.latitude) * _liveProgress,
-        _pickupLatLng!.longitude +
-            (_dropoffLatLng!.longitude - _pickupLatLng!.longitude) * _liveProgress,
-      ));
-    });
+    setState(() => _truckPosition = _pickupLatLng);
   }
 
   void _animatedMapMove(LatLng destLocation, double destZoom) {
@@ -230,7 +249,7 @@ class _AppMapWidgetState extends State<AppMapWidget>
               // ✅ CartoDB Light — بيضاء ومجانية
               TileLayer(
                 urlTemplate:
-                    'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                    'https://tile.openstreetmap.org/{z}/{x}/{y}{r}.png',
                 subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.truckmate.app',
               ),

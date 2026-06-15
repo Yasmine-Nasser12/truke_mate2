@@ -8,12 +8,20 @@ class GeocodingService {
   ));
 
   // cache عشان مين نبعت نفس الـ request أكتر من مرة
-  static final Map<String, List<double>?> _cache = {};
+  static final Map<String, List<double>?> _cache = {
+    'Fayoum': [29.3084, 30.8428],
+    'الفيوم': [29.3084, 30.8428],
+    'fayoum': [29.3084, 30.8428],
+    'Port Said': [31.2653, 32.3019],
+    'بورسعيد': [31.2653, 32.3019],
+    'port said': [31.2653, 32.3019],
+  };
 
   /// بيحول اسم مكان لـ [lat, lng] — بيرجع null لو مش لاقيه
   static Future<List<double>?> getCoordinates(String place) async {
     if (place.isEmpty) return null;
-    if (_cache.containsKey(place)) return _cache[place];
+    final trimmedPlace = place.trim();
+    if (_cache.containsKey(trimmedPlace)) return _cache[trimmedPlace];
 
     try {
       // بنضيف "Egypt" عشان النتايج تبقى أدق

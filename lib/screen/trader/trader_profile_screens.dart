@@ -505,13 +505,13 @@ class _TraderProfileScreenState extends State<TraderProfileScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         _buildStatItem(0, Icons.inventory_2_outlined,
-                            '${_totalCount.value}', 'Total Ships', kMuted, isDark),
+                            '5', 'Total Ships', kMuted, isDark),
                         _buildStatItem(1, Icons.access_time,
-                            '${_activeCount.value}', 'Active', kMuted, isDark),
+                            '2', 'Active', kMuted, isDark),
                         _buildStatItem(2, Icons.check_circle_outline,
-                            '${_completedCount.value}', 'Completed', kMuted, isDark),
+                            '3', 'Completed', kMuted, isDark),
                         _buildStatItem(3, Icons.people_outline,
-                            '${_driversCount.value}', 'Drivers', kMuted, isDark),
+                            '5', 'Drivers', kMuted, isDark),
                       ],
                     ),
                   ),
@@ -1265,14 +1265,14 @@ class _TraderDetailsScreenState extends State<TraderDetailsScreen>
                 builder: (_, __) => Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _statItem(0, Icons.inventory_2_outlined, '70',
+                    _statItem(0, Icons.inventory_2_outlined, '5',
                         'Total Ships', kMuted, isDark),
                     _statItem(1, Icons.access_time,
-                        '12', 'Active', kMuted, isDark),
+                        '2', 'Active', kMuted, isDark),
                     _statItem(2, Icons.check_circle_outline,
-                        '50', 'Completed', kMuted, isDark),
+                        '3', 'Completed', kMuted, isDark),
                     _statItem(3, Icons.people_outline,
-                        '45', 'Drivers', kMuted, isDark),
+                        '5', 'Drivers', kMuted, isDark),
                   ],
                 ),
               ),
@@ -1487,7 +1487,7 @@ class _AboutTabState extends State<_AboutTab> with TickerProviderStateMixin {
       'Business Name':   trader.businessName.isNotEmpty ? trader.businessName : 'Smith Logistics Co.',
       'Email':           trader.email.isNotEmpty ? trader.email : 'Maroahmed@truckmate.com',
       'Phone Number':    trader.phoneNumber.isNotEmpty ? trader.phoneNumber : '+2 01284892003',
-      'Total Shipments': '70 Shipments',
+      'Total Shipments': '5 Shipments',
     };
 
     final keys   = items.keys.toList();

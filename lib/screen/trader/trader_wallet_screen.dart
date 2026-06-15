@@ -227,7 +227,8 @@ class _TraderWalletScreenState extends State<TraderWalletScreen>
 
     if (data != null) {
       // ✅ fallbacks لأسماء الحقول المحتملة للـ balance
-      final rawBalance = data['balance'] ??
+      final rawBalance = data['balanceEGP'] ??
+          data['balance'] ??
           data['availableBalance'] ??
           data['walletBalance'] ??
           0;
@@ -235,16 +236,23 @@ class _TraderWalletScreenState extends State<TraderWalletScreen>
           ? rawBalance.toDouble()
           : double.tryParse(rawBalance.toString()) ?? 0.0;
 
-      final rawTx = data['transactions'] ??
-          data['history'] ??
-          data['items'] ??
-          [];
-      final txList = (rawTx is List)
-          ? rawTx
-              .whereType<Map>()
-              .map((e) => _Transaction.fromJson(Map<String, dynamic>.from(e)))
-              .toList()
-          : <_Transaction>[];
+      // ✅ داتا خيالية لتسجيل تحويل (بعت) وتخصيم (خصم) دون الاعتماد على الباك إند
+      final txList = <_Transaction>[
+        const _Transaction(
+          title: 'Wallet Top-up',
+          subtitle: 'Received from Visa **** 1234',
+          date: 'Jun 15, 2026 • 10:30 PM',
+          amount: 1500.0,
+          type: _TxType.topup,
+        ),
+        const _Transaction(
+          title: 'Trip Payment',
+          subtitle: 'Deducted for Shipment TRP-9204',
+          date: 'Jun 14, 2026 • 04:15 PM',
+          amount: -450.0,
+          type: _TxType.payment,
+        ),
+      ];
 
       setState(() {
         _balance = balance;
@@ -631,28 +639,32 @@ class _TraderWalletScreenState extends State<TraderWalletScreen>
                             )
                           else
                           // ── Transaction rows: staggered ──
-                          ...List.generate(_transactions.length, (i) {
-                            final tx    = _transactions[i];
-                            final fade  = i < _txFades.length
-                                ? _txFades[i]
-                                : const AlwaysStoppedAnimation(1.0);
-                            final slide = i < _txSlides.length
-                                ? _txSlides[i]
-                                : const AlwaysStoppedAnimation(Offset.zero);
-                            return FadeTransition(
-                              opacity: fade,
-                              child: SlideTransition(
-                                position: slide,
-                                child: _TxRow(
+                            ...List.generate(_transactions.length, (i) {
+                              final tx = _transactions[i];
+
+                              final fade = i < _txFades.length
+                                  ? _txFades[i]
+                                  : const AlwaysStoppedAnimation(1.0);
+
+                              final slide = i < _txSlides.length
+                                  ? _txSlides[i]
+                                  : const AlwaysStoppedAnimation(Offset.zero);
+
+                              return FadeTransition(
+                                opacity: fade,
+                                child: SlideTransition(
+                                  position: slide,
+                                  child: _TxRow(
                                     tx: tx,
                                     isDark: isDark,
                                     kCard: kCard,
                                     kText: kText,
                                     kMuted: kMuted,
-                                    kBorder: kBorder),
-                              ),
-                            );
-                          }),
+                                    kBorder: kBorder,
+                                  ),
+                                ),
+                              );
+                            }),
                         ],
                       ),
                     ),

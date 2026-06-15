@@ -1095,7 +1095,7 @@ class _PaymentMethodsListState extends State<PaymentMethodsListScreen>
     final kT = _text(isDark), kM = _muted(isDark), kB = _border(isDark);
 
     // ✅ جيب الكروت من الـ walletData
-    final cards = (provider.walletData?['cards'] as List?) ?? [];
+    final cards = (provider.walletData?['savedCards'] as List? ?? provider.walletData?['cards'] as List? ?? []);
 
     return Scaffold(
       backgroundColor: _bg(isDark),
@@ -1144,9 +1144,9 @@ class _PaymentMethodsListState extends State<PaymentMethodsListScreen>
               count: cards.length,
               itemBuilder: (_, i) {
                 final card = cards[i] as Map<String, dynamic>;
-                final cardId    = card['id']?.toString() ?? '';
-                final brand     = card['brand']     ?? 'Card';
-                final last4     = card['last4']     ?? '****';
+                final cardId    = (card['cardId'] ?? card['id'])?.toString() ?? '';
+                final brand     = card['cardBrand'] ?? card['brand'] ?? 'Card';
+                final last4     = card['last4Digits'] ?? card['last4'] ?? '****';
                 final expiry    = card['expiryMonth'] != null
                     ? '${card['expiryMonth']}/${card['expiryYear']}'
                     : '**/**';
@@ -1309,17 +1309,20 @@ class _AddCardState extends State<AddCardScreen>
     setState(() => _saving = true);
 
     final provider = context.read<TraderProvider>();
+    print('addCard: $raw $name $expParts $cvv');
+    final yearVal = int.tryParse(expParts[1]) ?? 2025;
+    final finalYear = yearVal < 100 ? yearVal + 2000 : yearVal;
+
     final ok = await provider.addCard(
       cardHolderName: name,
       cardNumber:     raw,
       expiryMonth:    int.tryParse(expParts[0]) ?? 1,
-      expiryYear:     int.tryParse(expParts[1]) ?? 2025,
+      expiryYear:     finalYear,
       cvv:            cvv,
     );
 
     if (!mounted) return;
     setState(() => _saving = false);
-
     if (ok) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -1528,20 +1531,20 @@ class _PaymentMethodsSelectState extends State<PaymentMethodsSelectScreen>
     final kT = _text(isDark), kM = _muted(isDark), kB = _border(isDark);
 
     // ✅ الكروت من الـ API
-    final cards = (provider.walletData?['cards'] as List?) ?? [];
+    final cards = (provider.walletData?['savedCards'] as List? ?? provider.walletData?['cards'] as List? ?? []);
 
     // بنبني الـ methods list من الـ API cards
     final methods = [
       ...cards.map((c) {
-        final brand = c['brand'] ?? 'Card';
-        final last4 = c['last4'] ?? '****';
+        final brand = c['cardBrand'] ?? c['brand'] ?? 'Card';
+        final last4 = c['last4Digits'] ?? c['last4'] ?? '****';
         final isDefault = c['isDefault'] == true;
         return _PayMethod(
           icon: Icons.credit_card_rounded,
           name: brand,
           sub: '**** **** **** $last4',
           isDefault: isDefault,
-          cardId: c['id']?.toString() ?? '',
+          cardId: (c['cardId'] ?? c['id'])?.toString() ?? '',
         );
       }),
       // Wallet option ثابت

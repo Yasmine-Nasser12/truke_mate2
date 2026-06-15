@@ -71,7 +71,7 @@ class TraderDummyData {
 
   // ───────────────────────────────────────────────────────────────────────────
   static List<DriverOffer> offers(List<Shipment> shipments) {
-    const names    = ['Ahmed Hassan', 'Mohamed Ali', 'Omar Khaled', 'Youssef Ibrahim', 'Sherif Taha', 'Ibrahim Mostafa'];
+    const names    = ['محمود ناصر', 'Mohamed Ali', 'Omar Khaled', 'Youssef Ibrahim', 'Sherif Taha', 'Ibrahim Mostafa'];
     const notes    = [
       'Temperature-controlled trailer available.',
       'Can load within 2 hours from confirmation.',

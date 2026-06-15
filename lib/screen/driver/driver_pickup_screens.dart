@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '/providers/theme_provider.dart';
 import '/services/driver_service.dart';
+import 'driver_trip_screens.dart';
 
 // ── Shared Palette ──
 const Color _kTeal  = Color(0xFF00C9A7);
@@ -467,17 +468,17 @@ class _PickupScreenState extends State<PickupScreen>
   }
 
   Future<void> _handleArrive() async {
-    setState(() => _isArriving = true);
-    final result = await _driverService.arrivePickup(tripId: widget.tripId);
-    if (!mounted) return;
-    setState(() => _isArriving = false);
-    if (result['success'] == true) {
+    // setState(() => _isArriving = true);
+    // final result = await _driverService.arrivePickup(tripId: widget.tripId);
+    // if (!mounted) return;
+    // setState(() => _isArriving = false);
+    // if (result['success'] == true) {
       Navigator.push(context, MaterialPageRoute(
           builder: (_) => ArrivedAtPickupScreen(
               tripId: widget.tripId, tripDetails: _tripDetails)));
-    } else {
-      _showError(context, result['message'] ?? 'Failed to update status');
-    }
+    // } else {
+    //   _showError(context, result['message'] ?? 'Failed to update status');
+    // }
   }
 
   @override
@@ -571,8 +572,9 @@ class _PickupScreenState extends State<PickupScreen>
                   style: TextStyle(color: _muted(isDark), fontSize: 14))),
               const SizedBox(height: 15),
 
-              if (trip != null)
+              if (trip == null)
                 _anim(2, Container(
+                  width: 280,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: teal.withOpacity(0.1),
@@ -582,7 +584,7 @@ class _PickupScreenState extends State<PickupScreen>
                   child: Row(children: [
                     Icon(Icons.location_on_outlined, color: teal, size: 16),
                     const SizedBox(width: 5),
-                    Text(trip.distance, style: TextStyle(
+                    Text(trip?.distance ?? '8.5 Km away', style: TextStyle(
                         color: _text(isDark), fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(width: 12),
                     Container(width: 1, height: 14,
@@ -590,10 +592,11 @@ class _PickupScreenState extends State<PickupScreen>
                     const SizedBox(width: 12),
                     const Icon(Icons.access_time, color: Colors.orange, size: 16),
                     const SizedBox(width: 5),
-                    Text(trip.eta, style: TextStyle(
+                    Text(trip?.eta ?? '12 min ETA', style: TextStyle(
                         color: _text(isDark), fontWeight: FontWeight.bold, fontSize: 13)),
                   ]),
-                )),
+                )
+                ),
               const SizedBox(height: 20),
 
               _anim(3, _buildMap(teal, isDark)),
@@ -604,10 +607,42 @@ class _PickupScreenState extends State<PickupScreen>
                   padding: const EdgeInsets.all(20),
                   child: CircularProgressIndicator(color: teal),
                 ))
-              else if (trip != null) ...[
-                _anim(4, _buildPickupDetailsCard(trip, teal, isDark)),
+              else if (trip == null) ...[
+                _anim(4, _buildPickupDetailsCard(trip ?? const _TripDetails(
+                  tripId: 'TRP-2025-001',
+                  pickupLocation: 'Cairo Warehouse',
+                  pickupAddress: 'Nasr City, Cairo, Egypt',
+                  dropoffLocation: 'Alexandria Port',
+                  dropoffAddress: 'Port Road, Alexandria, Egypt',
+                  traderName: 'Ahmed Logistics',
+                  traderPhone: '+20 101 234 5678',
+                  shipmentId: 'SHP-10025',
+                  shipmentType: 'Electronics',
+                  weight: '2500 kg',
+                  specialNotes:
+                  'Handle with care. Fragile electronic equipment. Delivery required before 6 PM.',
+                  amountEGP: 4500.0,
+                  distance: '220 km',
+                  eta: '3h 45m',
+                ), teal, isDark)),
                 const SizedBox(height: 15),
-                _anim(5, _buildSummaryCard(trip, teal, isDark)),
+                _anim(5, _buildSummaryCard(trip ?? const _TripDetails(
+                  tripId: 'TRP-2025-001',
+                  pickupLocation: 'Cairo Warehouse',
+                  pickupAddress: 'Nasr City, Cairo, Egypt',
+                  dropoffLocation: 'Alexandria Port',
+                  dropoffAddress: 'Port Road, Alexandria, Egypt',
+                  traderName: 'Ahmed Logistics',
+                  traderPhone: '+20 101 234 5678',
+                  shipmentId: 'SHP-10025',
+                  shipmentType: 'Electronics',
+                  weight: '2500 kg',
+                  specialNotes:
+                  'Handle with care. Fragile electronic equipment. Delivery required before 6 PM.',
+                  amountEGP: 4500.0,
+                  distance: '220 km',
+                  eta: '3h 45m',
+                ), teal, isDark)),
               ],
 
               const SizedBox(height: 30),
@@ -686,9 +721,9 @@ class _PickupScreenState extends State<PickupScreen>
                 style: TextStyle(color: Colors.white, fontSize: 16)),
           ]),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text(_tripDetails?.eta ?? '...', style: const TextStyle(
+            Text(_tripDetails?.eta ?? '12 min', style: const TextStyle(
                 color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-            Text(_tripDetails?.distance ?? '...', style: const TextStyle(
+            Text(_tripDetails?.distance ?? '8.5 Km away', style: const TextStyle(
                 color: Colors.white70, fontSize: 11)),
           ]),
         ]),
@@ -742,9 +777,7 @@ class _PickupScreenState extends State<PickupScreen>
                 style: TextStyle(color: _muted(isDark), fontSize: 12)),
             Text(trip.traderName, style: TextStyle(
                 color: _text(isDark), fontSize: 16, fontWeight: FontWeight.bold)),
-            if (trip.traderPhone.isNotEmpty)
-              Text(trip.traderPhone,
-                  style: TextStyle(color: _muted(isDark), fontSize: 13)),
+
           ])),
           Container(
             width: 45, height: 45,
@@ -787,23 +820,23 @@ class _PickupScreenState extends State<PickupScreen>
                 textAlign: TextAlign.end)),
           ]),
         )),
-        if (trip.specialNotes.isNotEmpty) ...[
-          Divider(height: 20, color: _border(isDark)),
-          Container(
-            width: double.infinity, padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _kAmber.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _kAmber.withOpacity(0.3)),
-            ),
-            child: Row(children: [
-              Icon(Icons.warning_amber_rounded, color: _kAmber, size: 16),
-              const SizedBox(width: 8),
-              Expanded(child: Text(trip.specialNotes,
-                  style: TextStyle(color: _text(isDark), fontSize: 13))),
-            ]),
-          ),
-        ],
+        // if (trip.specialNotes.isNotEmpty) ...[
+        //   Divider(height: 20, color: _border(isDark)),
+        //   Container(
+        //     width: double.infinity, padding: const EdgeInsets.all(12),
+        //     decoration: BoxDecoration(
+        //       color: _kAmber.withOpacity(0.08),
+        //       borderRadius: BorderRadius.circular(10),
+        //       border: Border.all(color: _kAmber.withOpacity(0.3)),
+        //     ),
+        //     child: Row(children: [
+        //       Icon(Icons.warning_amber_rounded, color: _kAmber, size: 16),
+        //       const SizedBox(width: 8),
+        //       Expanded(child: Text(trip.specialNotes,
+        //           style: TextStyle(color: _text(isDark), fontSize: 13))),
+        //     ]),
+        //   ),
+        // ],
       ]),
     );
   }
@@ -860,17 +893,17 @@ class _ArrivedAtPickupScreenState extends State<ArrivedAtPickupScreen>
   }
 
   Future<void> _handleConfirmPickup() async {
-    setState(() => _isConfirming = true);
-    final result = await _driverService.confirmPickup(tripId: widget.tripId);
-    if (!mounted) return;
-    setState(() => _isConfirming = false);
-    if (result['success'] == true) {
+    // setState(() => _isConfirming = true);
+    // final result = await _driverService.confirmPickup(tripId: widget.tripId);
+    // if (!mounted) return;
+    // setState(() => _isConfirming = false);
+    // if (result['success'] == true) {
       Navigator.push(context, MaterialPageRoute(
           builder: (_) => PickupConfirmationScreen(
               tripId: widget.tripId, tripDetails: widget.tripDetails)));
-    } else {
-      _showError(context, result['message'] ?? 'Failed to confirm pickup');
-    }
+    // } else {
+    //   _showError(context, result['message'] ?? 'Failed to confirm pickup');
+    // }
   }
 
   Widget _a(int i, Widget child) => AnimatedBuilder(
@@ -975,8 +1008,8 @@ class _ArrivedAtPickupScreenState extends State<ArrivedAtPickupScreen>
                   const SizedBox(height: 4),
                   Text(trip?.pickupLocation ?? 'Pickup Location', style: TextStyle(
                       color: _text(isDark), fontSize: 16, fontWeight: FontWeight.bold)),
-                  if ((trip?.pickupAddress ?? '').isNotEmpty)
-                    Text(trip!.pickupAddress,
+                  // if ((trip?.pickupAddress ?? '').isNotEmpty)
+                    Text(trip?.pickupAddress ?? 'Pickup Address',
                         style: TextStyle(color: _muted(isDark), fontSize: 13)),
                 ]),
               ]),
@@ -1001,8 +1034,8 @@ class _ArrivedAtPickupScreenState extends State<ArrivedAtPickupScreen>
                       style: TextStyle(color: _muted(isDark), fontSize: 12)),
                   Text(trip?.traderName ?? 'Trader', style: TextStyle(
                       color: _text(isDark), fontSize: 16, fontWeight: FontWeight.bold)),
-                  if ((trip?.traderPhone ?? '').isNotEmpty)
-                    Text(trip!.traderPhone,
+                  // if ((trip?.traderPhone ?? '').isNotEmpty)
+                    Text(trip?.traderPhone ?? 'Trader Phone',
                         style: TextStyle(color: _muted(isDark), fontSize: 13)),
                 ])),
                 Container(
@@ -1028,23 +1061,23 @@ class _ArrivedAtPickupScreenState extends State<ArrivedAtPickupScreen>
                       color: _text(isDark), fontSize: 16, fontWeight: FontWeight.bold)),
                 ]),
                 const SizedBox(height: 15),
-                Divider(color: _border(isDark).withOpacity(0.5)),
+
                 const SizedBox(height: 10),
                 ...[
                   ['Shipment ID', trip?.shipmentId ?? '—'],
                   ['Type', trip?.shipmentType ?? '—'],
                   ['Weight', trip?.weight ?? '—'],
+                  ['items', trip?.dropoffLocation ?? '—'],
                 ].map((r) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                     Text(r[0], style: TextStyle(color: _muted(isDark), fontSize: 14)),
-                    Text(r[1], style: TextStyle(
-                        color: _text(isDark), fontSize: 14, fontWeight: FontWeight.w500)),
+                    Text(r[1], style: TextStyle(color: _text(isDark), fontSize: 14, fontWeight: FontWeight.w500)),
                   ]),
                 )),
               ]),
             )),
-            if ((trip?.specialNotes ?? '').isNotEmpty) ...[
+            if ((trip?.specialNotes ?? '').isEmpty) ...[
               const SizedBox(height: 15),
               _a(7, Container(
                 width: double.infinity, padding: const EdgeInsets.all(16),
@@ -1064,7 +1097,7 @@ class _ArrivedAtPickupScreenState extends State<ArrivedAtPickupScreen>
                   const SizedBox(height: 8),
                   Padding(
                     padding: const EdgeInsets.only(left: 26),
-                    child: Text(trip!.specialNotes, style: TextStyle(
+                    child: Text(trip?.specialNotes ?? 'Handle with care', style: TextStyle(
                         color: _text(isDark), fontSize: 14)),
                   ),
                 ]),
@@ -1141,17 +1174,17 @@ class _PickupConfirmationScreenState extends State<PickupConfirmationScreen>
   }
 
   Future<void> _handleStartDelivery() async {
-    setState(() => _isStarting = true);
-    final result = await _driverService.startDelivery(tripId: widget.tripId);
-    if (!mounted) return;
-    setState(() => _isStarting = false);
-    if (result['success'] == true) {
+    // setState(() => _isStarting = true);
+    // final result = await _driverService.startDelivery(tripId: widget.tripId);
+    // if (!mounted) return;
+    // setState(() => _isStarting = false);
+    // if (result['success'] == true) {
       Navigator.push(context, MaterialPageRoute(
           builder: (_) => InTransitScreen(
               tripId: widget.tripId, tripDetails: widget.tripDetails)));
-    } else {
-      _showError(context, result['message'] ?? 'Failed to start delivery');
-    }
+    // } else {
+    //   _showError(context, result['message'] ?? 'Failed to start delivery');
+    // }
   }
 
   Widget _a(int i, Widget child) => AnimatedBuilder(
@@ -1453,17 +1486,17 @@ class _InTransitScreenState extends State<InTransitScreen>
   }
 
   Future<void> _handleMarkDelivered() async {
-    setState(() => _isDelivering = true);
-    final result = await _driverService.markDelivered(tripId: widget.tripId);
-    if (!mounted) return;
-    setState(() => _isDelivering = false);
-    if (result['success'] == true) {
+    // setState(() => _isDelivering = true);
+    // final result = await _driverService.markDelivered(tripId: widget.tripId);
+    // if (!mounted) return;
+    // setState(() => _isDelivering = false);
+    // if (result['success'] == true) {
       Navigator.push(context, MaterialPageRoute(
           builder: (_) => DeliverySuccessScreen(
               tripId: widget.tripId, tripDetails: widget.tripDetails)));
-    } else {
-      _showError(context, result['message'] ?? 'Failed to mark as delivered');
-    }
+    // } else {
+    //   _showError(context, result['message'] ?? 'Failed to mark as delivered');
+    // }
   }
 
   Widget _a(int i, Widget child) => AnimatedBuilder(

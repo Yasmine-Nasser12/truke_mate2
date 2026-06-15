@@ -208,8 +208,8 @@ class DriverModel {
 }
 
 const _kDrivers = [
-  DriverModel(initials: 'AH', name: 'Ahmed Hassan',   rating: 4.9, reviews: 234, price: 240, distance: 2.4, vehicle: 'Pickup Truck', isBestMatch: true),
-  DriverModel(initials: 'MA', name: 'Mohamed Ali',    rating: 4.8, reviews: 189, price: 220, distance: 3.1, vehicle: 'Van'),
+  DriverModel(initials: 'MA', name: 'Mohamed Ahmed',   rating: 4.9, reviews: 234, price: 240, distance: 2.4, vehicle: 'Pickup Truck', isBestMatch: true),
+  DriverModel(initials: 'MA', name: 'محمود ناصر',    rating: 4.8, reviews: 189, price: 220, distance: 3.1, vehicle: 'Van'),
   DriverModel(initials: 'KI', name: 'Khaled Ibrahim', rating: 4.7, reviews: 156, price: 250, distance: 4.5, vehicle: 'Pickup Truck'),
   DriverModel(initials: 'YA', name: 'Yasser Ahmed',   rating: 4.6, reviews: 143, price: 280, distance: 5.2, vehicle: 'Box Truck'),
 ];
@@ -770,9 +770,7 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> with TickerPr
   @override void dispose() { _profileCtrl.dispose(); _statsCtrl.dispose(); _contentCtrl.dispose(); _btnCtrl.dispose(); super.dispose(); }
 
   static const _reviews = [
-    (name: 'Sarah Ahmed', stars: 5, date: 'Dec 15, 2024', body: 'Very professional and delivered on time. Highly recommended!'),
-    (name: 'Omar Khaled', stars: 5, date: 'Dec 10, 2024', body: 'Excellent service, careful with packages.'),
-    (name: 'Mona Hassan', stars: 4, date: 'Dec 5, 2024',  body: 'Good driver, arrived a bit late but overall good experience.'),
+    (name: 'Toka Mohamed', stars: 4, date: 'Jun 16, 2026', body: 'Very professional and delivered on time. Highly recommended!'),
   ];
 
   Widget _section(int i, Widget child) => FadeTransition(opacity: _sectionFade[i], child: SlideTransition(position: _sectionSlide[i], child: child));
@@ -794,7 +792,7 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> with TickerPr
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(widget.driver.name, style: TextStyle(color: _text(d), fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6),
-                Row(children: [const Icon(Icons.star, color: _kAmber, size: 16), const SizedBox(width: 4), Text('${widget.driver.rating}', style: const TextStyle(color: _kAmber, fontWeight: FontWeight.w600)), Text('  (${widget.driver.reviews} reviews)', style: TextStyle(color: _muted(d), fontSize: 13))]),
+                Row(children: [const Icon(Icons.star, color: _kAmber, size: 16), const SizedBox(width: 4), Text('4', style: const TextStyle(color: _kAmber, fontWeight: FontWeight.w600)), Text('  (1 reviews)', style: TextStyle(color: _muted(d), fontSize: 13))]),
                 const SizedBox(height: 6),
                 const Row(children: [Icon(Icons.verified_outlined, color: _kTeal, size: 14), SizedBox(width: 4), Text('Verified Driver', style: TextStyle(color: _kTeal, fontSize: 13))]),
               ])),
@@ -802,8 +800,8 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> with TickerPr
             ]),
             const SizedBox(height: 20),
             ScaleTransition(scale: _statsScale, child: FadeTransition(opacity: _statsFade, child: Row(children: [
-              _statItem('Trips', '189', d), Container(width: 1, height: 40, color: _border(d).withOpacity(0.5)),
-              _statItem('Years', '4', d),   Container(width: 1, height: 40, color: _border(d).withOpacity(0.5)),
+              _statItem('Trips', '1', d), Container(width: 1, height: 40, color: _border(d).withOpacity(0.5)),
+              _statItem('Years', '1', d),   Container(width: 1, height: 40, color: _border(d).withOpacity(0.5)),
               _statItem('Away', '${widget.driver.distance} km', d),
             ]))),
           ])))),
@@ -812,7 +810,7 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> with TickerPr
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [Container(width: 40, height: 40, decoration: BoxDecoration(color: _kTeal.withOpacity(0.12), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.local_shipping_outlined, color: _kTeal, size: 20)), const SizedBox(width: 12), Text('Truck Information', style: TextStyle(color: _text(d), fontSize: 16, fontWeight: FontWeight.bold))]),
             const SizedBox(height: 16),
-            _infoRow('Type', widget.driver.vehicle, d), const SizedBox(height: 10), _infoRow('Model', '—', d), const SizedBox(height: 10), _infoRow('License Plate', '—', d),
+            _infoRow('Type', "مقطوره", d), const SizedBox(height: 10), _infoRow('Model', 'Box Truck', d), const SizedBox(height: 10), _infoRow('License Plate', 'ا ب ج - 1 2 3', d),
           ]))),
         const SizedBox(height: 20),
         _section(1, Text('Recent Reviews', style: TextStyle(color: _text(d), fontSize: 18, fontWeight: FontWeight.bold))),
