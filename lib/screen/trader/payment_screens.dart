@@ -784,27 +784,18 @@ class _InvoiceState extends State<InvoiceScreen> with TickerProviderStateMixin {
   bool _loadingInvoice = false;
 
   // Helpers للـ display — بتاخد من API لو موجود، fallback للـ widget params
-  String get _pickup =>
-      _invoiceData?['route']?['pickupLocation'] ?? widget.pickup;
-  String get _dropoff =>
-      _invoiceData?['route']?['dropoffLocation'] ?? widget.dropoff;
-  String get _driver => "محمود ناصر";
-  String get _vehicle =>
-      _invoiceData?['driver']?['vehicleType'] ?? widget.vehicle;
-  String get _plate => _invoiceData?['driver']?['licensePlate'] ?? widget.plate;
-  String get _payMethod =>
-      _invoiceData?['paymentMethod'] ?? widget.paymentMethod;
-  String get _shipId => _invoiceData?['shipmentId'] ?? widget.shipmentId;
-  String get _date => _invoiceData?['createdAt'] ?? widget.date;
-  double get _basePrice =>
-      (_invoiceData?['baseAmount'] as num?)?.toDouble() ?? widget.basePrice;
-  double get _serviceFeeVal =>
-      (_invoiceData?['serviceFee'] as num?)?.toDouble() ?? widget.serviceFee;
-  double get _taxVal =>
-      (_invoiceData?['taxAmount'] as num?)?.toDouble() ?? widget.tax;
-  double get _total =>
-      (_invoiceData?['totalAmount'] as num?)?.toDouble() ??
-      (_basePrice + _serviceFeeVal + _taxVal);
+  String get _pickup        => _invoiceData?['route']?['pickupLocation']  ?? widget.pickup;
+  String get _dropoff       => _invoiceData?['route']?['dropoffLocation'] ?? widget.dropoff;
+  String get _driver        => _invoiceData?['driver']?['name']           ?? widget.driver;
+  String get _vehicle       => _invoiceData?['driver']?['vehicleType']    ?? widget.vehicle;
+  String get _plate         => _invoiceData?['driver']?['licensePlate']   ?? widget.plate;
+  String get _payMethod     => _invoiceData?['paymentMethod']             ?? widget.paymentMethod;
+  String get _shipId        => _invoiceData?['shipmentId']                ?? widget.shipmentId;
+  String get _date          => _invoiceData?['createdAt']                 ?? widget.date;
+  double get _basePrice     => (_invoiceData?['baseAmount']   as num?)?.toDouble() ?? widget.basePrice;
+  double get _serviceFeeVal => (_invoiceData?['serviceFee']   as num?)?.toDouble() ?? widget.serviceFee;
+  double get _taxVal        => (_invoiceData?['taxAmount']    as num?)?.toDouble() ?? widget.tax;
+  double get _total         => (_invoiceData?['totalAmount']  as num?)?.toDouble() ?? (_basePrice + _serviceFeeVal + _taxVal);
 
   @override
   void initState() {
@@ -921,271 +912,194 @@ class _InvoiceState extends State<InvoiceScreen> with TickerProviderStateMixin {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    FadeTransition(
-                        opacity: _headerFade,
-                        child: SlideTransition(
-                            position: _headerSlide,
-                            child: Row(children: [
-                              _BackBtn(
-                                  onTap: () => Navigator.pop(context),
-                                  isDark: isDark),
-                              const Spacer(),
-                              Text('Invoice',
+
+                FadeTransition(opacity: _headerFade,
+                  child: SlideTransition(position: _headerSlide,
+                    child: Row(children: [
+                      _BackBtn(
+                          onTap: () => Navigator.pop(context),
+                          isDark: isDark),
+                      const Spacer(),
+                      Text('Invoice', style: TextStyle(
+                          color: kT, fontSize: 22,
+                          fontWeight: FontWeight.bold)),
+                      const Spacer(),
+                      // ✅ Loading indicator لو بيجيب البيانات
+                      if (_loadingInvoice)
+                        const SizedBox(
+                          width: 48, height: 48,
+                          child: Center(child: SizedBox(
+                            width: 20, height: 20,
+                            child: CircularProgressIndicator(
+                                color: _kTeal, strokeWidth: 2))))
+                      else
+                        const SizedBox(width: 48),
+                    ]))),
+                const SizedBox(height: 24),
+
+                FadeTransition(opacity: _cardFade,
+                  child: SlideTransition(position: _cardSlide,
+                    child: Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: _card(isDark),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: kB),
+                        boxShadow: isDark ? [] : [BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4))]),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+
+                        Center(child: ScaleTransition(scale: _iconScale,
+                          child: FadeTransition(opacity: _iconFade,
+                            child: Container(width: 64, height: 64,
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                    colors: [_kTeal, _kTeal2],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight),
+                                shape: BoxShape.circle),
+                              child: const Icon(Icons.inventory_2_outlined,
+                                  color: Colors.white, size: 30))))),
+                        const SizedBox(height: 16),
+                        Center(child: Text('TruckMate Invoice',
+                            style: TextStyle(color: kT, fontSize: 20,
+                                fontWeight: FontWeight.bold))),
+                        const SizedBox(height: 4),
+                        Center(child: Text('INV-2026-0414-001',
+                            style: TextStyle(color: kM, fontSize: 13,
+                                letterSpacing: 1.2))),
+
+                        Divider(color: kDiv, height: 32),
+                        _Row(label: 'Invoice Date',
+                            value: _date, kt: kT, km: kM),
+                        const SizedBox(height: 12),
+                        _Row(label: 'Shipment ID',
+                            value: _shipId, kt: kT, km: kM),
+
+                        Divider(color: kDiv, height: 32),
+                        Text('Route Information', style: TextStyle(
+                            color: kT, fontSize: 14,
+                            fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 12),
+                        _routePt(isDark, isPickup: true,
+                            label: 'Pickup', val: _pickup),
+                        const SizedBox(height: 12),
+                        _routePt(isDark, isPickup: false,
+                            label: 'Drop-off', val: _dropoff),
+
+                        Divider(color: kDiv, height: 32),
+                        Text('Shipment Details', style: TextStyle(
+                            color: kT, fontSize: 14,
+                            fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 12),
+                        _Row(label: 'Distance',
+                            value: _invoiceData?['route']?['distanceFormatted'] ?? '12.5 km',
+                            kt: kT, km: kM),
+                        const SizedBox(height: 8),
+                        _Row(label: 'Packages',
+                            value: _invoiceData?['cargo']?['itemsCount']?.toString() ?? '3 items',
+                            kt: kT, km: kM),
+                        const SizedBox(height: 8),
+                        _Row(label: 'Total Weight',
+                            value: _invoiceData?['cargo']?['totalWeight'] ?? '25 lbs',
+                            kt: kT, km: kM),
+
+                        Divider(color: kDiv, height: 32),
+                        Text('Driver Information', style: TextStyle(
+                            color: kT, fontSize: 14,
+                            fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 12),
+                        _Row(label: 'Driver',
+                            value: _driver, kt: kT, km: kM),
+                        const SizedBox(height: 8),
+                        _Row(label: 'Vehicle',
+                            value: _vehicle, kt: kT, km: kM),
+                        const SizedBox(height: 8),
+                        _Row(label: 'License Plate',
+                            value: _plate, kt: kT, km: kM),
+
+                        Divider(color: kDiv, height: 32),
+                        _Row(label: 'Base Price',
+                            value: '\$${_basePrice.toInt()}',
+                            kt: kT, km: kM),
+                        const SizedBox(height: 8),
+                        _Row(label: 'Service Fee',
+                            value: '\$${_serviceFeeVal.toInt()}',
+                            kt: kT, km: kM),
+                        const SizedBox(height: 8),
+                        _Row(label: 'Tax',
+                            value: '\$${_taxVal.toInt()}',
+                            kt: kT, km: kM),
+
+                        Divider(color: kDiv, height: 32),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Total Amount', style: TextStyle(
+                                color: kT, fontSize: 18,
+                                fontWeight: FontWeight.w600)),
+                            Text('\$${_total.toInt()}',
+                                style: const TextStyle(
+                                    color: _kTeal, fontSize: 28,
+                                    fontWeight: FontWeight.bold)),
+                          ]),
+                        const SizedBox(height: 20),
+
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                              color: kPaid,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: _kTeal.withOpacity(0.25))),
+                          child: Row(children: [
+                            const Icon(Icons.credit_card_rounded,
+                                color: _kTeal, size: 24),
+                            const SizedBox(width: 12),
+                            Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                              Text('Paid with',
                                   style: TextStyle(
-                                      color: kT,
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.bold)),
-                              const Spacer(),
-                              // ✅ Loading indicator لو بيجيب البيانات
-                              if (_loadingInvoice)
-                                const SizedBox(
-                                    width: 48,
-                                    height: 48,
-                                    child: Center(
-                                        child: SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                                color: _kTeal,
-                                                strokeWidth: 2))))
-                              else
-                                const SizedBox(width: 48),
-                            ]))),
-                    const SizedBox(height: 24),
-                    FadeTransition(
-                        opacity: _cardFade,
-                        child: SlideTransition(
-                          position: _cardSlide,
-                          child: Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                  color: _card(isDark),
-                                  borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(color: kB),
-                                  boxShadow: isDark
-                                      ? []
-                                      : [
-                                          BoxShadow(
-                                              color: Colors.black
-                                                  .withOpacity(0.05),
-                                              blurRadius: 12,
-                                              offset: const Offset(0, 4))
-                                        ]),
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Center(
-                                        child: ScaleTransition(
-                                            scale: _iconScale,
-                                            child: FadeTransition(
-                                                opacity: _iconFade,
-                                                child: Container(
-                                                    width: 64,
-                                                    height: 64,
-                                                    decoration: const BoxDecoration(
-                                                        gradient: LinearGradient(
-                                                            colors: [
-                                                              _kTeal,
-                                                              _kTeal2
-                                                            ],
-                                                            begin: Alignment
-                                                                .topLeft,
-                                                            end: Alignment
-                                                                .bottomRight),
-                                                        shape: BoxShape.circle),
-                                                    child: const Icon(
-                                                        Icons
-                                                            .inventory_2_outlined,
-                                                        color: Colors.white,
-                                                        size: 30))))),
-                                    const SizedBox(height: 16),
-                                    Center(
-                                        child: Text('TruckMate Invoice',
-                                            style: TextStyle(
-                                                color: kT,
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.bold))),
-                                    const SizedBox(height: 4),
-                                    Center(
-                                        child: Text('INV-2026-0414-001',
-                                            style: TextStyle(
-                                                color: kM,
-                                                fontSize: 13,
-                                                letterSpacing: 1.2))),
-                                    Divider(color: kDiv, height: 32),
-                                    _Row(
-                                        label: 'Invoice Date',
-                                        value: _date,
-                                        kt: kT,
-                                        km: kM),
-                                    const SizedBox(height: 12),
-                                    _Row(
-                                        label: 'Shipment ID',
-                                        value: _shipId,
-                                        kt: kT,
-                                        km: kM),
-                                    Divider(color: kDiv, height: 32),
-                                    Text('Route Information',
-                                        style: TextStyle(
-                                            color: kT,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600)),
-                                    const SizedBox(height: 12),
-                                    _routePt(isDark,
-                                        isPickup: true,
-                                        label: 'Pickup',
-                                        val: _pickup),
-                                    const SizedBox(height: 12),
-                                    _routePt(isDark,
-                                        isPickup: false,
-                                        label: 'Drop-off',
-                                        val: _dropoff),
-                                    Divider(color: kDiv, height: 32),
-                                    Text('Shipment Details',
-                                        style: TextStyle(
-                                            color: kT,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600)),
-                                    const SizedBox(height: 12),
-                                    _Row(
-                                        label: 'Distance',
-                                        value: _invoiceData?['route']
-                                                ?['distanceFormatted'] ??
-                                            '12.5 km',
-                                        kt: kT,
-                                        km: kM),
-                                    const SizedBox(height: 8),
-                                    _Row(
-                                        label: 'Packages',
-                                        value: _invoiceData?['cargo']
-                                                    ?['itemsCount']
-                                                ?.toString() ??
-                                            '3 items',
-                                        kt: kT,
-                                        km: kM),
-                                    const SizedBox(height: 8),
-                                    _Row(
-                                        label: 'Total Weight',
-                                        value: _invoiceData?['cargo']
-                                                ?['totalWeight'] ??
-                                            '500 lbs',
-                                        kt: kT,
-                                        km: kM),
-                                    Divider(color: kDiv, height: 32),
-                                    Text('Driver Information',
-                                        style: TextStyle(
-                                            color: kT,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600)),
-                                    const SizedBox(height: 12),
-                                    _Row(
-                                        label: 'Driver',
-                                        value: _driver,
-                                        kt: kT,
-                                        km: kM),
-                                    const SizedBox(height: 8),
-                                    _Row(
-                                        label: 'Vehicle',
-                                        value: _vehicle,
-                                        kt: kT,
-                                        km: kM),
-                                    const SizedBox(height: 8),
-                                    _Row(
-                                        label: 'License Plate',
-                                        value: _plate,
-                                        kt: kT,
-                                        km: kM),
-                                    Divider(color: kDiv, height: 32),
-                                    _Row(
-                                        label: 'Base Price',
-                                        value: '\$${_basePrice.toInt()}',
-                                        kt: kT,
-                                        km: kM),
-                                    const SizedBox(height: 8),
-                                    _Row(
-                                        label: 'Service Fee',
-                                        value: '\$${_serviceFeeVal.toInt()}',
-                                        kt: kT,
-                                        km: kM),
-                                    const SizedBox(height: 8),
-                                    _Row(
-                                        label: 'Tax',
-                                        value: '\$${_taxVal.toInt()}',
-                                        kt: kT,
-                                        km: kM),
-                                    Divider(color: kDiv, height: 32),
-                                    Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text('Total Amount',
-                                              style: TextStyle(
-                                                  color: kT,
-                                                  fontSize: 18,
-                                                  fontWeight: FontWeight.w600)),
-                                          Text('\$${_total.toInt()}',
-                                              style: const TextStyle(
-                                                  color: _kTeal,
-                                                  fontSize: 28,
-                                                  fontWeight: FontWeight.bold)),
-                                        ]),
-                                    const SizedBox(height: 20),
-                                    Container(
-                                      padding: const EdgeInsets.all(14),
-                                      decoration: BoxDecoration(
-                                          color: kPaid,
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          border: Border.all(
-                                              color: _kTeal.withOpacity(0.25))),
-                                      child: Row(children: [
-                                        const Icon(Icons.credit_card_rounded,
-                                            color: _kTeal, size: 24),
-                                        const SizedBox(width: 12),
-                                        Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text('Paid with',
-                                                  style: TextStyle(
-                                                      color: kM, fontSize: 12)),
-                                              Text(_payMethod,
-                                                  style: TextStyle(
-                                                      color: kT,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w600)),
-                                            ]),
-                                      ]),
-                                    ),
-                                  ])),
-                        )),
-                    const SizedBox(height: 20),
-                    FadeTransition(
-                        opacity: _btnsFade,
-                        child: SlideTransition(
-                            position: _btnsSlide,
-                            child: Column(children: [
-                              // ✅ Download PDF — GET /api/trader/invoices/{id}/pdf
-                              _GradBtn(
-                                  label: 'Download PDF',
-                                  icon: Icons.download_rounded,
-                                  onTap: _downloadPdf),
-                              const SizedBox(height: 12),
-                              // ✅ Share Invoice — POST /api/trader/invoices/{id}/share
-                              _OutlineBtn(
-                                  label: 'Share Invoice',
-                                  icon: Icons.share_rounded,
-                                  onTap: _shareInvoice,
-                                  iconColor: _kTeal,
-                                  textColor: _kTeal,
-                                  bgColor: isDark
-                                      ? const Color(0xFF0F2A3A)
-                                      : Colors.white,
-                                  borderColor: _kTeal.withOpacity(0.35)),
-                            ]))),
-                    const SizedBox(height: 24),
-                  ]),
+                                      color: kM, fontSize: 12)),
+                              Text(_payMethod,
+                                  style: TextStyle(
+                                      color: kT, fontSize: 14,
+                                      fontWeight: FontWeight.w600)),
+                            ]),
+                          ]),
+                        ),
+                      ])),
+                )),
+                const SizedBox(height: 20),
+
+                FadeTransition(opacity: _btnsFade,
+                  child: SlideTransition(position: _btnsSlide,
+                    child: Column(children: [
+                      // ✅ Download PDF — GET /api/trader/invoices/{id}/pdf
+                      _GradBtn(label: 'Download PDF',
+                          icon: Icons.download_rounded,
+                          onTap: _downloadPdf),
+                      const SizedBox(height: 12),
+                      // ✅ Share Invoice — POST /api/trader/invoices/{id}/share
+                      _OutlineBtn(
+                        label: 'Share Invoice',
+                        icon: Icons.share_rounded,
+                        onTap: _shareInvoice,
+                        iconColor: _kTeal,
+                        textColor: _kTeal,
+                        bgColor: isDark
+                            ? const Color(0xFF0F2A3A)
+                            : Colors.white,
+                        borderColor: _kTeal.withOpacity(0.35)),
+                    ]))),
+                const SizedBox(height: 24),
+              ]),
             ),
           ),
         ),

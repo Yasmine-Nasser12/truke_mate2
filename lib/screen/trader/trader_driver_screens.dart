@@ -283,17 +283,29 @@ class _SuggestedDriversScreenState extends State<SuggestedDriversScreen>
   }
 
   Future<void> _loadDrivers() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() { _isLoading = true; _error = null; _apiDrivers = []; });
+
+    if (widget.shipmentId.isEmpty) {
+      setState(() { _isLoading = false; _error = 'No shipment ID provided'; });
+      return;
+    }
+
     final result = await _service.getSuggestedDrivers(shipmentId: widget.shipmentId);
     if (!mounted) return;
+
     if (result['success'] == true) {
-      final data = result['data']?['data'];
-      setState(() {
-        _apiDrivers = data?['drivers'] as List? ?? [];
-        _isLoading  = false;
-      });
+      // ✅ FIX: response shape: { data: { data: { drivers: [...] } } }
+      final outer = result['data'];
+      final inner = (outer is Map) ? (outer['data'] ?? outer) : outer;
+      List<dynamic> drivers = [];
+      if (inner is Map) {
+        drivers = (inner['drivers'] as List?)?.cast<dynamic>() ?? [];
+      } else if (inner is List) {
+        drivers = inner;
+      }
+      setState(() { _apiDrivers = drivers; _isLoading = false; });
     } else {
-      setState(() { _isLoading = false; _error = result['message']; });
+      setState(() { _isLoading = false; _error = result['message'] ?? 'Failed to load drivers'; });
     }
   }
 
@@ -338,7 +350,7 @@ class _SuggestedDriversScreenState extends State<SuggestedDriversScreen>
                   border: Border.all(color: _kTeal.withOpacity(0.3)),
                 ),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('${_apiDrivers.isNotEmpty ? _apiDrivers.length : _kDrivers.length} drivers available for your route',
+                  Text('${_apiDrivers.length} drivers available for your route',
                       style: TextStyle(color: d ? _kTeal : const Color(0xFF0A5048), fontSize: 14, fontWeight: FontWeight.w600)),
                   if (widget.pickup.isNotEmpty) ...[
                     const SizedBox(height: 4),
@@ -371,50 +383,67 @@ class _SuggestedDriversScreenState extends State<SuggestedDriversScreen>
                       style: TextStyle(color: _muted(d), fontSize: 15)),
                 ]))
               : _StaggeredList(
-          count: _apiDrivers.isNotEmpty ? _apiDrivers.length : _kDrivers.length,
+          count: _apiDrivers.length,
           initialDelay: const Duration(milliseconds: 250),
           itemBuilder: (_, i) {
-            // ✅ لو في داتا حقيقية → استخدمها، غير كده → الـ dummy
-            if (_apiDrivers.isNotEmpty) {
-              final d2 = _apiDrivers[i];
-              final driverName = d2['driverName'] ?? d2['fullName'] ?? 'Driver';
-              final initials = driverName.split(' ').map((p) => p.isNotEmpty ? p[0] : '').take(2).join();
-              final apiDriver = DriverModel(
-                initials: initials,
-                name: driverName,
-                vehicle: d2['vehicleType'] ?? 'Truck',
-                rating: (d2['rating'] as num?)?.toDouble() ?? 4.5,
-                price: (d2['price'] ?? d2['estimatedCost'] as num?)?.toDouble() ?? 0,
-                distance: (d2['distance'] as num?)?.toDouble() ?? 0,
-                reviews: (d2['completedTrips'] ?? d2['totalTrips'] as num?)?.toInt() ?? 0,
-                isBestMatch: i == 0,
-              );
-              return Padding(
-                padding: EdgeInsets.fromLTRB(16, 0, 16, i < _apiDrivers.length - 1 ? 14 : 24),
-                child: _SuggestedDriverCard(
-                  driver: apiDriver, isDark: d,
-                  onViewDetails: () => Navigator.push(context, _slideRightRoute(DriverDetailsScreen(
-                    driver: apiDriver, pickup: widget.pickup, dropoff: widget.dropoff,
-                    date: widget.date, time: widget.time, packages: widget.packages, weight: widget.weight,
-                  ))),
-                  onSelect: () => Navigator.push(context, _slideRightRoute(DriverOffersScreen(
-                    selectedDriver: apiDriver, pickup: widget.pickup, dropoff: widget.dropoff,
-                  ))),
-                ),
-              );
-            }
-            final drv = _kDrivers[i];
+            // ✅ FIX: فقط API data — لا Mock data
+            final d2 = _apiDrivers[i] as Map<String, dynamic>;
+
+            // ✅ FIX: Field names الصحيحة من SuggestedDriverItemDto في Swagger
+            final fullName     = d2['fullName']?.toString()          ?? 'Driver';
+            final initials     = d2['initials']?.toString()          ?? _makeInitials(fullName);
+            final isBestMatch  = d2['isBestMatch']  as bool?         ?? false;
+            final rating       = (d2['rating']       as num?)?.toDouble() ?? 0.0;
+            final reviewCount  = (d2['reviewCount']  as num?)?.toInt()    ?? 0;
+            final distanceKm   = (d2['distanceKm']   as num?)?.toDouble() ?? 0.0;
+            final vehicleType  = d2['vehicleTypeLabel']?.toString()
+                ?? d2['vehicleType']?.toString()
+                ?? 'Truck';
+            final totalCostEGP = (d2['totalCostEGP'] as num?)?.toDouble() ?? 0.0;
+            final driverId     = d2['driverId']?.toString() ?? '';
+
+            final apiDriver = DriverModel(
+              initials:    initials,
+              name:        fullName,
+              vehicle:     vehicleType,
+              rating:      rating,
+              price:       totalCostEGP,   // ✅ totalCostEGP مش price
+              distance:    distanceKm,     // ✅ distanceKm مش distance
+              reviews:     reviewCount,    // ✅ reviewCount مش completedTrips
+              isBestMatch: isBestMatch,    // ✅ من API مش i==0
+            );
+
             return Padding(
-              padding: EdgeInsets.fromLTRB(16, 0, 16, i < _kDrivers.length - 1 ? 14 : 24),
+              padding: EdgeInsets.fromLTRB(16, 0, 16, i < _apiDrivers.length - 1 ? 14 : 24),
               child: _SuggestedDriverCard(
-                driver: drv, isDark: d,
+                driver: apiDriver, isDark: d,
                 onViewDetails: () => Navigator.push(context, _slideRightRoute(DriverDetailsScreen(
-                  driver: drv, pickup: widget.pickup, dropoff: widget.dropoff,
+                  driver: apiDriver, pickup: widget.pickup, dropoff: widget.dropoff,
                   date: widget.date, time: widget.time, packages: widget.packages, weight: widget.weight,
                 ))),
-                onSelect: () => Navigator.push(context, _slideRightRoute(DriverOffersScreen(
-                  selectedDriver: drv, pickup: widget.pickup, dropoff: widget.dropoff,
-                ))),
+                onSelect: () async {
+                  // ✅ FIX: اتصل بـ API لاختيار السائق لو في driverId و shipmentId
+                  if (widget.shipmentId.isNotEmpty && driverId.isNotEmpty) {
+                    final provider = context.read<TraderProvider>();
+                    final ok = await provider.selectDriver(
+                      shipmentId: widget.shipmentId,
+                      driverId:   driverId,
+                    );
+                    if (!mounted) return;
+                    if (!ok) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(provider.error ?? 'Failed to select driver'),
+                        backgroundColor: _kRed,
+                        behavior: SnackBarBehavior.floating,
+                      ));
+                      return;
+                    }
+                  }
+                  if (!mounted) return;
+                  Navigator.push(context, _slideRightRoute(DriverOffersScreen(
+                    selectedDriver: apiDriver, pickup: widget.pickup, dropoff: widget.dropoff,
+                  )));
+                },
               ),
             );
           },
@@ -422,6 +451,15 @@ class _SuggestedDriversScreenState extends State<SuggestedDriversScreen>
       ])),
     );
   }
+}
+
+// ✅ FIX: Helper لعمل initials لو مش موجودة في الـ response
+String _makeInitials(String name) {
+  if (name.trim().isEmpty) return 'DR';
+  final parts = name.trim().split(' ').where((p) => p.isNotEmpty).toList();
+  if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  if (parts.isNotEmpty) return parts[0][0].toUpperCase();
+  return 'DR';
 }
 
 class _SuggestedDriverCard extends StatelessWidget {
@@ -458,7 +496,7 @@ class _SuggestedDriverCard extends StatelessWidget {
                 Text('(${driver.reviews} reviews)', style: TextStyle(color: _muted(isDark), fontSize: 12)),
               ]),
             ])),
-            Text('\$${driver.price.toInt()}', style: const TextStyle(color: _kTeal, fontSize: 22, fontWeight: FontWeight.w700)),
+            Text('EGP ${driver.price.toInt()}', style: const TextStyle(color: _kTeal, fontSize: 22, fontWeight: FontWeight.w700)),
           ]),
           const SizedBox(height: 12),
           Row(children: [
@@ -1298,6 +1336,9 @@ class _TraderDeliverySuccessScreenState extends State<TraderDeliverySuccessScree
   late List<Animation<double>> _cardFade;
   late List<Animation<Offset>> _cardSlide;
 
+  // ✅ FIX: invoiceId الحقيقي من delivery-summary
+  String? _invoiceId;
+
   @override
   void initState() {
     super.initState();
@@ -1316,6 +1357,30 @@ class _TraderDeliverySuccessScreenState extends State<TraderDeliverySuccessScree
     _btnsSlide = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(CurvedAnimation(parent: _btnsCtrl, curve: _kEaseOutCubic));
     _glowCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(reverse: true);
     _runSequence();
+
+    // ✅ FIX: جيب invoiceId الحقيقي من delivery-summary
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchInvoiceId());
+  }
+
+  // ✅ FIX: GET /api/trader/shipments/{shipmentId}/delivery-summary → invoiceId
+  Future<void> _fetchInvoiceId() async {
+    if (widget.shipmentId.isEmpty || widget.shipmentId == 'TM-000000') return;
+    try {
+      final service = TraderService();
+      final res = await service.getDeliverySummary(shipmentId: widget.shipmentId);
+      if (!mounted) return;
+      if (res['success'] == true) {
+        final data = res['data']?['data'] ?? res['data'];
+        if (data is Map) {
+          final id = data['invoiceId']?.toString()
+              ?? data['invoice']?['id']?.toString()
+              ?? data['invoice']?['invoiceId']?.toString();
+          if (id != null && id.isNotEmpty && mounted) {
+            setState(() => _invoiceId = id);
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   void _runSequence() async {
@@ -1496,7 +1561,8 @@ class _TraderDeliverySuccessScreenState extends State<TraderDeliverySuccessScree
                     kCard: kCard, kText: kText, kBorder: kBorder,
                     onTap: () => Navigator.push(context, MaterialPageRoute(
                       builder: (_) => InvoiceScreen(
-                        invoiceId:  widget.shipmentId.isNotEmpty ? widget.shipmentId : null,
+                        // ✅ FIX: مرر invoiceId الحقيقي من delivery-summary مش shipmentId
+                        invoiceId:  _invoiceId,
                         shipmentId: widget.shipmentId,
                         pickup:     widget.pickup,
                         dropoff:    widget.dropoff,
