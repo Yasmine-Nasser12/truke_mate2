@@ -116,10 +116,10 @@ class _AppMapWidgetState extends State<AppMapWidget>
         widget.pickupLocation!.isEmpty ||
         widget.dropoffLocation == null ||
         widget.dropoffLocation!.isEmpty) {
-      // ✅ Fallback to default route: Fayoum to Port Said
+      // ✅ Fallback to default route: Fayoum to Cairo
       setState(() {
         _pickupLatLng = const LatLng(29.3084, 30.8428); // Fayoum
-        _dropoffLatLng = const LatLng(31.2653, 32.3019); // Port Said
+        _dropoffLatLng = const LatLng(30.0444, 31.2357); // Cairo
         _loading = false;
       });
       _moveCameraToFitRoute();

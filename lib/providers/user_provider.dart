@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 
 class UserProvider with ChangeNotifier {
   // ✅ Default Data زي اللي في الاسكرينات
-  String _fullName = 'John Michael Doe';
-  String _phone = '+02 010328743';
-  String _email = 'john.doe@truckmate.com';
+  String _fullName = 'محمود ناصر';
+  String _phone = '+02 01094357481';
+  String _email = '2201977@student.eelu.edu.eg';
   String _nationalId = '';
-  String _licenseNumber = 'CDL-A-123456';
-  String _licenseType = 'Class A CDL';
+  String _licenseNumber = '12345678';
+  String _licenseType = 'Class B CDL';
   String _plateNumber = 'TRK-5432';
   String _truckType = 'Heavy Duty Semi';
   String _capacity = '25 Tons';

@@ -142,12 +142,13 @@ class _DriverEarningsScreenState extends State<DriverEarningsScreen>
       final summary = data['summary'] ?? {};
 
       setState(() {
-        _totalEarnings  = ((summary['totalEarningsEGP'] ?? 0) as num).toInt();
-        _weeklyEarnings = ((summary['thisWeekEarningsEGP'] ?? 0) as num).toInt();
-        _monthlyEarnings= ((summary['thisMonthEarningsEGP'] ?? 0) as num).toInt();
-        _totalTrips     = (summary['totalTripsCompleted'] ?? 0) as int;
-        _weeklyGrowth   = (summary['weeklyGrowthPercent'] ?? 0) as int;
-        _weeklyGrowthDir= summary['weeklyGrowthDirection'] ?? 'up';
+        _totalEarnings   = 390;
+        _weeklyEarnings  = 390;
+        _monthlyEarnings = 390;
+        _totalTrips      = 3;
+        _weeklyGrowth    = 0;
+        _weeklyGrowthDir = 'up';
+        _isLoading       = false;
         _isLoading = false;
       });
 
@@ -773,39 +774,17 @@ class _EarningsHistoryState extends State<DriverEarningsHistoryScreen>
   Future<void> _loadTrips() async {
     setState(() { _isLoading = true; _error = null; });
 
-    final result = await _driverService.getWalletScreen(
-      filter: _filterKeys[_filter == 0 ? 0 : _filter == 1 ? 1 : 2],
-      page: 1,
-      pageSize: 50,
-    );
+    final trips = [
+      _TripItem(route: 'Assuit → Luxor',   date: '2026-06-20', ref: 'TRP001', amount: 200, status: 'Completed'),
+      _TripItem(route: 'Cairo → Alex',     date: '2026-06-20', ref: 'TRP001', amount: 100, status: 'Completed'),
+      _TripItem(route: 'Mansura → BorSaid',date: '2026-06-20', ref: 'TRP001', amount: 90,  status: 'Completed'),
+    ];
 
-    if (!mounted) return;
-
-    if (result['success'] == true) {
-      final data = result['data']?['data'] ?? result['data'] ?? {};
-      final tripsData = data['recentTrips']?['trips'] ?? [];
-
-      final trips = (tripsData as List).map((t) {
-        return _TripItem(
-          route: '${t['pickupLocation'] ?? ''} → ${t['dropoffLocation'] ?? ''}',
-          date: t['earnedAtFormatted'] ?? '',
-          ref: t['shipmentNumber'] ?? '',
-          amount: ((t['amountEGP'] ?? 0) as num).toInt(),
-          status: t['status'] ?? 'Completed',
-        );
-      }).toList();
-
-      setState(() {
-        _allTrips = trips;
-        _isLoading = false;
-      });
-      _listCtrl.forward(from: 0);
-    } else {
-      setState(() {
-        _error = result['message'] ?? 'Failed to load trips';
-        _isLoading = false;
-      });
-    }
+    setState(() {
+      _allTrips  = trips;
+      _isLoading = false;
+    });
+    _listCtrl.forward(from: 0);
   }
 
   // فلترة محلية حسب الـ status
@@ -1161,30 +1140,16 @@ class _EarningsBreakdownState extends State<DriverEarningsBreakdownScreen>
   Future<void> _loadData() async {
     setState(() { _isLoading = true; _error = null; });
 
-    final result = await _driverService.getWalletScreen(filter: 'all', page: 1, pageSize: 1);
-
-    if (!mounted) return;
-
-    if (result['success'] == true) {
-      final data = result['data']?['data'] ?? result['data'] ?? {};
-      final summary = data['summary'] ?? {};
-
-      setState(() {
-        _totalEarnings   = ((summary['totalEarningsEGP'] ?? 0) as num).toInt();
-        _totalTrips      = (summary['totalTripsCompleted'] ?? 0) as int;
-        _weeklyGrowth    = (summary['weeklyGrowthPercent'] ?? 0) as int;
-        _weeklyGrowthDir = summary['weeklyGrowthDirection'] ?? 'up';
-        _weeklyEarnings  = ((summary['thisWeekEarningsEGP'] ?? 0) as num).toInt();
-        _monthlyEarnings = ((summary['thisMonthEarningsEGP'] ?? 0) as num).toInt();
-        _isLoading = false;
-      });
-      _ctrl.forward(from: 0);
-    } else {
-      setState(() {
-        _error = result['message'] ?? 'Failed to load data';
-        _isLoading = false;
-      });
-    }
+    setState(() {
+      _totalEarnings   = 390;
+      _totalTrips      = 3;
+      _weeklyGrowth    = 0;
+      _weeklyGrowthDir = 'up';
+      _weeklyEarnings  = 390;
+      _monthlyEarnings = 390;
+      _isLoading       = false;
+    });
+    _ctrl.forward(from: 0);
   }
 
   // بيبني الـ factors ديناميكياً من بيانات الـ API

@@ -1,13 +1,5 @@
-// ════════════════════════════════════════════════════════════
-//  trips_screen.dart  — API CONNECTED, ALL ANIMATIONS PRESERVED
-//  Tab 1: Available Requests → GET /api/driver/trips/available-requests
-//  Tab 2: My Trips           → GET /api/driver/trips/my-trips
-// ════════════════════════════════════════════════════════════
-
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:truck_mate/screen/driver/widgets/local.dart';
 import 'package:truck_mate/screen/driver/widgets/my_trip_card.dart';
 import 'package:truck_mate/screen/driver/widgets/my_trips_card.dart';
 import '/providers/theme_provider.dart';
@@ -15,7 +7,11 @@ import '/providers/driver_provider.dart';
 import '/models/driver_models.dart';
 import '/services/driver_service.dart';
 import '/screen/driver/driver_trip_screens.dart'
-    show TripAvailableScreen, RequestDetailsScreen, TripData, AvailableTripsScreen, RequestAcceptedScreen;
+    show
+        TripAvailableScreen,
+        RequestDetailsScreen,
+        TripData,
+        RequestAcceptedScreen;
 import 'driver_pickup_screens.dart';
 
 const Color _kTeal = Color(0xFF00D5BE);
@@ -321,7 +317,7 @@ class _TripsScreenState extends State<TripsScreen>
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
             MyTripsCard(
-              trip: TripModel(
+              trip: const TripModel(
                 id: 'TRP001',
                 date: '2026-06-20',
                 from: 'Assuit',
@@ -329,7 +325,36 @@ class _TripsScreenState extends State<TripsScreen>
                 miles: 210,
                 weight: 210,
                 status: TripStatus.inProgress,
-                earnings: 320.50,
+                earnings: 200,
+              ),
+              isDark: d,
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: MyTripsCard(
+                trip: const TripModel(
+                  id: 'TRP001',
+                  date: '2026-06-20',
+                  from: 'cairo',
+                  to: 'Alex',
+                  miles: 210,
+                  weight: 210,
+                  status: TripStatus.inProgress,
+                  earnings: 100,
+                ),
+                isDark: d,
+              ),
+            ),
+            MyTripsCard(
+              trip: const TripModel(
+                id: 'TRP001',
+                date: '2026-06-20',
+                from: 'Mansura',
+                to: 'BorSaid',
+                miles: 210,
+                weight: 210,
+                status: TripStatus.inProgress,
+                earnings: 90,
               ),
               isDark: d,
             )
@@ -479,52 +504,54 @@ class _AvailableRequestsListState extends State<_AvailableRequestsList>
               onViewDetails: () {
                 Navigator.push(
                   context,
-                   MaterialPageRoute(builder: (_) => const RequestAcceptedScreen(
-                     trip:  const TripData(
-                       id: 'REQ-1001',
-                       pickup: 'Dallas Warehouse',
-                       pickupAddr: '123 Commerce St, Dallas, TX',
-                       dropoff: 'Houston Distribution Center',
-                       dropoffAddr: '456 Market Ave, Houston, TX',
-                       distance: '385 km',
-                       estTime: '4h 30m',
-                       cargoType: 'Electronics',
-                       trader: 'Tech Logistics Inc.',
-                       traderPhone: '+1 214-555-1234',
-                       price: 850.00,
-                       weightLbs: 12000,
-                       packages: 45,
-                       postedAgo: '2 hours ago',
-                       specialNotes: 'Handle with care. Fragile cargo.',
-                     ),
-                   )),
+                  MaterialPageRoute(
+                      builder: (_) => const RequestAcceptedScreen(
+                            trip: const TripData(
+                              id: 'REQ-1001',
+                              pickup: 'Dallas Warehouse',
+                              pickupAddr: '123 Commerce St, Dallas, TX',
+                              dropoff: 'Houston Distribution Center',
+                              dropoffAddr: '456 Market Ave, Houston, TX',
+                              distance: '385 km',
+                              estTime: '4h 30m',
+                              cargoType: 'Electronics',
+                              trader: 'Tech Logistics Inc.',
+                              traderPhone: '+1 214-555-1234',
+                              price: 850.00,
+                              weightLbs: 12000,
+                              packages: 45,
+                              postedAgo: '2 hours ago',
+                              specialNotes: 'Handle with care. Fragile cargo.',
+                            ),
+                          )),
                 );
               },
               trip: const TripModel(
                 id: 'TRP001',
-                date: '2026-06-0',
-                from: 'Assuit',
-                to: 'Luxor',
-                miles: 210,
-                weight: 210,
+                date: '2026-06-25',
+                from: 'Fayum',
+                to: 'Cairo',
+                miles: 65,
+                weight: 500,
                 status: TripStatus.inProgress,
-                earnings: 320.50,
+                earnings: 150,
               ),
             ),
           ),
           const SizedBox(height: 16),
           _animEmptyItem(
             1,
-             MyTripCard(
+            MyTripCard(
               onViewDetails: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) =>  PickupScreen(
-                    tripId: "2",
-                  )),
+                  MaterialPageRoute(
+                      builder: (_) => const PickupScreen(
+                            tripId: "2",
+                          )),
                 );
               },
-              trip: TripModel(
+              trip: const TripModel(
                 id: 'TRP001',
                 date: '2026-06-20',
                 from: 'Assuit',
@@ -532,7 +559,7 @@ class _AvailableRequestsListState extends State<_AvailableRequestsList>
                 weight: 210,
                 miles: 210,
                 status: TripStatus.inProgress,
-                earnings: 320.50,
+                earnings: 200,
               ),
             ),
           ),

@@ -1,12 +1,3 @@
-// ═══════════════════════════════════════════════════════════════════════════
-//  DRIVER PROFILE SCREENS — driver_profile_screens.dart
-//  lib/screen/driver/driver_profile_screens.dart
-//  ✅ Glow removed + notification animations added (ported from React/motion)
-//  ✅ My Wallet item added to DriverSettingsScreen
-//  ✅ Logout dialog redesigned to match custom UI
-//  ✅ FULL API INTEGRATION — all dummy data replaced with real backend calls
-// ═══════════════════════════════════════════════════════════════════════════
-
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -240,7 +231,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen>
     final driver = context.watch<DriverProvider>();
     final theme  = context.watch<ThemeProvider>().theme;
 
-    final name     = user.fullName.isNotEmpty ? user.fullName : 'John Michael';
+    final name     = 'محمود ناصر';
     final initials = name.trim().split(' ').take(2)
         .map((w) => w[0].toUpperCase()).join();
 
@@ -528,9 +519,8 @@ class _StatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // استخدم بيانات الباك لو موجودة، وإلا fallback على الـ provider
-    final total     = profileData?['totalTrips']     ?? driver.recentTrips.length;
-    final completed = profileData?['completedTrips'] ??
-        driver.recentTrips.where((t) => t.status == TripStatus.completed).length;
+    final total     = "3";
+    final completed = "3";
     final rating    = profileData?['rating']?.toString() ?? '4.8';
     final earnings  = profileData?['totalEarnings'] != null
         ? (profileData!['totalEarnings'] as num).toDouble()
@@ -643,11 +633,11 @@ class _AboutTabState extends State<_AboutTab> with TickerProviderStateMixin {
 
     // استخدم بيانات الباك أولاً، وإلا بيانات الـ provider، وإلا fallback
     final items = {
-      'Full Name':      d?['fullName']      ?? d?['name']       ?? (u.fullName.isNotEmpty      ? u.fullName      : 'John Michael Doe'),
-      'Email':          d?['email']                             ?? (u.email.isNotEmpty          ? u.email          : 'john.doe@truckmate.com'),
-      'Phone Number':   d?['phone']                             ?? (u.phone.isNotEmpty          ? u.phone          : '+02 010328743'),
+      'Full Name':      'محمود ناصر',
+      'Email':         'mahmoud.nasser15@gmail.com',
+      'Phone Number':    '+02 01094357481',
       'License Number': d?['licenseNumber']                     ?? (u.licenseNumber.isNotEmpty  ? u.licenseNumber  : 'CDL-A-123456'),
-      'License Type':   d?['licenseType']                       ?? (u.licenseType.isNotEmpty    ? u.licenseType    : 'Class A CDL'),
+      'License Type':   'Class B CDL',
       'Truck Plate':    d?['plateNumber']   ?? d?['truckPlate'] ?? (u.plateNumber.isNotEmpty    ? u.plateNumber    : 'TRK-5432'),
       'Truck Type':     d?['truckType']                         ?? (u.truckType.isNotEmpty      ? u.truckType      : 'Heavy Duty Semi'),
       'Capacity':       d?['capacity']?.toString()              ?? (u.capacity.isNotEmpty       ? u.capacity       : '25 Tons'),
@@ -962,8 +952,8 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen>
   Widget build(BuildContext context) {
     final user  = context.watch<UserProvider>();
     final theme = context.watch<ThemeProvider>().theme;
-    final name  = user.fullName.isNotEmpty ? user.fullName : 'Driver';
-    final email = user.email.isNotEmpty ? user.email : 'driver@truckmate.com';
+    const name  = 'محمود ناصر';
+    const email = 'mahmoud.nasser15@gmail.com';
     final initials = name.trim().split(' ').take(2)
         .map((w) => w[0].toUpperCase()).join();
 
@@ -1323,7 +1313,7 @@ class _LogoutDialogState extends State<_LogoutDialog>
                             child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation(Colors.white)))
-                        : Row(
+                        :  Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: const [
                               Icon(Icons.logout_rounded, color: Colors.white, size: 18),
@@ -1528,7 +1518,7 @@ class _ReviewsRatingsScreenState extends State<ReviewsRatingsScreen>
   Widget build(BuildContext context) {
     final user  = context.watch<UserProvider>();
     final theme = context.watch<ThemeProvider>().theme;
-    final name  = user.fullName.isNotEmpty ? user.fullName : 'John Michael';
+    final name  = user.fullName.isNotEmpty ? user.fullName : 'محمود ناصر';
     final initials = name.trim().split(' ').take(2)
         .map((w) => w[0].toUpperCase()).join();
 

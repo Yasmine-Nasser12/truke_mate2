@@ -70,9 +70,9 @@ class MyTripCardState extends State<MyTripCard> {
                             fontSize: 18,
                           ),
                         ),
-                        const Text(
-                          '240',
-                          style: TextStyle(
+                        Text(
+                          widget.trip.earnings.toString(),
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
