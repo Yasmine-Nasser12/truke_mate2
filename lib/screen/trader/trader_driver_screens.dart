@@ -37,32 +37,32 @@ Color _text(bool d) => d ? Colors.white : const Color(0xFF1A2A3A);
 Color _muted(bool d) => d ? const Color(0xFF6B8A9E) : const Color(0xFF8A9BB0);
 
 Route<T> _slideUpRoute<T>(Widget child) => PageRouteBuilder<T>(
-      pageBuilder: (_, __, ___) => child,
-      transitionDuration: _kMed,
-      reverseTransitionDuration: _kFast,
-      transitionsBuilder: (_, anim, __, child) {
-        final slide = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
-            .animate(CurvedAnimation(parent: anim, curve: _kEaseOutCubic));
-        final fade = CurvedAnimation(parent: anim, curve: _kEaseOutCubic);
-        return SlideTransition(
-            position: slide,
-            child: FadeTransition(opacity: fade, child: child));
-      },
-    );
+  pageBuilder: (_, __, ___) => child,
+  transitionDuration: _kMed,
+  reverseTransitionDuration: _kFast,
+  transitionsBuilder: (_, anim, __, child) {
+    final slide = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+        .animate(CurvedAnimation(parent: anim, curve: _kEaseOutCubic));
+    final fade = CurvedAnimation(parent: anim, curve: _kEaseOutCubic);
+    return SlideTransition(
+        position: slide,
+        child: FadeTransition(opacity: fade, child: child));
+  },
+);
 
 Route<T> _slideRightRoute<T>(Widget child) => PageRouteBuilder<T>(
-      pageBuilder: (_, __, ___) => child,
-      transitionDuration: _kMed,
-      reverseTransitionDuration: _kFast,
-      transitionsBuilder: (_, anim, __, child) {
-        final slide = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
-            .animate(CurvedAnimation(parent: anim, curve: _kEaseOutCubic));
-        final fade = CurvedAnimation(parent: anim, curve: _kEaseOutCubic);
-        return SlideTransition(
-            position: slide,
-            child: FadeTransition(opacity: fade, child: child));
-      },
-    );
+  pageBuilder: (_, __, ___) => child,
+  transitionDuration: _kMed,
+  reverseTransitionDuration: _kFast,
+  transitionsBuilder: (_, anim, __, child) {
+    final slide = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+        .animate(CurvedAnimation(parent: anim, curve: _kEaseOutCubic));
+    final fade = CurvedAnimation(parent: anim, curve: _kEaseOutCubic);
+    return SlideTransition(
+        position: slide,
+        child: FadeTransition(opacity: fade, child: child));
+  },
+);
 
 // ══════════════════════════════════════════════════════
 //  ANIMATED TAP
@@ -95,14 +95,14 @@ class _TapState extends State<_Tap> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTapDown: (_) => _ctrl.forward(),
-        onTapUp: (_) {
-          _ctrl.reverse();
-          widget.onTap?.call();
-        },
-        onTapCancel: () => _ctrl.reverse(),
-        child: ScaleTransition(scale: _scale, child: widget.child),
-      );
+    onTapDown: (_) => _ctrl.forward(),
+    onTapUp: (_) {
+      _ctrl.reverse();
+      widget.onTap?.call();
+    },
+    onTapCancel: () => _ctrl.reverse(),
+    child: ScaleTransition(scale: _scale, child: widget.child),
+  );
 }
 
 // ══════════════════════════════════════════════════════
@@ -133,7 +133,7 @@ class _StaggeredListState extends State<_StaggeredList>
   void initState() {
     super.initState();
     final total =
-        Duration(milliseconds: 350 + widget.count * _kStagger.inMilliseconds);
+    Duration(milliseconds: 350 + widget.count * _kStagger.inMilliseconds);
     _ctrl = AnimationController(vsync: this, duration: total);
     _fades = List.generate(widget.count, (i) {
       final s = (i * _kStagger.inMilliseconds) / total.inMilliseconds;
@@ -146,7 +146,7 @@ class _StaggeredListState extends State<_StaggeredList>
       final e = (s + 0.55).clamp(0.0, 1.0);
       return Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero)
           .animate(CurvedAnimation(
-              parent: _ctrl, curve: Interval(s, e, curve: _kEaseOutCubic)));
+          parent: _ctrl, curve: Interval(s, e, curve: _kEaseOutCubic)));
     });
     Future.delayed(widget.initialDelay, () {
       if (mounted) _ctrl.forward();
@@ -163,11 +163,11 @@ class _StaggeredListState extends State<_StaggeredList>
   Widget build(BuildContext context) {
     final items = List.generate(
         widget.count,
-        (i) => FadeTransition(
-              opacity: _fades[i],
-              child: SlideTransition(
-                  position: _slides[i], child: widget.itemBuilder(context, i)),
-            ));
+            (i) => FadeTransition(
+          opacity: _fades[i],
+          child: SlideTransition(
+              position: _slides[i], child: widget.itemBuilder(context, i)),
+        ));
     if (widget.asColumn) return Column(children: items);
     return ListView.builder(
       padding: EdgeInsets.zero,
@@ -185,19 +185,19 @@ class _StaggeredListState extends State<_StaggeredList>
 //  SHARED WIDGETS
 // ══════════════════════════════════════════════════════
 Widget _backBtn(BuildContext ctx, bool d) => _Tap(
-      onTap: () => Navigator.maybePop(ctx),
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: _card(d),
-          shape: BoxShape.circle,
-          border: Border.all(color: _border(d)),
-        ),
-        child: Icon(Icons.chevron_left_rounded,
-            color: d ? Colors.white : const Color(0xFF1A2A3A), size: 24),
-      ),
-    );
+  onTap: () => Navigator.maybePop(ctx),
+  child: Container(
+    width: 42,
+    height: 42,
+    decoration: BoxDecoration(
+      color: _card(d),
+      shape: BoxShape.circle,
+      border: Border.all(color: _border(d)),
+    ),
+    child: Icon(Icons.chevron_left_rounded,
+        color: d ? Colors.white : const Color(0xFF1A2A3A), size: 24),
+  ),
+);
 
 class _GradBtn extends StatelessWidget {
   final String label;
@@ -207,33 +207,33 @@ class _GradBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _Tap(
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          height: 56,
-          decoration: BoxDecoration(
-            gradient: _kGradient,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                  color: _kTeal.withOpacity(0.35),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6))
-            ],
-          ),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            if (icon != null) ...[
-              Icon(icon, color: Colors.white, size: 20),
-              const SizedBox(width: 8)
-            ],
-            Text(label,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
-          ]),
-        ),
-      );
+    onTap: onTap,
+    child: Container(
+      width: double.infinity,
+      height: 56,
+      decoration: BoxDecoration(
+        gradient: _kGradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+              color: _kTeal.withOpacity(0.35),
+              blurRadius: 16,
+              offset: const Offset(0, 6))
+        ],
+      ),
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        if (icon != null) ...[
+          Icon(icon, color: Colors.white, size: 20),
+          const SizedBox(width: 8)
+        ],
+        Text(label,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold)),
+      ]),
+    ),
+  );
 }
 
 // ══════════════════════════════════════════════════════
@@ -405,7 +405,7 @@ class _SuggestedDriversScreenState extends State<SuggestedDriversScreen>
     _headerCtrl = AnimationController(vsync: this, duration: _kMed);
     _headerFade = CurvedAnimation(parent: _headerCtrl, curve: _kEaseOutCubic);
     _headerSlide = Tween<Offset>(
-            begin: const Offset(0, -0.06), end: Offset.zero)
+        begin: const Offset(0, -0.06), end: Offset.zero)
         .animate(CurvedAnimation(parent: _headerCtrl, curve: _kEaseOutCubic));
     _bannerCtrl = AnimationController(vsync: this, duration: _kMed);
     _bannerScale = Tween<double>(begin: 0.92, end: 1.0)
@@ -421,7 +421,7 @@ class _SuggestedDriversScreenState extends State<SuggestedDriversScreen>
       _error = null;
     });
     final result =
-        await _service.getSuggestedDrivers(shipmentId: widget.shipmentId);
+    await _service.getSuggestedDrivers(shipmentId: widget.shipmentId);
     if (!mounted) return;
     if (result['success'] == true) {
       final data = result['data']?['data'];
@@ -457,184 +457,184 @@ class _SuggestedDriversScreenState extends State<SuggestedDriversScreen>
       backgroundColor: _bg(d),
       body: SafeArea(
           child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: FadeTransition(
-            opacity: _headerFade,
-            child: SlideTransition(
-              position: _headerSlide,
-              child: Row(children: [
-                _backBtn(context, d),
-                const SizedBox(width: 14),
-                Text('Suggested Drivers',
-                    style: TextStyle(
-                        color: _text(d),
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold)),
-              ]),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: ScaleTransition(
-            scale: _bannerScale,
-            child: FadeTransition(
-              opacity: _bannerFade,
-              child: Container(
-                width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                decoration: BoxDecoration(
-                  color: d ? _kTeal.withOpacity(0.08) : const Color(0xFFDFFAF6),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: _kTeal.withOpacity(0.3)),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: FadeTransition(
+                opacity: _headerFade,
+                child: SlideTransition(
+                  position: _headerSlide,
+                  child: Row(children: [
+                    _backBtn(context, d),
+                    const SizedBox(width: 14),
+                    Text('Suggested Drivers',
+                        style: TextStyle(
+                            color: _text(d),
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold)),
+                  ]),
                 ),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                          '${_apiDrivers.isNotEmpty ? _apiDrivers.length : _kDrivers.length} drivers available for your route',
-                          style: TextStyle(
-                              color: d ? _kTeal : const Color(0xFF0A5048),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600)),
-                      if (widget.pickup.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text('${widget.pickup} → ${widget.dropoff}',
-                            style: TextStyle(color: _muted(d), fontSize: 12)),
-                      ],
-                    ]),
               ),
             ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: _kTeal))
-                : _error != null
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ScaleTransition(
+                scale: _bannerScale,
+                child: FadeTransition(
+                  opacity: _bannerFade,
+                  child: Container(
+                    width: double.infinity,
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: d ? _kTeal.withOpacity(0.08) : const Color(0xFFDFFAF6),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: _kTeal.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                              '${_apiDrivers.isNotEmpty ? _apiDrivers.length : _kDrivers.length} drivers available for your route',
+                              style: TextStyle(
+                                  color: d ? _kTeal : const Color(0xFF0A5048),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600)),
+                          if (widget.pickup.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text('${widget.pickup} → ${widget.dropoff}',
+                                style: TextStyle(color: _muted(d), fontSize: 12)),
+                          ],
+                        ]),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator(color: _kTeal))
+                    : _error != null
                     ? Center(
-                        child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.error_outline,
-                                      color: _kRed, size: 40),
-                                  const SizedBox(height: 12),
-                                  Text(_error!,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(color: _muted(d))),
-                                  const SizedBox(height: 16),
-                                  _GradBtn(label: 'Retry', onTap: _loadDrivers),
-                                ])))
+                    child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.error_outline,
+                                  color: _kRed, size: 40),
+                              const SizedBox(height: 12),
+                              Text(_error!,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: _muted(d))),
+                              const SizedBox(height: 16),
+                              _GradBtn(label: 'Retry', onTap: _loadDrivers),
+                            ])))
                     : _apiDrivers.isEmpty && widget.shipmentId.isNotEmpty
-                        ? Center(
-                            child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                const Icon(Icons.people_outline,
-                                    color: _kTeal, size: 48),
-                                const SizedBox(height: 12),
-                                Text('No drivers available yet',
-                                    style: TextStyle(
-                                        color: _muted(d), fontSize: 15)),
-                              ]))
-                        : _StaggeredList(
-                            count: _apiDrivers.isNotEmpty
-                                ? _apiDrivers.length
-                                : _kDrivers.length,
-                            initialDelay: const Duration(milliseconds: 250),
-                            itemBuilder: (_, i) {
-                              // ✅ لو في داتا حقيقية → استخدمها، غير كده → الـ dummy
-                              if (_apiDrivers.isNotEmpty) {
-                                final d2 = _apiDrivers[i];
-                                final driverName = d2['driverName'] ??
-                                    d2['fullName'] ??
-                                    'Driver';
-                                final initials = driverName
-                                    .split(' ')
-                                    .map((p) => p.isNotEmpty ? p[0] : '')
-                                    .take(2)
-                                    .join();
-                                final apiDriver = DriverModel(
-                                  initials: initials,
-                                  name: driverName,
-                                  vehicle: d2['vehicleType'] ?? 'Truck',
-                                  rating:
-                                      (d2['rating'] as num?)?.toDouble() ?? 4.5,
-                                  price: (d2['price'] ??
-                                              d2['estimatedCost'] as num?)
-                                          ?.toDouble() ??
-                                      0,
-                                  distance:
-                                      (d2['distance'] as num?)?.toDouble() ?? 0,
-                                  reviews: (d2['completedTrips'] ??
-                                              d2['totalTrips'] as num?)
-                                          ?.toInt() ??
-                                      0,
-                                  isBestMatch: i == 0,
-                                );
-                                return Padding(
-                                  padding: EdgeInsets.fromLTRB(16, 0, 16,
-                                      i < _apiDrivers.length - 1 ? 14 : 24),
-                                  child: _SuggestedDriverCard(
-                                    driver: apiDriver,
-                                    isDark: d,
-                                    onViewDetails: () => Navigator.push(
-                                        context,
-                                        _slideRightRoute(DriverDetailsScreen(
-                                          driver: apiDriver,
-                                          pickup: widget.pickup,
-                                          dropoff: widget.dropoff,
-                                          date: widget.date,
-                                          time: widget.time,
-                                          packages: widget.packages,
-                                          weight: widget.weight,
-                                        ))),
-                                    onSelect: () => Navigator.push(
-                                        context,
-                                        _slideRightRoute(DriverOffersScreen(
-                                          selectedDriver: apiDriver,
-                                          pickup: widget.pickup,
-                                          dropoff: widget.dropoff,
-                                        ))),
-                                  ),
-                                );
-                              }
-                              final drv = _kDrivers[i];
-                              return Padding(
-                                padding: EdgeInsets.fromLTRB(16, 0, 16,
-                                    i < _kDrivers.length - 1 ? 14 : 24),
-                                child: _SuggestedDriverCard(
-                                  driver: drv,
-                                  isDark: d,
-                                  onViewDetails: () => Navigator.push(
-                                      context,
-                                      _slideRightRoute(DriverDetailsScreen(
-                                        driver: drv,
-                                        pickup: widget.pickup,
-                                        dropoff: widget.dropoff,
-                                        date: widget.date,
-                                        time: widget.time,
-                                        packages: widget.packages,
-                                        weight: widget.weight,
-                                      ))),
-                                  onSelect: () => Navigator.push(
-                                      context,
-                                      _slideRightRoute(DriverOffersScreen(
-                                        selectedDriver: drv,
-                                        pickup: widget.pickup,
-                                        dropoff: widget.dropoff,
-                                      ))),
-                                ),
-                              );
-                            },
-                          )),
-      ])),
+                    ? Center(
+                    child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.people_outline,
+                              color: _kTeal, size: 48),
+                          const SizedBox(height: 12),
+                          Text('No drivers available yet',
+                              style: TextStyle(
+                                  color: _muted(d), fontSize: 15)),
+                        ]))
+                    : _StaggeredList(
+                  count: _apiDrivers.isNotEmpty
+                      ? _apiDrivers.length
+                      : _kDrivers.length,
+                  initialDelay: const Duration(milliseconds: 250),
+                  itemBuilder: (_, i) {
+                    // ✅ لو في داتا حقيقية → استخدمها، غير كده → الـ dummy
+                    if (_apiDrivers.isNotEmpty) {
+                      final d2 = _apiDrivers[i];
+                      final driverName = d2['driverName'] ??
+                          d2['fullName'] ??
+                          'Driver';
+                      final initials = driverName
+                          .split(' ')
+                          .map((p) => p.isNotEmpty ? p[0] : '')
+                          .take(2)
+                          .join();
+                      final apiDriver = DriverModel(
+                        initials: initials,
+                        name: driverName,
+                        vehicle: d2['vehicleType'] ?? 'Truck',
+                        rating:
+                        (d2['rating'] as num?)?.toDouble() ?? 4.5,
+                        price: (d2['price'] ??
+                            d2['estimatedCost'] as num?)
+                            ?.toDouble() ??
+                            0,
+                        distance:
+                        (d2['distance'] as num?)?.toDouble() ?? 0,
+                        reviews: (d2['completedTrips'] ??
+                            d2['totalTrips'] as num?)
+                            ?.toInt() ??
+                            0,
+                        isBestMatch: i == 0,
+                      );
+                      return Padding(
+                        padding: EdgeInsets.fromLTRB(16, 0, 16,
+                            i < _apiDrivers.length - 1 ? 14 : 24),
+                        child: _SuggestedDriverCard(
+                          driver: apiDriver,
+                          isDark: d,
+                          onViewDetails: () => Navigator.push(
+                              context,
+                              _slideRightRoute(DriverDetailsScreen(
+                                driver: apiDriver,
+                                pickup: widget.pickup,
+                                dropoff: widget.dropoff,
+                                date: widget.date,
+                                time: widget.time,
+                                packages: widget.packages,
+                                weight: widget.weight,
+                              ))),
+                          onSelect: () => Navigator.push(
+                              context,
+                              _slideRightRoute(DriverOffersScreen(
+                                selectedDriver: apiDriver,
+                                pickup: widget.pickup,
+                                dropoff: widget.dropoff,
+                              ))),
+                        ),
+                      );
+                    }
+                    final drv = _kDrivers[i];
+                    return Padding(
+                      padding: EdgeInsets.fromLTRB(16, 0, 16,
+                          i < _kDrivers.length - 1 ? 14 : 24),
+                      child: _SuggestedDriverCard(
+                        driver: drv,
+                        isDark: d,
+                        onViewDetails: () => Navigator.push(
+                            context,
+                            _slideRightRoute(DriverDetailsScreen(
+                              driver: drv,
+                              pickup: widget.pickup,
+                              dropoff: widget.dropoff,
+                              date: widget.date,
+                              time: widget.time,
+                              packages: widget.packages,
+                              weight: widget.weight,
+                            ))),
+                        onSelect: () => Navigator.push(
+                            context,
+                            _slideRightRoute(DriverOffersScreen(
+                              selectedDriver: drv,
+                              pickup: widget.pickup,
+                              dropoff: widget.dropoff,
+                            ))),
+                      ),
+                    );
+                  },
+                )),
+          ])),
     );
   }
 }
@@ -645,9 +645,9 @@ class _SuggestedDriverCard extends StatelessWidget {
   final VoidCallback onViewDetails, onSelect;
   const _SuggestedDriverCard(
       {required this.driver,
-      required this.isDark,
-      required this.onViewDetails,
-      required this.onSelect});
+        required this.isDark,
+        required this.onViewDetails,
+        required this.onSelect});
 
   @override
   Widget build(BuildContext context) {
@@ -661,11 +661,11 @@ class _SuggestedDriverCard extends StatelessWidget {
           boxShadow: isDark
               ? []
               : [
-                  BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3))
-                ],
+            BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 10,
+                offset: const Offset(0, 3))
+          ],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -673,7 +673,7 @@ class _SuggestedDriverCard extends StatelessWidget {
                 width: 56,
                 height: 56,
                 decoration:
-                    const BoxDecoration(color: _kTeal, shape: BoxShape.circle),
+                const BoxDecoration(color: _kTeal, shape: BoxShape.circle),
                 alignment: Alignment.center,
                 child: Text(driver.initials,
                     style: const TextStyle(
@@ -685,25 +685,25 @@ class _SuggestedDriverCard extends StatelessWidget {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  Text(driver.name,
-                      style: TextStyle(
-                          color: _text(isDark),
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  Row(children: [
-                    const Icon(Icons.star, color: _kAmber, size: 15),
-                    const SizedBox(width: 4),
-                    Text('${driver.rating}',
-                        style: const TextStyle(
-                            color: _kAmber,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600)),
-                    const SizedBox(width: 4),
-                    Text('(${driver.reviews} reviews)',
-                        style: TextStyle(color: _muted(isDark), fontSize: 12)),
-                  ]),
-                ])),
+                      Text(driver.name,
+                          style: TextStyle(
+                              color: _text(isDark),
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 4),
+                      Row(children: [
+                        const Icon(Icons.star, color: _kAmber, size: 15),
+                        const SizedBox(width: 4),
+                        Text('${driver.rating}',
+                            style: const TextStyle(
+                                color: _kAmber,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 4),
+                        Text('(${driver.reviews} reviews)',
+                            style: TextStyle(color: _muted(isDark), fontSize: 12)),
+                      ]),
+                    ])),
             Text('\$${driver.price.toInt()}',
                 style: const TextStyle(
                     color: _kTeal, fontSize: 22, fontWeight: FontWeight.w700)),
@@ -726,39 +726,39 @@ class _SuggestedDriverCard extends StatelessWidget {
           Row(children: [
             Expanded(
                 child: _Tap(
-              onTap: onViewDetails,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                decoration: BoxDecoration(
-                    border: Border.all(color: _border(isDark)),
-                    borderRadius: BorderRadius.circular(12)),
-                alignment: Alignment.center,
-                child: Text('View Details',
-                    style: TextStyle(color: _text(isDark), fontSize: 14)),
-              ),
-            )),
+                  onTap: onViewDetails,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    decoration: BoxDecoration(
+                        border: Border.all(color: _border(isDark)),
+                        borderRadius: BorderRadius.circular(12)),
+                    alignment: Alignment.center,
+                    child: Text('View Details',
+                        style: TextStyle(color: _text(isDark), fontSize: 14)),
+                  ),
+                )),
             const SizedBox(width: 12),
             Expanded(
                 child: _Tap(
-              onTap: onSelect,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                decoration: BoxDecoration(
-                    gradient: _kGradient,
-                    borderRadius: BorderRadius.circular(12)),
-                child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Select Driver',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600)),
-                      SizedBox(width: 6),
-                      Icon(Icons.arrow_forward, color: Colors.white, size: 16),
-                    ]),
-              ),
-            )),
+                  onTap: onSelect,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    decoration: BoxDecoration(
+                        gradient: _kGradient,
+                        borderRadius: BorderRadius.circular(12)),
+                    child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('Select Driver',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600)),
+                          SizedBox(width: 6),
+                          Icon(Icons.arrow_forward, color: Colors.white, size: 16),
+                        ]),
+                  ),
+                )),
           ]),
         ]),
       ),
@@ -905,43 +905,43 @@ class _DriversLoadingState extends State<DriversLoadingScreen>
               const SizedBox(height: 20),
               ...List.generate(
                   3,
-                  (_) => Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                              color: _card(d),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: _border(d))),
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _shimmer(20, 6, _anim.value, d),
-                                const SizedBox(height: 10),
-                                _shimmer(14, 6, _anim.value * 0.7, d),
-                                const SizedBox(height: 8),
-                                _shimmer(14, 6, _anim.value * 0.5, d),
-                                const SizedBox(height: 14),
-                                Row(children: [
-                                  Expanded(
-                                      child: Container(
-                                          height: 44,
-                                          decoration: BoxDecoration(
-                                              color: _kTeal.withOpacity(0.2),
-                                              borderRadius:
-                                                  BorderRadius.circular(12)))),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                      child: Container(
-                                          height: 44,
-                                          decoration: BoxDecoration(
-                                              color: _kRed.withOpacity(0.2),
-                                              borderRadius:
-                                                  BorderRadius.circular(12)))),
-                                ]),
-                              ]),
-                        ),
-                      )),
+                      (_) => Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                          color: _card(d),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: _border(d))),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _shimmer(20, 6, _anim.value, d),
+                            const SizedBox(height: 10),
+                            _shimmer(14, 6, _anim.value * 0.7, d),
+                            const SizedBox(height: 8),
+                            _shimmer(14, 6, _anim.value * 0.5, d),
+                            const SizedBox(height: 14),
+                            Row(children: [
+                              Expanded(
+                                  child: Container(
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                          color: _kTeal.withOpacity(0.2),
+                                          borderRadius:
+                                          BorderRadius.circular(12)))),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                  child: Container(
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                          color: _kRed.withOpacity(0.2),
+                                          borderRadius:
+                                          BorderRadius.circular(12)))),
+                            ]),
+                          ]),
+                    ),
+                  )),
             ]),
           ),
         ),
@@ -1044,10 +1044,10 @@ class _DriverOffersScreenState extends State<DriverOffersScreen>
   late Animation<Offset> _headerSlide, _tabBarSlide;
 
   List<OfferModel> get _filtered => _kOffers.where((o) {
-        if (_tab == 0) return o.status == OfferStatus.pending;
-        if (_tab == 1) return o.status == OfferStatus.accepted;
-        return o.status == OfferStatus.rejected;
-      }).toList();
+    if (_tab == 0) return o.status == OfferStatus.pending;
+    if (_tab == 1) return o.status == OfferStatus.accepted;
+    return o.status == OfferStatus.rejected;
+  }).toList();
   int get _pc => _kOffers.where((o) => o.status == OfferStatus.pending).length;
   int get _ac => _kOffers.where((o) => o.status == OfferStatus.accepted).length;
   int get _rc => _kOffers.where((o) => o.status == OfferStatus.rejected).length;
@@ -1058,7 +1058,7 @@ class _DriverOffersScreenState extends State<DriverOffersScreen>
     _headerCtrl = AnimationController(vsync: this, duration: _kMed);
     _headerFade = CurvedAnimation(parent: _headerCtrl, curve: _kEaseOutCubic);
     _headerSlide = Tween<Offset>(
-            begin: const Offset(0, -0.06), end: Offset.zero)
+        begin: const Offset(0, -0.06), end: Offset.zero)
         .animate(CurvedAnimation(parent: _headerCtrl, curve: _kEaseOutCubic));
     _tabBarCtrl = AnimationController(vsync: this, duration: _kMed);
     _tabBarFade = CurvedAnimation(parent: _tabBarCtrl, curve: _kEaseOutCubic);
@@ -1100,59 +1100,59 @@ class _DriverOffersScreenState extends State<DriverOffersScreen>
       backgroundColor: _bg(d),
       body: SafeArea(
           child: Column(children: [
-        Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: FadeTransition(
-                opacity: _headerFade,
-                child: SlideTransition(
-                    position: _headerSlide,
-                    child: Row(children: [
-                      _backBtn(context, d),
-                      const SizedBox(width: 14),
-                      Text('Driver Offers',
-                          style: TextStyle(
-                              color: _text(d),
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold))
-                    ])))),
-        const SizedBox(height: 20),
-        Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: FadeTransition(
-                opacity: _tabBarFade,
-                child: SlideTransition(
-                    position: _tabBarSlide,
-                    child: Row(children: [
-                      Expanded(
-                          child: _tabChip(
-                              label: 'Pending',
-                              count: _pc,
-                              active: _tab == 0,
-                              onTap: () => _switchTab(0))),
-                      const SizedBox(width: 8),
-                      Expanded(
-                          child: _tabChip(
-                              label: 'Accepted',
-                              count: _ac,
-                              active: _tab == 1,
-                              onTap: () => _switchTab(1))),
-                      const SizedBox(width: 8),
-                      Expanded(
-                          child: _tabChip(
-                              label: 'Rejected',
-                              count: _rc,
-                              active: _tab == 2,
-                              onTap: () => _switchTab(2))),
-                    ])))),
-        const SizedBox(height: 20),
-        Expanded(
-            child: FadeTransition(
-                opacity: _contentFade,
-                child: filtered.isEmpty
-                    ? Center(
+            Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: FadeTransition(
+                    opacity: _headerFade,
+                    child: SlideTransition(
+                        position: _headerSlide,
+                        child: Row(children: [
+                          _backBtn(context, d),
+                          const SizedBox(width: 14),
+                          Text('Driver Offers',
+                              style: TextStyle(
+                                  color: _text(d),
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold))
+                        ])))),
+            const SizedBox(height: 20),
+            Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: FadeTransition(
+                    opacity: _tabBarFade,
+                    child: SlideTransition(
+                        position: _tabBarSlide,
+                        child: Row(children: [
+                          Expanded(
+                              child: _tabChip(
+                                  label: 'Pending',
+                                  count: _pc,
+                                  active: _tab == 0,
+                                  onTap: () => _switchTab(0))),
+                          const SizedBox(width: 8),
+                          Expanded(
+                              child: _tabChip(
+                                  label: 'Accepted',
+                                  count: _ac,
+                                  active: _tab == 1,
+                                  onTap: () => _switchTab(1))),
+                          const SizedBox(width: 8),
+                          Expanded(
+                              child: _tabChip(
+                                  label: 'Rejected',
+                                  count: _rc,
+                                  active: _tab == 2,
+                                  onTap: () => _switchTab(2))),
+                        ])))),
+            const SizedBox(height: 20),
+            Expanded(
+                child: FadeTransition(
+                    opacity: _contentFade,
+                    child: filtered.isEmpty
+                        ? Center(
                         child: Text('No offers here',
                             style: TextStyle(color: _muted(d))))
-                    : _StaggeredList(
+                        : _StaggeredList(
                         count: filtered.length,
                         initialDelay: Duration.zero,
                         itemBuilder: (_, i) {
@@ -1170,15 +1170,15 @@ class _DriverOffersScreenState extends State<DriverOffersScreen>
                                           driverName: offer.name,
                                           price: offer.price)))));
                         }))),
-      ])),
+          ])),
     );
   }
 
   Widget _tabChip(
-          {required String label,
-          required int count,
-          required bool active,
-          required VoidCallback onTap}) =>
+      {required String label,
+        required int count,
+        required bool active,
+        required VoidCallback onTap}) =>
       _Tap(
           onTap: onTap,
           child: AnimatedContainer(
@@ -1192,13 +1192,13 @@ class _DriverOffersScreenState extends State<DriverOffersScreen>
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                     color:
-                        active ? Colors.transparent : const Color(0xFF1A3550))),
+                    active ? Colors.transparent : const Color(0xFF1A3550))),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               Flexible(
                   child: Text(label,
                       style: TextStyle(
                           color:
-                              active ? Colors.white : const Color(0xFF6B8A9E),
+                          active ? Colors.white : const Color(0xFF6B8A9E),
                           fontSize: 13,
                           fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis)),
@@ -1213,7 +1213,7 @@ class _DriverOffersScreenState extends State<DriverOffersScreen>
                   child: Text('$count',
                       style: TextStyle(
                           color:
-                              active ? Colors.white : const Color(0xFF6B8A9E),
+                          active ? Colors.white : const Color(0xFF6B8A9E),
                           fontSize: 11,
                           fontWeight: FontWeight.bold))),
             ]),
@@ -1226,16 +1226,16 @@ class _OfferCard extends StatelessWidget {
   final VoidCallback? onAccept;
   const _OfferCard(
       {required this.offer,
-      required this.isDark,
-      required this.showActions,
-      this.onAccept});
+        required this.isDark,
+        required this.showActions,
+        this.onAccept});
   @override
   Widget build(BuildContext context) {
     final statusColor = offer.status == OfferStatus.accepted
         ? _kTeal
         : offer.status == OfferStatus.rejected
-            ? _kRed
-            : null;
+        ? _kRed
+        : null;
     return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -1245,18 +1245,18 @@ class _OfferCard extends StatelessWidget {
             boxShadow: isDark
                 ? []
                 : [
-                    BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2))
-                  ]),
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2))
+            ]),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Container(
                 width: 52,
                 height: 52,
                 decoration:
-                    const BoxDecoration(color: _kTeal, shape: BoxShape.circle),
+                const BoxDecoration(color: _kTeal, shape: BoxShape.circle),
                 alignment: Alignment.center,
                 child: Text(offer.initials,
                     style: const TextStyle(
@@ -1268,37 +1268,37 @@ class _OfferCard extends StatelessWidget {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  Text(offer.name,
-                      style: TextStyle(
-                          color: _text(isDark),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  Row(children: [
-                    const Icon(Icons.star, color: _kAmber, size: 14),
-                    const SizedBox(width: 4),
-                    Text('${offer.rating}',
-                        style: const TextStyle(
-                            color: _kAmber,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600)),
-                    Text('  •  ${offer.timeAgo}',
-                        style: TextStyle(color: _muted(isDark), fontSize: 12))
-                  ]),
-                  const SizedBox(height: 4),
-                  Row(children: [
-                    Icon(Icons.location_on_outlined,
-                        color: _kTeal.withOpacity(0.7), size: 13),
-                    Text(' ${offer.distance} km  ',
-                        style: TextStyle(color: _muted(isDark), fontSize: 12)),
-                    Text(offer.vehicle,
-                        style: TextStyle(color: _muted(isDark), fontSize: 12))
-                  ]),
-                ])),
+                      Text(offer.name,
+                          style: TextStyle(
+                              color: _text(isDark),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 4),
+                      Row(children: [
+                        const Icon(Icons.star, color: _kAmber, size: 14),
+                        const SizedBox(width: 4),
+                        Text('${offer.rating}',
+                            style: const TextStyle(
+                                color: _kAmber,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600)),
+                        Text('  •  ${offer.timeAgo}',
+                            style: TextStyle(color: _muted(isDark), fontSize: 12))
+                      ]),
+                      const SizedBox(height: 4),
+                      Row(children: [
+                        Icon(Icons.location_on_outlined,
+                            color: _kTeal.withOpacity(0.7), size: 13),
+                        Text(' ${offer.distance} km  ',
+                            style: TextStyle(color: _muted(isDark), fontSize: 12)),
+                        Text(offer.vehicle,
+                            style: TextStyle(color: _muted(isDark), fontSize: 12))
+                      ]),
+                    ])),
             if (statusColor != null)
               Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                       color: statusColor.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(20),
@@ -1351,7 +1351,7 @@ class _OfferCard extends StatelessWidget {
                               color: _kRed.withOpacity(0.12),
                               borderRadius: BorderRadius.circular(12),
                               border:
-                                  Border.all(color: _kRed.withOpacity(0.3))),
+                              Border.all(color: _kRed.withOpacity(0.3))),
                           child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -1397,13 +1397,13 @@ class DriverDetailsScreen extends StatefulWidget {
   final String pickup, dropoff, date, time, packages, weight;
   const DriverDetailsScreen(
       {super.key,
-      required this.driver,
-      this.pickup = '',
-      this.dropoff = '',
-      this.date = '',
-      this.time = '',
-      this.packages = '',
-      this.weight = ''});
+        required this.driver,
+        this.pickup = '',
+        this.dropoff = '',
+        this.date = '',
+        this.time = '',
+        this.packages = '',
+        this.weight = ''});
   @override
   State<DriverDetailsScreen> createState() => _DriverDetailsScreenState();
 }
@@ -1446,8 +1446,8 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen>
       final e = (s + 0.55).clamp(0.0, 1.0);
       return Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
           .animate(CurvedAnimation(
-              parent: _contentCtrl,
-              curve: Interval(s, e, curve: _kEaseOutCubic)));
+          parent: _contentCtrl,
+          curve: Interval(s, e, curve: _kEaseOutCubic)));
     });
     _btnCtrl = AnimationController(vsync: this, duration: _kMed);
     _btnSlide = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
@@ -1476,10 +1476,10 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen>
 
   static const _reviews = [
     (
-      name: 'Toka Mohamed',
-      stars: 4,
-      date: 'Jun 16, 2026',
-      body: 'Very professional and delivered on time. Highly recommended!'
+    name: 'Toka Mohamed',
+    stars: 4,
+    date: 'Jun 16, 2026',
+    body: 'Very professional and delivered on time. Highly recommended!'
     ),
   ];
 
@@ -1494,260 +1494,260 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen>
         backgroundColor: _bg(d),
         body: SafeArea(
             child: Column(children: [
-          Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Row(children: [
-                _backBtn(context, d),
-                const SizedBox(width: 14),
-                Text('Driver Details',
-                    style: TextStyle(
-                        color: _text(d),
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold))
-              ])),
-          const SizedBox(height: 20),
-          Expanded(
-              child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ScaleTransition(
-                            scale: _profileScale,
-                            child: FadeTransition(
-                                opacity: _profileFade,
-                                child: Container(
+              Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: Row(children: [
+                    _backBtn(context, d),
+                    const SizedBox(width: 14),
+                    Text('Driver Details',
+                        style: TextStyle(
+                            color: _text(d),
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold))
+                  ])),
+              const SizedBox(height: 20),
+              Expanded(
+                  child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ScaleTransition(
+                                scale: _profileScale,
+                                child: FadeTransition(
+                                    opacity: _profileFade,
+                                    child: Container(
+                                        padding: const EdgeInsets.all(20),
+                                        decoration: BoxDecoration(
+                                            color: _card(d),
+                                            borderRadius: BorderRadius.circular(20),
+                                            border: Border.all(color: _border(d)),
+                                            boxShadow: d
+                                                ? []
+                                                : [
+                                              BoxShadow(
+                                                  color: Colors.black
+                                                      .withOpacity(0.05),
+                                                  blurRadius: 10,
+                                                  offset: const Offset(0, 3))
+                                            ]),
+                                        child: Column(children: [
+                                          Row(children: [
+                                            Container(
+                                                width: 72,
+                                                height: 72,
+                                                decoration: const BoxDecoration(
+                                                    color: _kTeal,
+                                                    shape: BoxShape.circle),
+                                                alignment: Alignment.center,
+                                                child:const Text("م ن",
+                                                    style:  TextStyle(
+                                                        color: Color(0xFF0A1628),
+                                                        fontWeight: FontWeight.w700,
+                                                        fontSize: 22))),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                                child: Column(
+                                                    crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(widget.driver.name,
+                                                          style: TextStyle(
+                                                              color: _text(d),
+                                                              fontSize: 20,
+                                                              fontWeight:
+                                                              FontWeight.bold)),
+                                                      const SizedBox(height: 6),
+                                                      Row(children: [
+                                                        const Icon(Icons.star,
+                                                            color: _kAmber, size: 16),
+                                                        const SizedBox(width: 4),
+                                                        Text('4',
+                                                            style: const TextStyle(
+                                                                color: _kAmber,
+                                                                fontWeight:
+                                                                FontWeight.w600)),
+                                                        Text('  (1 reviews)',
+                                                            style: TextStyle(
+                                                                color: _muted(d),
+                                                                fontSize: 13))
+                                                      ]),
+                                                      const SizedBox(height: 6),
+                                                      const Row(children: [
+                                                        Icon(Icons.verified_outlined,
+                                                            color: _kTeal, size: 14),
+                                                        SizedBox(width: 4),
+                                                        Text('Verified Driver',
+                                                            style: TextStyle(
+                                                                color: _kTeal,
+                                                                fontSize: 13))
+                                                      ]),
+                                                    ])),
+                                            Column(
+                                                crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                                children: [
+                                                  Text('Total Cost',
+                                                      style: TextStyle(
+                                                          color: _muted(d),
+                                                          fontSize: 12)),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                      '\$${widget.driver.price.toInt()}',
+                                                      style: const TextStyle(
+                                                          color: _kTeal,
+                                                          fontSize: 20,
+                                                          fontWeight:
+                                                          FontWeight.bold))
+                                                ]),
+                                          ]),
+                                          const SizedBox(height: 20),
+                                          ScaleTransition(
+                                              scale: _statsScale,
+                                              child: FadeTransition(
+                                                  opacity: _statsFade,
+                                                  child: Row(children: [
+                                                    _statItem('Trips', '1', d),
+                                                    Container(
+                                                        width: 1,
+                                                        height: 40,
+                                                        color: _border(d)
+                                                            .withOpacity(0.5)),
+                                                    _statItem('Years', '1', d),
+                                                    Container(
+                                                        width: 1,
+                                                        height: 40,
+                                                        color: _border(d)
+                                                            .withOpacity(0.5)),
+                                                    _statItem(
+                                                        'Away',
+                                                        '${widget.driver.distance} km',
+                                                        d),
+                                                  ]))),
+                                        ])))),
+                            const SizedBox(height: 16),
+                            _section(
+                                0,
+                                Container(
                                     padding: const EdgeInsets.all(20),
                                     decoration: BoxDecoration(
                                         color: _card(d),
                                         borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(color: _border(d)),
-                                        boxShadow: d
-                                            ? []
-                                            : [
-                                                BoxShadow(
-                                                    color: Colors.black
-                                                        .withOpacity(0.05),
-                                                    blurRadius: 10,
-                                                    offset: const Offset(0, 3))
-                                              ]),
-                                    child: Column(children: [
-                                      Row(children: [
-                                        Container(
-                                            width: 72,
-                                            height: 72,
-                                            decoration: const BoxDecoration(
-                                                color: _kTeal,
-                                                shape: BoxShape.circle),
-                                            alignment: Alignment.center,
-                                            child:const Text("م ن",
-                                                style:  TextStyle(
-                                                    color: Color(0xFF0A1628),
-                                                    fontWeight: FontWeight.w700,
-                                                    fontSize: 22))),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                            child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                              Text(widget.driver.name,
-                                                  style: TextStyle(
-                                                      color: _text(d),
-                                                      fontSize: 20,
-                                                      fontWeight:
-                                                          FontWeight.bold)),
-                                              const SizedBox(height: 6),
-                                              Row(children: [
-                                                const Icon(Icons.star,
-                                                    color: _kAmber, size: 16),
-                                                const SizedBox(width: 4),
-                                                Text('4',
-                                                    style: const TextStyle(
-                                                        color: _kAmber,
-                                                        fontWeight:
-                                                            FontWeight.w600)),
-                                                Text('  (1 reviews)',
-                                                    style: TextStyle(
-                                                        color: _muted(d),
-                                                        fontSize: 13))
-                                              ]),
-                                              const SizedBox(height: 6),
-                                              const Row(children: [
-                                                Icon(Icons.verified_outlined,
-                                                    color: _kTeal, size: 14),
-                                                SizedBox(width: 4),
-                                                Text('Verified Driver',
-                                                    style: TextStyle(
-                                                        color: _kTeal,
-                                                        fontSize: 13))
-                                              ]),
-                                            ])),
-                                        Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.end,
-                                            children: [
-                                              Text('Total Cost',
-                                                  style: TextStyle(
-                                                      color: _muted(d),
-                                                      fontSize: 12)),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                  '\$${widget.driver.price.toInt()}',
-                                                  style: const TextStyle(
-                                                      color: _kTeal,
-                                                      fontSize: 20,
-                                                      fontWeight:
-                                                          FontWeight.bold))
-                                            ]),
-                                      ]),
-                                      const SizedBox(height: 20),
-                                      ScaleTransition(
-                                          scale: _statsScale,
-                                          child: FadeTransition(
-                                              opacity: _statsFade,
-                                              child: Row(children: [
-                                                _statItem('Trips', '1', d),
-                                                Container(
-                                                    width: 1,
-                                                    height: 40,
-                                                    color: _border(d)
-                                                        .withOpacity(0.5)),
-                                                _statItem('Years', '1', d),
-                                                Container(
-                                                    width: 1,
-                                                    height: 40,
-                                                    color: _border(d)
-                                                        .withOpacity(0.5)),
-                                                _statItem(
-                                                    'Away',
-                                                    '${widget.driver.distance} km',
-                                                    d),
-                                              ]))),
-                                    ])))),
-                        const SizedBox(height: 16),
-                        _section(
-                            0,
-                            Container(
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                    color: _card(d),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: _border(d))),
-                                child: Column(
-                                    crossAxisAlignment:
+                                        border: Border.all(color: _border(d))),
+                                    child: Column(
+                                        crossAxisAlignment:
                                         CrossAxisAlignment.start,
-                                    children: [
-                                      Row(children: [
-                                        Container(
-                                            width: 40,
-                                            height: 40,
-                                            decoration: BoxDecoration(
-                                                color: _kTeal.withOpacity(0.12),
-                                                borderRadius:
+                                        children: [
+                                          Row(children: [
+                                            Container(
+                                                width: 40,
+                                                height: 40,
+                                                decoration: BoxDecoration(
+                                                    color: _kTeal.withOpacity(0.12),
+                                                    borderRadius:
                                                     BorderRadius.circular(12)),
-                                            child: const Icon(
-                                                Icons.local_shipping_outlined,
-                                                color: _kTeal,
-                                                size: 20)),
-                                        const SizedBox(width: 12),
-                                        Text('Truck Information',
-                                            style: TextStyle(
-                                                color: _text(d),
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold))
-                                      ]),
-                                      const SizedBox(height: 16),
-                                      _infoRow('Type', "مقطوره", d),
-                                      const SizedBox(height: 10),
-                                      _infoRow('Model', 'Box Truck', d),
-                                      const SizedBox(height: 10),
-                                      _infoRow(
-                                          'License Plate', 'ا ب ج - 1 2 3', d),
-                                    ]))),
-                        const SizedBox(height: 20),
-                        _section(
-                            1,
-                            Text('Recent Reviews',
-                                style: TextStyle(
-                                    color: _text(d),
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold))),
-                        const SizedBox(height: 12),
-                        _section(
-                            2,
-                            _StaggeredList(
-                                count: _reviews.length,
-                                initialDelay: const Duration(milliseconds: 100),
-                                asColumn: true,
-                                itemBuilder: (_, i) {
-                                  final r = _reviews[i];
-                                  return Padding(
-                                      padding:
+                                                child: const Icon(
+                                                    Icons.local_shipping_outlined,
+                                                    color: _kTeal,
+                                                    size: 20)),
+                                            const SizedBox(width: 12),
+                                            Text('Truck Information',
+                                                style: TextStyle(
+                                                    color: _text(d),
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold))
+                                          ]),
+                                          const SizedBox(height: 16),
+                                          _infoRow('Type', "مقطوره", d),
+                                          const SizedBox(height: 10),
+                                          _infoRow('Model', 'Box Truck', d),
+                                          const SizedBox(height: 10),
+                                          _infoRow(
+                                              'License Plate', 'ا ب ج - 1 2 3', d),
+                                        ]))),
+                            const SizedBox(height: 20),
+                            _section(
+                                1,
+                                Text('Recent Reviews',
+                                    style: TextStyle(
+                                        color: _text(d),
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold))),
+                            const SizedBox(height: 12),
+                            _section(
+                                2,
+                                _StaggeredList(
+                                    count: _reviews.length,
+                                    initialDelay: const Duration(milliseconds: 100),
+                                    asColumn: true,
+                                    itemBuilder: (_, i) {
+                                      final r = _reviews[i];
+                                      return Padding(
+                                          padding:
                                           const EdgeInsets.only(bottom: 12),
-                                      child: Container(
-                                          padding: const EdgeInsets.all(16),
-                                          decoration: BoxDecoration(
-                                              color: _card(d),
-                                              borderRadius:
+                                          child: Container(
+                                              padding: const EdgeInsets.all(16),
+                                              decoration: BoxDecoration(
+                                                  color: _card(d),
+                                                  borderRadius:
                                                   BorderRadius.circular(16),
-                                              border: Border.all(
-                                                  color: _border(d))),
-                                          child: Column(
-                                              crossAxisAlignment:
+                                                  border: Border.all(
+                                                      color: _border(d))),
+                                              child: Column(
+                                                  crossAxisAlignment:
                                                   CrossAxisAlignment.start,
-                                              children: [
-                                                Row(children: [
-                                                  Text(r.name,
-                                                      style: TextStyle(
-                                                          color: _text(d),
-                                                          fontWeight:
+                                                  children: [
+                                                    Row(children: [
+                                                      Text(r.name,
+                                                          style: TextStyle(
+                                                              color: _text(d),
+                                                              fontWeight:
                                                               FontWeight.w600)),
-                                                  const Spacer(),
-                                                  Row(
-                                                      children: List.generate(
-                                                          5,
-                                                          (j) => Icon(
-                                                              j < r.stars
-                                                                  ? Icons
+                                                      const Spacer(),
+                                                      Row(
+                                                          children: List.generate(
+                                                              5,
+                                                                  (j) => Icon(
+                                                                  j < r.stars
+                                                                      ? Icons
                                                                       .star_rounded
-                                                                  : Icons
+                                                                      : Icons
                                                                       .star_outline_rounded,
-                                                              color: _kAmber,
-                                                              size: 14)))
-                                                ]),
-                                                const SizedBox(height: 6),
-                                                Text(r.body,
-                                                    style: TextStyle(
-                                                        color: _text(d),
-                                                        fontSize: 13)),
-                                                const SizedBox(height: 4),
-                                                Text(r.date,
-                                                    style: TextStyle(
-                                                        color: _muted(d),
-                                                        fontSize: 11))
-                                              ])));
-                                })),
-                      ]))),
-          SlideTransition(
-              position: _btnSlide,
-              child: FadeTransition(
-                  opacity: _btnFade,
-                  child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                      child: _GradBtn(
-                          label: 'Choose Driver',
-                          icon: Icons.check_circle_outline_rounded,
-                          onTap: () => Navigator.push(
-                              context,
-                              _slideUpRoute(PaymentMethodsSelectScreen(
-                                  driverName: widget.driver.name,
-                                  price: widget.driver.price))))))),
-        ])));
+                                                                  color: _kAmber,
+                                                                  size: 14)))
+                                                    ]),
+                                                    const SizedBox(height: 6),
+                                                    Text(r.body,
+                                                        style: TextStyle(
+                                                            color: _text(d),
+                                                            fontSize: 13)),
+                                                    const SizedBox(height: 4),
+                                                    Text(r.date,
+                                                        style: TextStyle(
+                                                            color: _muted(d),
+                                                            fontSize: 11))
+                                                  ])));
+                                    })),
+                          ]))),
+              SlideTransition(
+                  position: _btnSlide,
+                  child: FadeTransition(
+                      opacity: _btnFade,
+                      child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                          child: _GradBtn(
+                              label: 'Choose Driver',
+                              icon: Icons.check_circle_outline_rounded,
+                              onTap: () => Navigator.push(
+                                  context,
+                                  _slideUpRoute(PaymentMethodsSelectScreen(
+                                      driverName: widget.driver.name,
+                                      price: widget.driver.price))))))),
+            ])));
   }
 
   Widget _statItem(String label, String value, bool d) => Expanded(
-          child: Column(children: [
+      child: Column(children: [
         Text(label, style: TextStyle(color: _muted(d), fontSize: 12)),
         const SizedBox(height: 4),
         Text(value,
@@ -1876,8 +1876,8 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
       final e = (s + 0.55).clamp(0.0, 1.0);
       return Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero)
           .animate(CurvedAnimation(
-              parent: _cardsCtrl,
-              curve: Interval(s, e, curve: _kEaseOutCubic)));
+          parent: _cardsCtrl,
+          curve: Interval(s, e, curve: _kEaseOutCubic)));
     });
     _btnsCtrl = AnimationController(vsync: this, duration: _kMed);
     _btnsSlide = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero)
@@ -1914,7 +1914,7 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
     final d = context.watch<ThemeProvider>().isDark;
     final kBg2 = d ? const Color(0xFF0A1628).withOpacity(0.6) : Colors.white;
     final kBdr =
-        d ? const Color(0xFF00D5BE).withOpacity(0.1) : const Color(0xFFE2EAF0);
+    d ? const Color(0xFF00D5BE).withOpacity(0.1) : const Color(0xFFE2EAF0);
 
     Widget cardDeco(Widget child) => Container(
         width: double.infinity,
@@ -1926,11 +1926,11 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
             boxShadow: d
                 ? []
                 : [
-                    BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3))
-                  ]),
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3))
+            ]),
         child: child);
 
     final timeline = _timelineItems;
@@ -1939,67 +1939,67 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
       backgroundColor: _bg(d),
       body: SafeArea(
           child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-          Row(children: [
-            _backBtn(context, d),
-            Expanded(
-                child: Center(
-                    child: Text('Shipment Details',
-                        style: TextStyle(
-                            color: _text(d),
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold)))),
-            const SizedBox(width: 42),
-          ]),
-          const SizedBox(height: 20),
-          ScaleTransition(
-              scale: _badgeScale,
-              child: FadeTransition(
-                opacity: _badgeFade,
-                child: Container(
-                  padding:
+            padding: const EdgeInsets.all(20),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              Row(children: [
+                _backBtn(context, d),
+                Expanded(
+                    child: Center(
+                        child: Text('Shipment Details',
+                            style: TextStyle(
+                                color: _text(d),
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold)))),
+                const SizedBox(width: 42),
+              ]),
+              const SizedBox(height: 20),
+              ScaleTransition(
+                  scale: _badgeScale,
+                  child: FadeTransition(
+                    opacity: _badgeFade,
+                    child: Container(
+                      padding:
                       const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                  decoration: BoxDecoration(
-                      color: _statusColor.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: _statusColor.withOpacity(0.3))),
-                  child: Text(_statusLabel,
-                      style: TextStyle(
-                          color: _statusColor,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600)),
-                ),
-              )),
-          const SizedBox(height: 16),
-          FadeTransition(
-              opacity: _idFade,
-              child: Column(children: [
-                Text('Shipment ID',
-                    style: TextStyle(color: _muted(d), fontSize: 12)),
-                const SizedBox(height: 4),
-                Text(widget.shipmentId,
-                    style: TextStyle(
-                        color: _muted(d),
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1)),
-              ])),
-          const SizedBox(height: 24),
-          _animCard(
-              0,
-              cardDeco(Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Timeline',
+                      decoration: BoxDecoration(
+                          color: _statusColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: _statusColor.withOpacity(0.3))),
+                      child: Text(_statusLabel,
+                          style: TextStyle(
+                              color: _statusColor,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                  )),
+              const SizedBox(height: 16),
+              FadeTransition(
+                  opacity: _idFade,
+                  child: Column(children: [
+                    Text('Shipment ID',
+                        style: TextStyle(color: _muted(d), fontSize: 12)),
+                    const SizedBox(height: 4),
+                    Text(widget.shipmentId,
                         style: TextStyle(
-                            color: _text(d),
+                            color: _muted(d),
                             fontSize: 18,
-                            fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 20),
-                    ...List.generate(
-                        timeline.length,
-                        (i) => _tlItem(
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1)),
+                  ])),
+              const SizedBox(height: 24),
+              _animCard(
+                  0,
+                  cardDeco(Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Timeline',
+                            style: TextStyle(
+                                color: _text(d),
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 20),
+                        ...List.generate(
+                            timeline.length,
+                                (i) => _tlItem(
                               title: timeline[i]['title'],
                               sub: timeline[i]['sub'],
                               done: timeline[i]['done'],
@@ -2007,133 +2007,133 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
                               last: i == timeline.length - 1,
                               d: d,
                             )),
-                  ]))),
-          const SizedBox(height: 20),
-          _animCard(
-              1,
-              cardDeco(Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Route Details',
-                        style: TextStyle(
-                            color: _text(d),
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 20),
-                    Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Column(children: [
-                            _dot(_kTeal),
-                            Container(width: 2, height: 40, color: _kTeal),
-                            _dot(const Color(0xFF00B8DB))
-                          ]),
-                          const SizedBox(width: 16),
+                      ]))),
+              const SizedBox(height: 20),
+              _animCard(
+                  1,
+                  cardDeco(Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Route Details',
+                            style: TextStyle(
+                                color: _text(d),
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 20),
+                        Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Column(children: [
+                                _dot(_kTeal),
+                                Container(width: 2, height: 40, color: _kTeal),
+                                _dot(const Color(0xFF00B8DB))
+                              ]),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                  child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Pickup',
+                                            style: TextStyle(
+                                                color: _muted(d), fontSize: 12)),
+                                        const SizedBox(height: 4),
+                                        Text(widget.pickup,
+                                            style: TextStyle(
+                                                color: _text(d),
+                                                fontSize: 17,
+                                                fontWeight: FontWeight.w600)),
+                                        const SizedBox(height: 18),
+                                        Text('Drop-off',
+                                            style: TextStyle(
+                                                color: _muted(d), fontSize: 12)),
+                                        const SizedBox(height: 4),
+                                        Text(widget.dropoff,
+                                            style: TextStyle(
+                                                color: _text(d),
+                                                fontSize: 17,
+                                                fontWeight: FontWeight.w600)),
+                                      ])),
+                            ]),
+                        const SizedBox(height: 20),
+                        Row(children: [
                           Expanded(
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                Text('Pickup',
-                                    style: TextStyle(
-                                        color: _muted(d), fontSize: 12)),
-                                const SizedBox(height: 4),
-                                Text(widget.pickup,
-                                    style: TextStyle(
-                                        color: _text(d),
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 18),
-                                Text('Drop-off',
-                                    style: TextStyle(
-                                        color: _muted(d), fontSize: 12)),
-                                const SizedBox(height: 4),
-                                Text(widget.dropoff,
-                                    style: TextStyle(
-                                        color: _text(d),
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w600)),
-                              ])),
+                              child: _dtItem('Scheduled Date', Icons.calendar_today,
+                                  widget.date, d)),
+                          Expanded(
+                              child: _dtItem(
+                                  'Time', Icons.access_time, widget.time, d)),
                         ]),
-                    const SizedBox(height: 20),
-                    Row(children: [
-                      Expanded(
-                          child: _dtItem('Scheduled Date', Icons.calendar_today,
-                              widget.date, d)),
-                      Expanded(
-                          child: _dtItem(
-                              'Time', Icons.access_time, widget.time, d)),
+                        const SizedBox(height: 16),
+                        Row(children: [
+                          Expanded(
+                              child: _dtItem('Packages', Icons.inventory_2_outlined,
+                                  widget.packages, d)),
+                          Expanded(
+                              child: _dtItem('Weight', Icons.scale_outlined,
+                                  widget.weight, d)),
+                        ]),
+                      ]))),
+              const SizedBox(height: 20),
+              _animCard(
+                  2,
+                  cardDeco(Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Total Cost',
+                            style: TextStyle(color: _muted(d), fontSize: 16)),
+                        const Text('240',
+                            style: TextStyle(
+                                color: _kTeal,
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold)),
+                      ]))),
+              const SizedBox(height: 20),
+              SlideTransition(
+                  position: _btnsSlide,
+                  child: FadeTransition(
+                    opacity: _btnsFade,
+                    child: Column(children: [
+                      // ✅ زرار Track Shipment بيفتح TrackingScreen
+                      _GradBtn(
+                        label: 'Track Shipment',
+                        icon: Icons.location_on_outlined,
+                        onTap: () => Navigator.push(
+                            context,
+                            _slideRightRoute(TrackingScreen(
+                              shipmentId: widget.shipmentId,
+                              origin: widget.pickup,
+                              destination: widget.dropoff,
+                              driverName: widget.driverName ?? 'Ahmed Hassan',
+                              vehicleInfo: 'Flatbed Truck',
+                              weight: widget.weight,
+                              price: '\$240',
+                              status: widget.status,
+                            ))),
+                      ),
+                      const SizedBox(height: 12),
+                      _Tap(
+                          onTap: () => Navigator.push(context,
+                              _slideRightRoute(const DriverOffersScreen())),
+                          child: Container(
+                              width: double.infinity,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                  color: d ? const Color(0xFF0F2A3A) : Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                      color: d
+                                          ? _kTeal.withOpacity(0.2)
+                                          : const Color(0xFFE2EAF0))),
+                              alignment: Alignment.center,
+                              child: Text('View Offers',
+                                  style: TextStyle(
+                                      color: _text(d),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600)))),
                     ]),
-                    const SizedBox(height: 16),
-                    Row(children: [
-                      Expanded(
-                          child: _dtItem('Packages', Icons.inventory_2_outlined,
-                              widget.packages, d)),
-                      Expanded(
-                          child: _dtItem('Weight', Icons.scale_outlined,
-                              widget.weight, d)),
-                    ]),
-                  ]))),
-          const SizedBox(height: 20),
-          _animCard(
-              2,
-              cardDeco(Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Total Cost',
-                        style: TextStyle(color: _muted(d), fontSize: 16)),
-                    const Text('240',
-                        style: TextStyle(
-                            color: _kTeal,
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold)),
-                  ]))),
-          const SizedBox(height: 20),
-          SlideTransition(
-              position: _btnsSlide,
-              child: FadeTransition(
-                opacity: _btnsFade,
-                child: Column(children: [
-                  // ✅ زرار Track Shipment بيفتح TrackingScreen
-                  _GradBtn(
-                    label: 'Track Shipment',
-                    icon: Icons.location_on_outlined,
-                    onTap: () => Navigator.push(
-                        context,
-                        _slideRightRoute(TrackingScreen(
-                          shipmentId: widget.shipmentId,
-                          origin: widget.pickup,
-                          destination: widget.dropoff,
-                          driverName: widget.driverName ?? 'Ahmed Hassan',
-                          vehicleInfo: 'Flatbed Truck',
-                          weight: widget.weight,
-                          price: '\$240',
-                          status: widget.status,
-                        ))),
-                  ),
-                  const SizedBox(height: 12),
-                  _Tap(
-                      onTap: () => Navigator.push(context,
-                          _slideRightRoute(const DriverOffersScreen())),
-                      child: Container(
-                          width: double.infinity,
-                          height: 56,
-                          decoration: BoxDecoration(
-                              color: d ? const Color(0xFF0F2A3A) : Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                  color: d
-                                      ? _kTeal.withOpacity(0.2)
-                                      : const Color(0xFFE2EAF0))),
-                          alignment: Alignment.center,
-                          child: Text('View Offers',
-                              style: TextStyle(
-                                  color: _text(d),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600)))),
-                ]),
-              )),
-        ]),
-      )),
+                  )),
+            ]),
+          )),
     );
   }
 
@@ -2142,12 +2142,12 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
       height: 12,
       decoration: BoxDecoration(color: c, shape: BoxShape.circle));
   Widget _tlItem(
-          {required String title,
-          required String sub,
-          required bool done,
-          required bool first,
-          required bool last,
-          required bool d}) =>
+      {required String title,
+        required String sub,
+        required bool done,
+        required bool first,
+        required bool last,
+        required bool d}) =>
       Row(children: [
         Column(children: [
           if (!first)
@@ -2159,7 +2159,7 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
                   shape: BoxShape.circle,
                   color: done ? _kTeal : Colors.transparent,
                   border:
-                      Border.all(color: done ? _kTeal : _border(d), width: 2)),
+                  Border.all(color: done ? _kTeal : _border(d), width: 2)),
               child: done
                   ? const Icon(Icons.check, color: Colors.white, size: 14)
                   : null),
@@ -2285,7 +2285,7 @@ class _TrackingScreenState extends State<TrackingScreen>
     final d = context.watch<ThemeProvider>().isDark;
     final eta = widget.status == 'delivered' ? 0 : 45;
     final initials =
-        widget.driverName.split(' ').map((p) => p[0]).take(2).join();
+    widget.driverName.split(' ').map((p) => p[0]).take(2).join();
 
     Color statusColor;
     String statusLabel;
@@ -2322,27 +2322,27 @@ class _TrackingScreenState extends State<TrackingScreen>
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                    Text(widget.shipmentId,
-                        style: TextStyle(
-                            color: _muted(d),
-                            fontSize: 10,
-                            letterSpacing: 1.1)),
-                    const SizedBox(height: 3),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 5),
-                      decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(20),
-                          border:
+                        Text(widget.shipmentId,
+                            style: TextStyle(
+                                color: _muted(d),
+                                fontSize: 10,
+                                letterSpacing: 1.1)),
+                        const SizedBox(height: 3),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 5),
+                          decoration: BoxDecoration(
+                              color: statusColor.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border:
                               Border.all(color: statusColor.withOpacity(0.3))),
-                      child: Text(statusLabel,
-                          style: TextStyle(
-                              color: statusColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600)),
-                    ),
-                  ])),
+                          child: Text(statusLabel,
+                              style: TextStyle(
+                                  color: statusColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                      ])),
               if (eta > 0) ...[
                 Text('ETA',
                     style: TextStyle(
@@ -2381,10 +2381,10 @@ class _TrackingScreenState extends State<TrackingScreen>
                     border: Border.all(color: _border(d)),
                     boxShadow: d
                         ? [
-                            BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 12)
-                          ]
+                      BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 12)
+                    ]
                         : [],
                   ),
                   child: Column(children: [
@@ -2410,15 +2410,15 @@ class _TrackingScreenState extends State<TrackingScreen>
                           child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                            Text(widget.driverName,
-                                style: TextStyle(
-                                    color: _text(d),
-                                    fontWeight: FontWeight.w700)),
-                            const SizedBox(height: 4),
-                            Text('4.8  ·  ${widget.vehicleInfo}',
-                                style:
+                                Text(widget.driverName,
+                                    style: TextStyle(
+                                        color: _text(d),
+                                        fontWeight: FontWeight.w700)),
+                                const SizedBox(height: 4),
+                                Text('4.8  ·  ${widget.vehicleInfo}',
+                                    style:
                                     TextStyle(color: _muted(d), fontSize: 12)),
-                          ])),
+                              ])),
                       CircleAvatar(
                           radius: 18,
                           backgroundColor: _kTeal,
@@ -2496,17 +2496,17 @@ class _TrackingScreenState extends State<TrackingScreen>
             decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border:
-                    Border.all(color: done ? _kTeal : _border(d), width: 2)),
+                Border.all(color: done ? _kTeal : _border(d), width: 2)),
             child:
-                done ? const Icon(Icons.circle, size: 8, color: _kTeal) : null),
+            done ? const Icon(Icons.circle, size: 8, color: _kTeal) : null),
         const SizedBox(width: 12),
         Expanded(
             child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: TextStyle(color: _text(d))),
-          const SizedBox(height: 2),
-          Text(sub, style: TextStyle(color: _muted(d), fontSize: 11)),
-        ])),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label, style: TextStyle(color: _text(d))),
+              const SizedBox(height: 2),
+              Text(sub, style: TextStyle(color: _muted(d), fontSize: 11)),
+            ])),
       ]));
 }
 
@@ -2572,8 +2572,8 @@ class _TraderDeliverySuccessScreenState
       final e = (s + 0.55).clamp(0.0, 1.0);
       return Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero)
           .animate(CurvedAnimation(
-              parent: _cardsCtrl,
-              curve: Interval(s, e, curve: _kEaseOutCubic)));
+          parent: _cardsCtrl,
+          curve: Interval(s, e, curve: _kEaseOutCubic)));
     });
     _btnsCtrl = AnimationController(vsync: this, duration: _kMed);
     _btnsFade = CurvedAnimation(parent: _btnsCtrl, curve: _kEaseOutCubic);
@@ -2691,11 +2691,11 @@ class _TraderDeliverySuccessScreenState
                       boxShadow: d
                           ? []
                           : [
-                              BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4))
-                            ]),
+                        BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4))
+                      ]),
                   child: Column(children: [
                     Text('Shipment ID',
                         style: TextStyle(color: kMuted, fontSize: 13)),
@@ -2717,7 +2717,7 @@ class _TraderDeliverySuccessScreenState
                               children: [
                                 Text('From',
                                     style:
-                                        TextStyle(color: kMuted, fontSize: 12)),
+                                    TextStyle(color: kMuted, fontSize: 12)),
                                 const SizedBox(height: 4),
                                 Text(widget.pickup,
                                     style: TextStyle(
@@ -2737,7 +2737,7 @@ class _TraderDeliverySuccessScreenState
                               children: [
                                 Text('To',
                                     style:
-                                        TextStyle(color: kMuted, fontSize: 12)),
+                                    TextStyle(color: kMuted, fontSize: 12)),
                                 const SizedBox(height: 4),
                                 Text(widget.dropoff,
                                     style: TextStyle(
@@ -2794,7 +2794,7 @@ class _TraderDeliverySuccessScreenState
                               height: 44,
                               decoration: BoxDecoration(
                                   color:
-                                      const Color(0xFFF5A623).withOpacity(0.12),
+                                  const Color(0xFFF5A623).withOpacity(0.12),
                                   borderRadius: BorderRadius.circular(12)),
                               child: const Icon(Icons.star_outline_rounded,
                                   color: Color(0xFFF5A623), size: 22)),
@@ -2810,7 +2810,7 @@ class _TraderDeliverySuccessScreenState
                                 const SizedBox(height: 3),
                                 Text('Help us improve by rating your driver',
                                     style:
-                                        TextStyle(color: kMuted, fontSize: 12)),
+                                    TextStyle(color: kMuted, fontSize: 12)),
                               ]),
                         ]),
                         const SizedBox(height: 16),
@@ -2822,7 +2822,7 @@ class _TraderDeliverySuccessScreenState
                                 driverName: widget.driverName,
                                 driverInitials: widget.driverInitials,
                                 shipmentId:
-                                    widget.shipmentId, // ✅ بيمرر الـ ID للـ API
+                                widget.shipmentId, // ✅ بيمرر الـ ID للـ API
                               ),
                             ),
                           ),
@@ -2912,29 +2912,29 @@ class _OutlineActionBtn extends StatelessWidget {
   final VoidCallback onTap;
   const _OutlineActionBtn(
       {required this.label,
-      required this.icon,
-      required this.kCard,
-      required this.kText,
-      required this.kBorder,
-      required this.onTap});
+        required this.icon,
+        required this.kCard,
+        required this.kText,
+        required this.kBorder,
+        required this.onTap});
 
   @override
   Widget build(BuildContext context) => _Tap(
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          height: 56,
-          decoration: BoxDecoration(
-              color: kCard,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: kBorder)),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon, color: _kTeal, size: 20),
-            const SizedBox(width: 10),
-            Text(label,
-                style: TextStyle(
-                    color: kText, fontSize: 16, fontWeight: FontWeight.w500)),
-          ]),
-        ),
-      );
+    onTap: onTap,
+    child: Container(
+      width: double.infinity,
+      height: 56,
+      decoration: BoxDecoration(
+          color: kCard,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: kBorder)),
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(icon, color: _kTeal, size: 20),
+        const SizedBox(width: 10),
+        Text(label,
+            style: TextStyle(
+                color: kText, fontSize: 16, fontWeight: FontWeight.w500)),
+      ]),
+    ),
+  );
 }

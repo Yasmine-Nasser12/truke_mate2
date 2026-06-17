@@ -37,28 +37,28 @@ class _TraderHomeScreenState extends State<TraderHomeScreen>
   late List<DriverOffer> _offers;
   late List<TraderNotification> _notifications;
   int _currentIndex = 0;bool _apiLoading = true;
-String _traderName = '';
-String _traderEmail = '';
-ShipmentStatus _mapApiStatus(dynamic v) {
-  switch (v) {
-    case 3: case 4:
-    case 'inTransit':   return ShipmentStatus.inTransit;
-    case 5:
-    case 'delivered':   return ShipmentStatus.delivered;
-    case 6:
-    case 'cancelled':   return ShipmentStatus.cancelled;
-    default:            return ShipmentStatus.pending;
+  String _traderName = '';
+  String _traderEmail = '';
+  ShipmentStatus _mapApiStatus(dynamic v) {
+    switch (v) {
+      case 3: case 4:
+      case 'inTransit':   return ShipmentStatus.inTransit;
+      case 5:
+      case 'delivered':   return ShipmentStatus.delivered;
+      case 6:
+      case 'cancelled':   return ShipmentStatus.cancelled;
+      default:            return ShipmentStatus.pending;
+    }
   }
-}
 
-double _mapProgress(ShipmentStatus s) {
-  switch (s) {
-    case ShipmentStatus.pending:   return 0.22;
-    case ShipmentStatus.inTransit: return 0.64;
-    case ShipmentStatus.delivered: return 1.0;
-    case ShipmentStatus.cancelled: return 0.15;
+  double _mapProgress(ShipmentStatus s) {
+    switch (s) {
+      case ShipmentStatus.pending:   return 0.22;
+      case ShipmentStatus.inTransit: return 0.64;
+      case ShipmentStatus.delivered: return 1.0;
+      case ShipmentStatus.cancelled: return 0.15;
+    }
   }
-}
 
   late AnimationController _pageEnterCtrl;
   late AnimationController _bottomNavCtrl;
@@ -113,7 +113,7 @@ double _mapProgress(ShipmentStatus s) {
   void initState() {
     super.initState();
     _shipments     = [];
-_offers        = [];
+    _offers        = [];
     _notifications = TraderDummyData.notifications();
 
     // ✅ جيب البيانات الحقيقية من الـ API
@@ -242,7 +242,7 @@ _offers        = [];
     _tabSwitchCtrl.value = 1.0;
   }
 
-  // ✅ FIX 1: _loadData() يجيب currentShipment + shipments معاً
+  // ✅ جيب البيانات الحقيقية من الـ API
   Future<void> _loadData() async {
     final provider = context.read<TraderProvider>();
 
@@ -253,84 +253,45 @@ _offers        = [];
     ]);
 
     if (!mounted) return;
-
     setState(() {
+      // ✅ الاسم من الـ profile
       if (provider.fullName.isNotEmpty) _traderName = provider.fullName;
+
       _apiLoading = false;
 
-      final List<Shipment> all = [];
-
-      // ✅ FIX: currentShipment أولاً عشان الشحنة الجديدة تظهر فوراً في الـ hero
-      if (provider.currentShipment != null) {
-        final cs = _toShipment(Map<String, dynamic>.from(provider.currentShipment!));
-        if (cs != null) all.add(cs);
+      // ✅ لو في shipments من الـ API، استخدمهم
+      if (provider.shipments.isNotEmpty) {
+        _shipments = provider.shipments.map((s) {
+          final status = _parseStatus(s['status']?.toString() ?? 'pending');
+          final driverName = s['driver']?['name'] ?? s['driverName'] ?? '';
+          return Shipment(
+            id:             s['id']?.toString() ?? '',
+            title:          s['vehicleType']    ?? 'Delivery',
+            reference:      s['shipmentId']?.toString() ?? s['id']?.toString() ?? '',
+            origin:         s['pickupLocation'] ?? s['route']?['pickupLocation'] ?? '',
+            destination:    s['dropOffLocation'] ?? s['route']?['dropoffLocation'] ?? '',
+            status:         status,
+            progress:       _progressFromStatus(status),
+            departureDate:  s['scheduledDate']?.toString() ?? '',
+            weightTons:     (s['weight']      as num?)?.toDouble() ?? 1.0,
+            price:          (s['finalCost']   as num?)?.toDouble() ?? 0,
+            driverName:     driverName.isNotEmpty ? driverName : 'Unassigned',
+            driverInitials: makeInitials(driverName.isNotEmpty ? driverName : 'Unassigned'),
+            vehicleInfo:    s['vehicleType']  ?? '',
+            goodsType:      s['vehicleType']  ?? '',
+            priority:       'Standard',
+            cancelReason:   null,
+            timeline: [
+              const ShipmentMilestone(label: 'Created',    time: '', isDone: true),
+              ShipmentMilestone(label: 'In Transit', time: '',
+                  isDone: status == ShipmentStatus.inTransit || status == ShipmentStatus.delivered),
+              ShipmentMilestone(label: 'Delivered',  time: '',
+                  isDone: status == ShipmentStatus.delivered),
+            ],
+          );
+        }).toList();
       }
-
-      // ✅ باقي الشحنات مع تجنب التكرار
-      for (final raw in provider.shipments) {
-        final s = _toShipment(Map<String, dynamic>.from(raw as Map));
-        if (s != null && !all.any((x) => x.reference == s.reference)) {
-          all.add(s);
-        }
-      }
-
-      // ✅ fallback من homeData لو الاتنين فاضيين
-      if (all.isEmpty) {
-        final cs = provider.homeData?['currentShipment'];
-        if (cs is Map) {
-          final s = _toShipment(Map<String, dynamic>.from(cs));
-          if (s != null) all.add(s);
-        }
-      }
-
-      _shipments = all;
     });
-  }
-
-  // ✅ Helper: Map → Shipment (returns null لو في exception)
-  Shipment? _toShipment(Map<String, dynamic> s) {
-    try {
-      final status = _parseStatus(s['status']?.toString() ?? 'pending');
-      final dn = (s['driver']?['name']
-          ?? s['driverName']
-          ?? s['assignedDriver']?['name']
-          ?? '').toString();
-      final ref = (s['shipmentId'] ?? s['id'] ?? 'TM-000000').toString();
-      return Shipment(
-        id:             ref,
-        title:          s['vehicleType']?.toString() ?? 'Delivery',
-        reference:      ref,
-        origin:         s['pickupLocation']?.toString()
-            ?? s['route']?['pickupLocation']?.toString() ?? '',
-        destination:    s['dropOffLocation']?.toString()
-            ?? s['route']?['dropoffLocation']?.toString() ?? '',
-        status:         status,
-        progress:       _progressFromStatus(status),
-        departureDate:  s['scheduledDate']?.toString().split('T').first
-            ?? s['createdAt']?.toString().split('T').first ?? '-',
-        weightTons:     (s['weight']      as num?)?.toDouble() ?? 1.0,
-        price:          (s['finalCost']   as num?)?.toDouble()
-            ?? (s['price']        as num?)?.toDouble()
-            ?? (s['totalCostEGP'] as num?)?.toDouble() ?? 0.0,
-        driverName:     dn.isNotEmpty ? dn : 'Unassigned',
-        driverInitials: makeInitials(dn.isNotEmpty ? dn : 'Unassigned'),
-        vehicleInfo:    s['vehicleType']?.toString() ?? '',
-        goodsType:      s['vehicleType']?.toString() ?? '',
-        priority:       'Standard',
-        cancelReason:   s['cancelReason']?.toString(),
-        timeline: [
-          const ShipmentMilestone(label: 'Created',    time: '', isDone: true),
-          ShipmentMilestone(
-            label: 'In Transit', time: '',
-            isDone: status == ShipmentStatus.inTransit || status == ShipmentStatus.delivered,
-          ),
-          ShipmentMilestone(
-            label: 'Delivered', time: '',
-            isDone: status == ShipmentStatus.delivered,
-          ),
-        ],
-      );
-    } catch (_) { return null; }
   }
 
   ShipmentStatus _parseStatus(String s) {
@@ -395,18 +356,18 @@ _offers        = [];
     setState(() {
       _offers = _offers.map((item) => item.id == offer.id
           ? DriverOffer(
-              id:             item.id,
-              shipmentId:     item.shipmentId,
-              driverName:     item.driverName,
-              driverInitials: item.driverInitials,
-              rating:         item.rating,
-              completedTrips: item.completedTrips,
-              price:          item.price,
-              etaHours:       item.etaHours,
-              vehicleType:    item.vehicleType,
-              status:         OfferStatus.accepted,
-              note:           item.note,
-            )
+        id:             item.id,
+        shipmentId:     item.shipmentId,
+        driverName:     item.driverName,
+        driverInitials: item.driverInitials,
+        rating:         item.rating,
+        completedTrips: item.completedTrips,
+        price:          item.price,
+        etaHours:       item.etaHours,
+        vehicleType:    item.vehicleType,
+        status:         OfferStatus.accepted,
+        note:           item.note,
+      )
           : item).toList();
     });
 
@@ -474,14 +435,14 @@ _offers        = [];
     // ✅ فيكس: مش هيكراش لو _shipments فاضية
     final featuredShipment = _shipments.isEmpty
         ? Shipment(
-            id: '', title: 'No Shipment', reference: 'TM-000000',
-            origin: '', destination: '', departureDate: '-',
-            price: 0, weightTons: 0,
-            status: ShipmentStatus.pending, progress: 0,
-            driverName: 'Unassigned', driverInitials: 'NA',
-            vehicleInfo: '', goodsType: '', priority: 'Standard',
-            cancelReason: null, timeline: const [],
-          )
+      id: '', title: 'No Shipment', reference: 'TM-000000',
+      origin: '', destination: '', departureDate: '-',
+      price: 0, weightTons: 0,
+      status: ShipmentStatus.pending, progress: 0,
+      driverName: 'Unassigned', driverInitials: 'NA',
+      vehicleInfo: '', goodsType: '', priority: 'Standard',
+      cancelReason: null, timeline: const [],
+    )
         : _shipments.firstWhere(
             (s) => s.isActive, orElse: () => _shipments.first);
 
@@ -539,17 +500,17 @@ _offers        = [];
             decoration: BoxDecoration(
               gradient: t.isDark
                   ? const LinearGradient(
-                      begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                      colors: [Color(0xFF0A1628), Color(0xFF0D1F33), Color(0xFF0A1628)],
-                      stops: [0.0, 0.5, 1.0])
+                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                  colors: [Color(0xFF0A1628), Color(0xFF0D1F33), Color(0xFF0A1628)],
+                  stops: [0.0, 0.5, 1.0])
                   : LinearGradient(
-                      begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                      colors: [
-                        const Color(0xFFF5F8FA),
-                        const Color(0xFFEAF4FB),
-                        const Color(0xFFF5F8FA),
-                      ],
-                      stops: const [0.0, 0.5, 1.0]),
+                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFFF5F8FA),
+                    const Color(0xFFEAF4FB),
+                    const Color(0xFFF5F8FA),
+                  ],
+                  stops: const [0.0, 0.5, 1.0]),
             ),
           ),
           if (t.isDark) _buildBgOrbs(),
@@ -589,15 +550,15 @@ _offers        = [];
     animation: Listenable.merge([_floatCtrl1, _floatCtrl2]),
     builder: (_, __) => Stack(children: [
       Positioned(top: 80 + _floatAnim1.value, right: 40,
-        child: Container(width: 220, height: 220,
-            decoration: const BoxDecoration(shape: BoxShape.circle,
-                boxShadow: [BoxShadow(
-                    color: Color(0x0D00D5BE), blurRadius: 90, spreadRadius: 50)]))),
+          child: Container(width: 220, height: 220,
+              decoration: const BoxDecoration(shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(
+                      color: Color(0x0D00D5BE), blurRadius: 90, spreadRadius: 50)]))),
       Positioned(top: 200 + _floatAnim2.value, left: 30,
-        child: Container(width: 160, height: 160,
-            decoration: const BoxDecoration(shape: BoxShape.circle,
-                boxShadow: [BoxShadow(
-                    color: Color(0x0D0097A7), blurRadius: 70, spreadRadius: 35)]))),
+          child: Container(width: 160, height: 160,
+              decoration: const BoxDecoration(shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(
+                      color: Color(0x0D0097A7), blurRadius: 70, spreadRadius: 35)]))),
     ]),
   );
 
@@ -608,20 +569,20 @@ _offers        = [];
       animation: _particleAnim,
       builder: (_, __) => Stack(children: [
         Positioned(top: 20, left: w * 0.10,
-          child: Container(width: 4, height: 4,
-              decoration: BoxDecoration(shape: BoxShape.circle,
-                  color: const Color(0xFF10B981)
-                      .withOpacity(0.40 + _particleAnim.value * 0.10)))),
+            child: Container(width: 4, height: 4,
+                decoration: BoxDecoration(shape: BoxShape.circle,
+                    color: const Color(0xFF10B981)
+                        .withOpacity(0.40 + _particleAnim.value * 0.10)))),
         Positioned(top: 40, right: w * 0.15,
-          child: Container(width: 6, height: 6,
-              decoration: BoxDecoration(shape: BoxShape.circle,
-                  color: const Color(0xFF30B0C7)
-                      .withOpacity(0.30 + (1 - _particleAnim.value) * 0.10)))),
+            child: Container(width: 6, height: 6,
+                decoration: BoxDecoration(shape: BoxShape.circle,
+                    color: const Color(0xFF30B0C7)
+                        .withOpacity(0.30 + (1 - _particleAnim.value) * 0.10)))),
         Positioned(top: 60, left: w * 0.20,
-          child: Container(width: 4, height: 4,
-              decoration: BoxDecoration(shape: BoxShape.circle,
-                  color: const Color(0xFF10B981)
-                      .withOpacity(0.50 + _particleAnim.value * 0.10)))),
+            child: Container(width: 4, height: 4,
+                decoration: BoxDecoration(shape: BoxShape.circle,
+                    color: const Color(0xFF10B981)
+                        .withOpacity(0.50 + _particleAnim.value * 0.10)))),
       ]),
     );
   }
@@ -641,28 +602,28 @@ _offers        = [];
 
   // ✅ FIX 5 — يمرر driverName + driverInitials + cancelReason
   Future<void> _showShipmentDetails(Shipment shipment) async {
-  await Navigator.pushNamed(context, '/shipment_details_args', arguments: {
-    'shipmentId':     shipment.reference,
-    'pickup':         shipment.origin,
-    'dropoff':        shipment.destination,
-    'date':           shipment.departureDate,
-    'time':           '12:00 PM',
-    'packages':       '1',
-    'weight':         '${shipment.weightTons} tons',
-    'status':         shipment.status.name,
-    'driverName':     shipment.driverName,
-    'driverInitials': shipment.driverInitials,
-    'cancelReason':   shipment.cancelReason,
-  });
-  // ✅ حدّث الشحنات لما ترجع
-  if (mounted) _loadData();
-}
+    await Navigator.pushNamed(context, '/shipment_details_args', arguments: {
+      'shipmentId':     shipment.reference,
+      'pickup':         shipment.origin,
+      'dropoff':        shipment.destination,
+      'date':           shipment.departureDate,
+      'time':           '12:00 PM',
+      'packages':       '1',
+      'weight':         '${shipment.weightTons} tons',
+      'status':         shipment.status.name,
+      'driverName':     shipment.driverName,
+      'driverInitials': shipment.driverInitials,
+      'cancelReason':   shipment.cancelReason,
+    });
+    // ✅ حدّث الشحنات لما ترجع
+    if (mounted) _loadData();
+  }
 
   Future<void> _openCreateShipment() async {
-  await Navigator.push(context, _slideUpRoute(const TraderNewShipmentScreen()));
-  // ✅ لما ترجع، حدّث الشحنات
-  if (mounted) _loadData();
-}
+    await Navigator.push(context, _slideUpRoute(const TraderNewShipmentScreen()));
+    // ✅ لما ترجع، حدّث الشحنات
+    if (mounted) _loadData();
+  }
 }
 
 Route<T> _slideUpRoute<T>(Widget child) => PageRouteBuilder<T>(
@@ -700,7 +661,7 @@ class _BottomNav extends StatelessWidget {
   final TraderTheme t;
   final AnimationController pulseCtrl;
   const _BottomNav({required this.currentIndex, required this.onTap,
-      required this.t, required this.pulseCtrl});
+    required this.t, required this.pulseCtrl});
 
   @override
   Widget build(BuildContext context) {
@@ -743,13 +704,13 @@ class _BottomNav extends StatelessWidget {
                       decoration: BoxDecoration(
                         gradient: active
                             ? const LinearGradient(
-                                colors: [Color(0xFF0097A7), TraderTheme.accent])
+                            colors: [Color(0xFF0097A7), TraderTheme.accent])
                             : null,
                         borderRadius: BorderRadius.circular(2),
                         boxShadow: active
                             ? [BoxShadow(
-                                color: TraderTheme.accent.withOpacity(0.4),
-                                blurRadius: 8)]
+                            color: TraderTheme.accent.withOpacity(0.4),
+                            blurRadius: 8)]
                             : [],
                       ),
                     ),
@@ -869,30 +830,30 @@ class _DashboardPage extends StatelessWidget {
                       Expanded(child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                        Text(greeting, style: TextStyle(
-                            color: textMuted, fontSize: 13, height: 1.4)),
-                        const SizedBox(height: 2),
-                        Text(displayName,
-                            style: TextStyle(
-                                color: textPrimary, fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.5),
-                            overflow: TextOverflow.ellipsis, maxLines: 1),
-                        const SizedBox(height: 4),
-                        AnimatedBuilder(
-                          animation: staggerFade[0],
-                          builder: (_, __) => Container(
-                            width: 60 * staggerFade[0].value, height: 2,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(colors: [
-                                Color(0xFF0097A7), TraderTheme.accent,
-                                Colors.transparent
-                              ]),
-                              borderRadius: BorderRadius.circular(2),
+                            Text(greeting, style: TextStyle(
+                                color: textMuted, fontSize: 13, height: 1.4)),
+                            const SizedBox(height: 2),
+                            Text(displayName,
+                                style: TextStyle(
+                                    color: textPrimary, fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.5),
+                                overflow: TextOverflow.ellipsis, maxLines: 1),
+                            const SizedBox(height: 4),
+                            AnimatedBuilder(
+                              animation: staggerFade[0],
+                              builder: (_, __) => Container(
+                                width: 60 * staggerFade[0].value, height: 2,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(colors: [
+                                    Color(0xFF0097A7), TraderTheme.accent,
+                                    Colors.transparent
+                                  ]),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                      ])),
+                          ])),
                     ]),
                   ),
                 ),
@@ -917,11 +878,11 @@ class _DashboardPage extends StatelessWidget {
                         decoration: BoxDecoration(
                           gradient: t.isDark
                               ? const LinearGradient(colors: [
-                                  Color(0x1F00D5BE), Color(0x140097A7)])
+                            Color(0x1F00D5BE), Color(0x140097A7)])
                               : LinearGradient(colors: [
-                                  TraderTheme.accent.withOpacity(0.1),
-                                  TraderTheme.accent.withOpacity(0.05),
-                                ]),
+                            TraderTheme.accent.withOpacity(0.1),
+                            TraderTheme.accent.withOpacity(0.05),
+                          ]),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                               color: TraderTheme.accent.withOpacity(0.25)),
@@ -1036,12 +997,12 @@ class _DashboardPage extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Container(width: 2, margin: const EdgeInsets.only(right: 16),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                    colors: [Color(0x4010B981), Color(0x1F10B981), Colors.transparent],
-                  ),
-                )),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                      colors: [Color(0x4010B981), Color(0x1F10B981), Colors.transparent],
+                    ),
+                  )),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('SHIPMENT DETAILS', style: TextStyle(
                     color: textMuted, fontSize: 10, letterSpacing: 1.4,
@@ -1097,8 +1058,8 @@ class _DashboardPage extends StatelessWidget {
                   trailing: Row(children: [
                     Container(width: 28, height: 28,
                       decoration: const BoxDecoration(shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                            colors: [Color(0xFF10B981), Color(0xFF30B0C7)])),
+                          gradient: LinearGradient(
+                              colors: [Color(0xFF10B981), Color(0xFF30B0C7)])),
                       alignment: Alignment.center,
                       child: Text(
                         featuredShipment.driverName.split(' ')
@@ -1171,14 +1132,14 @@ class _DashboardPage extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: t.isDark
                     ? const LinearGradient(
-                        begin: Alignment.topLeft, end: Alignment.bottomRight,
-                        colors: [Color(0x3330B0C7), Color(0x1F30B0C7)])
+                    begin: Alignment.topLeft, end: Alignment.bottomRight,
+                    colors: [Color(0x3330B0C7), Color(0x1F30B0C7)])
                     : LinearGradient(
-                        begin: Alignment.topLeft, end: Alignment.bottomRight,
-                        colors: [
-                          const Color(0xFF30B0C7).withOpacity(0.12),
-                          const Color(0xFF30B0C7).withOpacity(0.06),
-                        ]),
+                    begin: Alignment.topLeft, end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFF30B0C7).withOpacity(0.12),
+                      const Color(0xFF30B0C7).withOpacity(0.06),
+                    ]),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: const Color(0xFF30B0C7)
@@ -1210,13 +1171,13 @@ class _DashboardPage extends StatelessWidget {
                 Expanded(child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  Text('Create New\nShipment', style: TextStyle(
-                      color: textPrimary, fontSize: 18,
-                      fontWeight: FontWeight.bold, height: 1.2)),
-                  const SizedBox(height: 4),
-                  Text('Get instant driver matches',
-                      style: TextStyle(color: textMuted, fontSize: 13)),
-                ])),
+                      Text('Create New\nShipment', style: TextStyle(
+                          color: textPrimary, fontSize: 18,
+                          fontWeight: FontWeight.bold, height: 1.2)),
+                      const SizedBox(height: 4),
+                      Text('Get instant driver matches',
+                          style: TextStyle(color: textMuted, fontSize: 13)),
+                    ])),
                 const Icon(Icons.arrow_forward_rounded,
                     color: Color(0xFF30B0C7), size: 24),
               ]),
@@ -1273,7 +1234,7 @@ class _HeroCard extends StatelessWidget {
   final VoidCallback? onViewLive;
 
   const _HeroCard({required this.shipment, required this.t,
-      required this.shimmerAnim, required this.pulseCtrl, this.onViewLive});
+    required this.shimmerAnim, required this.pulseCtrl, this.onViewLive});
 
   @override
   Widget build(BuildContext context) {
@@ -1303,17 +1264,17 @@ class _HeroCard extends StatelessWidget {
           SizedBox(height: 155, child: Stack(children: [
             Positioned.fill(child: Container(decoration: const BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.bottomCenter, end: Alignment.topCenter,
-                colors: [Color(0x99000000), Color(0x26000000), Colors.transparent]),
+                  begin: Alignment.bottomCenter, end: Alignment.topCenter,
+                  colors: [Color(0x99000000), Color(0x26000000), Colors.transparent]),
             ))),
             Positioned(top: 0, left: 0, bottom: 0,
-              child: Container(width: 200, decoration: const BoxDecoration(
-                gradient: RadialGradient(center: Alignment.centerLeft, radius: 0.8,
-                  colors: [Color(0x1F34C759), Colors.transparent])))),
+                child: Container(width: 200, decoration: const BoxDecoration(
+                    gradient: RadialGradient(center: Alignment.centerLeft, radius: 0.8,
+                        colors: [Color(0x1F34C759), Colors.transparent])))),
             Positioned(top: 0, right: 0, bottom: 0,
-              child: Container(width: 200, decoration: const BoxDecoration(
-                gradient: RadialGradient(center: Alignment.centerRight, radius: 0.8,
-                  colors: [Color(0x1F30B0C7), Colors.transparent])))),
+                child: Container(width: 200, decoration: const BoxDecoration(
+                    gradient: RadialGradient(center: Alignment.centerRight, radius: 0.8,
+                        colors: [Color(0x1F30B0C7), Colors.transparent])))),
             Positioned.fill(child: CustomPaint(painter: _GridPainter())),
             Positioned.fill(child: CustomPaint(painter: _ScanLinePainter())),
             Positioned.fill(child: CustomPaint(painter: _RouteGlowPainter())),
@@ -1321,28 +1282,28 @@ class _HeroCard extends StatelessWidget {
             Positioned(top: -12, left: -12, child: Container(
               width: 80, height: 80,
               decoration: const BoxDecoration(
-                border: Border(
-                  left: BorderSide(color: Color(0x6610B981), width: 2.5),
-                  top:  BorderSide(color: Color(0x6610B981), width: 2.5)),
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(24))),
+                  border: Border(
+                      left: BorderSide(color: Color(0x6610B981), width: 2.5),
+                      top:  BorderSide(color: Color(0x6610B981), width: 2.5)),
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(24))),
               child: Align(alignment: Alignment.topLeft,
-                child: Container(width: 10, height: 10,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF10B981), shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: Color(0x8010B981), blurRadius: 8)]))),
+                  child: Container(width: 10, height: 10,
+                      decoration: const BoxDecoration(
+                          color: Color(0xFF10B981), shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(color: Color(0x8010B981), blurRadius: 8)]))),
             )),
             Positioned(bottom: -12, right: -12, child: Container(
               width: 80, height: 80,
               decoration: const BoxDecoration(
-                border: Border(
-                  right:  BorderSide(color: Color(0x6610B981), width: 2.5),
-                  bottom: BorderSide(color: Color(0x6610B981), width: 2.5)),
-                borderRadius: BorderRadius.only(bottomRight: Radius.circular(24))),
+                  border: Border(
+                      right:  BorderSide(color: Color(0x6610B981), width: 2.5),
+                      bottom: BorderSide(color: Color(0x6610B981), width: 2.5)),
+                  borderRadius: BorderRadius.only(bottomRight: Radius.circular(24))),
               child: Align(alignment: Alignment.bottomRight,
-                child: Container(width: 10, height: 10,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF10B981), shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: Color(0x8010B981), blurRadius: 8)]))),
+                  child: Container(width: 10, height: 10,
+                      decoration: const BoxDecoration(
+                          color: Color(0xFF10B981), shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(color: Color(0x8010B981), blurRadius: 8)]))),
             )),
             const Positioned(left: 35, bottom: 8, child: _OriginMarker()),
             Positioned(left: 171, top: 76,
@@ -1352,11 +1313,11 @@ class _HeroCard extends StatelessWidget {
               child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                _InTransitBadge(pulseCtrl: pulseCtrl),
-                _RouteBadge(
-                    origin: shipment.origin,
-                    destination: shipment.destination),
-              ]),
+                    _InTransitBadge(pulseCtrl: pulseCtrl),
+                    _RouteBadge(
+                        origin: shipment.origin,
+                        destination: shipment.destination),
+                  ]),
             ),
           ])),
           Container(
@@ -1364,10 +1325,10 @@ class _HeroCard extends StatelessWidget {
               gradient: LinearGradient(colors: t.isDark
                   ? const [Color(0x1E30B0C7), Color(0x1A30B0C7), Color(0x1430B0C7)]
                   : [
-                      const Color(0xFF30B0C7).withOpacity(0.08),
-                      const Color(0xFF30B0C7).withOpacity(0.05),
-                      const Color(0xFF30B0C7).withOpacity(0.03),
-                    ]),
+                const Color(0xFF30B0C7).withOpacity(0.08),
+                const Color(0xFF30B0C7).withOpacity(0.05),
+                const Color(0xFF30B0C7).withOpacity(0.03),
+              ]),
               border: Border(top: BorderSide(
                 color: t.isDark
                     ? const Color(0x5930B0C7)
@@ -1377,13 +1338,13 @@ class _HeroCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: Row(children: [
               Container(width: 32, height: 32,
-                decoration: const BoxDecoration(shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                      colors: [Color(0xFF30B0C7), Color(0xFF2A9EB3)]),
-                  boxShadow: [BoxShadow(
-                      color: Color(0x6630B0C7), blurRadius: 12)]),
-                child: const Icon(Icons.flash_on_rounded,
-                    color: Colors.white, size: 16)),
+                  decoration: const BoxDecoration(shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                          colors: [Color(0xFF30B0C7), Color(0xFF2A9EB3)]),
+                      boxShadow: [BoxShadow(
+                          color: Color(0x6630B0C7), blurRadius: 12)]),
+                  child: const Icon(Icons.flash_on_rounded,
+                      color: Colors.white, size: 16)),
               const SizedBox(width: 12),
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Estimated Time', style: TextStyle(
@@ -1472,9 +1433,9 @@ class _InTransitBadge extends StatelessWidget {
         animation: pulseCtrl,
         builder: (_, __) => Container(width: 6, height: 6,
           decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle,
-            boxShadow: [BoxShadow(
-              color: Colors.white.withOpacity(0.7 * pulseCtrl.value),
-              blurRadius: 4, spreadRadius: 1)]),
+              boxShadow: [BoxShadow(
+                  color: Colors.white.withOpacity(0.7 * pulseCtrl.value),
+                  blurRadius: 4, spreadRadius: 1)]),
         ),
       ),
       const SizedBox(width: 6),
@@ -1540,35 +1501,35 @@ class _DriverMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       Stack(alignment: Alignment.center, children: [
-    AnimatedBuilder(animation: pulseCtrl, builder: (_, __) => Container(
-      width: 44, height: 44,
-      decoration: BoxDecoration(shape: BoxShape.circle,
-        color: const Color(0xFF30B0C7).withOpacity(0.20 * pulseCtrl.value)))),
-    Positioned(left: 0,
-      child: Container(width: 24, height: 4,
-        decoration: BoxDecoration(
+        AnimatedBuilder(animation: pulseCtrl, builder: (_, __) => Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(shape: BoxShape.circle,
+                color: const Color(0xFF30B0C7).withOpacity(0.20 * pulseCtrl.value)))),
+        Positioned(left: 0,
+            child: Container(width: 24, height: 4,
+                decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                        colors: [Colors.transparent, Color(0xFF30B0C7)]),
+                    borderRadius: BorderRadius.circular(2)))),
+        Container(width: 28, height: 28, decoration: BoxDecoration(
+          shape: BoxShape.circle,
           gradient: const LinearGradient(
-              colors: [Colors.transparent, Color(0xFF30B0C7)]),
-          borderRadius: BorderRadius.circular(2)))),
-    Container(width: 28, height: 28, decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      gradient: const LinearGradient(
-          colors: [Color(0xFF30B0C7), Color(0xFF248C9F)]),
-      border: Border.all(color: Colors.white, width: 2.5),
-      boxShadow: [BoxShadow(
-          color: const Color(0xFF30B0C7).withOpacity(0.60), blurRadius: 14)],
-    ), child: const Icon(Icons.navigation_rounded, color: Colors.white, size: 14)),
-    Positioned(top: 5, right: 5,
-      child: AnimatedBuilder(animation: pulseCtrl, builder: (_, __) => Container(
-        width: 10, height: 10,
-        decoration: BoxDecoration(
-          color: const Color(0xFF34C759), shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 2),
+              colors: [Color(0xFF30B0C7), Color(0xFF248C9F)]),
+          border: Border.all(color: Colors.white, width: 2.5),
           boxShadow: [BoxShadow(
-            color: const Color(0xFF34C759)
-                .withOpacity(0.5 * pulseCtrl.value),
-            blurRadius: 4)])))),
-  ]);
+              color: const Color(0xFF30B0C7).withOpacity(0.60), blurRadius: 14)],
+        ), child: const Icon(Icons.navigation_rounded, color: Colors.white, size: 14)),
+        Positioned(top: 5, right: 5,
+            child: AnimatedBuilder(animation: pulseCtrl, builder: (_, __) => Container(
+                width: 10, height: 10,
+                decoration: BoxDecoration(
+                    color: const Color(0xFF34C759), shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [BoxShadow(
+                        color: const Color(0xFF34C759)
+                            .withOpacity(0.5 * pulseCtrl.value),
+                        blurRadius: 4)])))),
+      ]);
 }
 
 class _DestMarker extends StatelessWidget {
@@ -1576,17 +1537,17 @@ class _DestMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       Stack(alignment: Alignment.center, children: [
-    Container(width: 32, height: 32, decoration: const BoxDecoration(
-        shape: BoxShape.circle, color: Color(0x3334C759))),
-    Container(width: 24, height: 24, decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      gradient: const LinearGradient(
-          colors: [Color(0xFF34C759), Color(0xFF30B0C7)]),
-      border: Border.all(color: Colors.white, width: 2.5),
-      boxShadow: [BoxShadow(
-          color: const Color(0xFF34C759).withOpacity(0.50), blurRadius: 12)],
-    ), child: const Icon(Icons.location_on, color: Colors.white, size: 12)),
-  ]);
+        Container(width: 32, height: 32, decoration: const BoxDecoration(
+            shape: BoxShape.circle, color: Color(0x3334C759))),
+        Container(width: 24, height: 24, decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const LinearGradient(
+              colors: [Color(0xFF34C759), Color(0xFF30B0C7)]),
+          border: Border.all(color: Colors.white, width: 2.5),
+          boxShadow: [BoxShadow(
+              color: const Color(0xFF34C759).withOpacity(0.50), blurRadius: 12)],
+        ), child: const Icon(Icons.location_on, color: Colors.white, size: 12)),
+      ]);
 }
 
 class _AnimatedRouteDots extends StatefulWidget {
@@ -1719,7 +1680,7 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
       final e = (s + 0.55).clamp(0.0, 1.0);
       return Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero)
           .animate(CurvedAnimation(parent: _cardsCtrl,
-              curve: Interval(s, e, curve: Curves.easeOutCubic)));
+          curve: Interval(s, e, curve: Curves.easeOutCubic)));
     });
 
     _btnsCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
@@ -1748,8 +1709,8 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
   }
 
   Widget _animCard(int i, Widget child) => FadeTransition(
-    opacity: _cardFade[i],
-    child: SlideTransition(position: _cardSlide[i], child: child));
+      opacity: _cardFade[i],
+      child: SlideTransition(position: _cardSlide[i], child: child));
 
   // ✅ FIX 3 — دالة بتبني الـ buttons حسب الـ status
   Widget _buildActionButtons(BuildContext context) {
@@ -1764,7 +1725,7 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
 
     switch (widget.status) {
 
-      // ── delivered: Rate Driver + View Invoice ──────────────────
+    // ── delivered: Rate Driver + View Invoice ──────────────────
       case 'delivered':
         return Column(children: [
           // Rate Driver
@@ -1791,12 +1752,12 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
               child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                Icon(Icons.star_outline_rounded, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text('Rate Driver', style: TextStyle(
-                    color: Colors.white, fontSize: 16,
-                    fontWeight: FontWeight.bold)),
-              ]),
+                    Icon(Icons.star_outline_rounded, color: Colors.white, size: 20),
+                    SizedBox(width: 8),
+                    Text('Rate Driver', style: TextStyle(
+                        color: Colors.white, fontSize: 16,
+                        fontWeight: FontWeight.bold)),
+                  ]),
             ),
           ),
           const SizedBox(height: 12),
@@ -1813,18 +1774,18 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
               child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                const Icon(Icons.description_outlined,
-                    color: kTeal, size: 20),
-                const SizedBox(width: 8),
-                Text('View Invoice', style: TextStyle(
-                    color: kText, fontSize: 16,
-                    fontWeight: FontWeight.w500)),
-              ]),
+                    const Icon(Icons.description_outlined,
+                        color: kTeal, size: 20),
+                    const SizedBox(width: 8),
+                    Text('View Invoice', style: TextStyle(
+                        color: kText, fontSize: 16,
+                        fontWeight: FontWeight.w500)),
+                  ]),
             ),
           ),
         ]);
 
-      // ── cancelled: سبب الإلغاء + Create New ────────────────────
+    // ── cancelled: سبب الإلغاء + Create New ────────────────────
       case 'cancelled':
         return Column(children: [
           // بوكس سبب الإلغاء
@@ -1840,27 +1801,27 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-              const Row(children: [
-                Icon(Icons.cancel_outlined,
-                    color: Color(0xFFEF4444), size: 18),
-                SizedBox(width: 8),
-                Text('Cancellation Reason',
+                  const Row(children: [
+                    Icon(Icons.cancel_outlined,
+                        color: Color(0xFFEF4444), size: 18),
+                    SizedBox(width: 8),
+                    Text('Cancellation Reason',
+                        style: TextStyle(
+                            color: Color(0xFFEF4444),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600)),
+                  ]),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.cancelReason ?? 'Shipment was cancelled',
                     style: TextStyle(
-                        color: Color(0xFFEF4444),
+                        color: isDark
+                            ? Colors.white.withOpacity(0.7)
+                            : const Color(0xFF6B8096),
                         fontSize: 13,
-                        fontWeight: FontWeight.w600)),
-              ]),
-              const SizedBox(height: 8),
-              Text(
-                widget.cancelReason ?? 'Shipment was cancelled',
-                style: TextStyle(
-                    color: isDark
-                        ? Colors.white.withOpacity(0.7)
-                        : const Color(0xFF6B8096),
-                    fontSize: 13,
-                    height: 1.5),
-              ),
-            ]),
+                        height: 1.5),
+                  ),
+                ]),
           ),
           const SizedBox(height: 12),
           // Create New Shipment
@@ -1881,17 +1842,17 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
               child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                Icon(Icons.add_rounded, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text('Create New Shipment', style: TextStyle(
-                    color: Colors.white, fontSize: 16,
-                    fontWeight: FontWeight.bold)),
-              ]),
+                    Icon(Icons.add_rounded, color: Colors.white, size: 20),
+                    SizedBox(width: 8),
+                    Text('Create New Shipment', style: TextStyle(
+                        color: Colors.white, fontSize: 16,
+                        fontWeight: FontWeight.bold)),
+                  ]),
             ),
           ),
         ]);
 
-      // ── pending / inTransit: View Drivers + View Offers ─────────
+    // ── pending / inTransit: View Drivers + View Offers ─────────
       default:
         return Column(children: [
           // View Available Drivers
@@ -1922,12 +1883,12 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
               child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                Icon(Icons.people_outline, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text('View Available Drivers', style: TextStyle(
-                    color: Colors.white, fontSize: 16,
-                    fontWeight: FontWeight.bold)),
-              ]),
+                    Icon(Icons.people_outline, color: Colors.white, size: 20),
+                    SizedBox(width: 8),
+                    Text('View Available Drivers', style: TextStyle(
+                        color: Colors.white, fontSize: 16,
+                        fontWeight: FontWeight.bold)),
+                  ]),
             ),
           ),
           const SizedBox(height: 12),
@@ -1962,14 +1923,14 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
         : const Color(0xFFE2EAF0);
 
     Widget cardDeco(Widget child) => Container(
-      width: double.infinity, padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: kBg2, borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: kBdr),
-        boxShadow: isDark ? [] : [BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10, offset: const Offset(0, 3))]),
-      child: child);
+        width: double.infinity, padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+            color: kBg2, borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: kBdr),
+            boxShadow: isDark ? [] : [BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10, offset: const Offset(0, 3))]),
+        child: child);
 
     final timeline = _timelineItems;
 
@@ -2001,8 +1962,8 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
               ),
               Expanded(child: Center(child: Text('Shipment Details',
                   style: TextStyle(
-                    color: isDark ? Colors.white : const Color(0xFF1A2A3A),
-                    fontSize: 20, fontWeight: FontWeight.bold)))),
+                      color: isDark ? Colors.white : const Color(0xFF1A2A3A),
+                      fontSize: 20, fontWeight: FontWeight.bold)))),
               const SizedBox(width: 42),
             ]),
             const SizedBox(height: 20),
@@ -2050,90 +2011,90 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
             _animCard(0, cardDeco(Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-              Text('Timeline', style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF1A2A3A),
-                  fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              ...List.generate(timeline.length, (i) => _tlItem(
-                title: timeline[i]['title'],
-                sub:   timeline[i]['sub'],
-                done:  timeline[i]['done'],
-                first: i == 0,
-                last:  i == timeline.length - 1,
-                isDark: isDark,
-              )),
-            ]))),
+                  Text('Timeline', style: TextStyle(
+                      color: isDark ? Colors.white : const Color(0xFF1A2A3A),
+                      fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+                  ...List.generate(timeline.length, (i) => _tlItem(
+                    title: timeline[i]['title'],
+                    sub:   timeline[i]['sub'],
+                    done:  timeline[i]['done'],
+                    first: i == 0,
+                    last:  i == timeline.length - 1,
+                    isDark: isDark,
+                  )),
+                ]))),
             const SizedBox(height: 20),
 
             // ── Route card ──
             _animCard(1, cardDeco(Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-              Text('Route Details', style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF1A2A3A),
-                  fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Column(children: [
-                  _dot(const Color(0xFF00D5BE)),
-                  Container(width: 2, height: 40,
-                      color: const Color(0xFF00D5BE)),
-                  _dot(const Color(0xFF00B8DB)),
-                ]),
-                const SizedBox(width: 16),
-                Expanded(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Text('Pickup', style: TextStyle(
-                      color: isDark
-                          ? const Color(0xFF8A9BB0)
-                          : const Color(0xFF8A9BB0),
-                      fontSize: 12)),
-                  const SizedBox(height: 4),
-                  Text(widget.pickup, style: TextStyle(
+                  Text('Route Details', style: TextStyle(
                       color: isDark ? Colors.white : const Color(0xFF1A2A3A),
-                      fontSize: 17, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 18),
-                  Text('Drop-off', style: TextStyle(
-                      color: isDark
-                          ? const Color(0xFF8A9BB0)
-                          : const Color(0xFF8A9BB0),
-                      fontSize: 12)),
-                  const SizedBox(height: 4),
-                  Text(widget.dropoff, style: TextStyle(
-                      color: isDark ? Colors.white : const Color(0xFF1A2A3A),
-                      fontSize: 17, fontWeight: FontWeight.w600)),
-                ])),
-              ]),
-              const SizedBox(height: 20),
-              Row(children: [
-                Expanded(child: _dtItem('Scheduled Date',
-                    Icons.calendar_today, widget.date, isDark)),
-                Expanded(child: _dtItem('Time',
-                    Icons.access_time, widget.time, isDark)),
-              ]),
-              const SizedBox(height: 16),
-              Row(children: [
-                Expanded(child: _dtItem('Packages',
-                    Icons.inventory_2_outlined, widget.packages, isDark)),
-                Expanded(child: _dtItem('Weight',
-                    Icons.scale_outlined, widget.weight, isDark)),
-              ]),
-            ]))),
+                      fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Column(children: [
+                      _dot(const Color(0xFF00D5BE)),
+                      Container(width: 2, height: 40,
+                          color: const Color(0xFF00D5BE)),
+                      _dot(const Color(0xFF00B8DB)),
+                    ]),
+                    const SizedBox(width: 16),
+                    Expanded(child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Pickup', style: TextStyle(
+                              color: isDark
+                                  ? const Color(0xFF8A9BB0)
+                                  : const Color(0xFF8A9BB0),
+                              fontSize: 12)),
+                          const SizedBox(height: 4),
+                          Text(widget.pickup, style: TextStyle(
+                              color: isDark ? Colors.white : const Color(0xFF1A2A3A),
+                              fontSize: 17, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 18),
+                          Text('Drop-off', style: TextStyle(
+                              color: isDark
+                                  ? const Color(0xFF8A9BB0)
+                                  : const Color(0xFF8A9BB0),
+                              fontSize: 12)),
+                          const SizedBox(height: 4),
+                          Text(widget.dropoff, style: TextStyle(
+                              color: isDark ? Colors.white : const Color(0xFF1A2A3A),
+                              fontSize: 17, fontWeight: FontWeight.w600)),
+                        ])),
+                  ]),
+                  const SizedBox(height: 20),
+                  Row(children: [
+                    Expanded(child: _dtItem('Scheduled Date',
+                        Icons.calendar_today, widget.date, isDark)),
+                    Expanded(child: _dtItem('Time',
+                        Icons.access_time, widget.time, isDark)),
+                  ]),
+                  const SizedBox(height: 16),
+                  Row(children: [
+                    Expanded(child: _dtItem('Packages',
+                        Icons.inventory_2_outlined, widget.packages, isDark)),
+                    Expanded(child: _dtItem('Weight',
+                        Icons.scale_outlined, widget.weight, isDark)),
+                  ]),
+                ]))),
             const SizedBox(height: 20),
 
             // ── Cost card ──
             _animCard(2, cardDeco(Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Total Cost', style: TextStyle(
-                    color: isDark
-                        ? const Color(0xFF8A9BB0) : const Color(0xFF8A9BB0),
-                    fontSize: 16)),
-                const Text('\$240', style: TextStyle(
-                    color: Color(0xFF00D5BE), fontSize: 28,
-                    fontWeight: FontWeight.bold)),
-              ]))),
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Total Cost', style: TextStyle(
+                      color: isDark
+                          ? const Color(0xFF8A9BB0) : const Color(0xFF8A9BB0),
+                      fontSize: 16)),
+                  const Text('\$240', style: TextStyle(
+                      color: Color(0xFF00D5BE), fontSize: 28,
+                      fontWeight: FontWeight.bold)),
+                ]))),
             const SizedBox(height: 20),
 
             // ✅ FIX 2 — Action buttons حسب الـ status
@@ -2154,66 +2115,66 @@ class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen>
       decoration: BoxDecoration(color: c, shape: BoxShape.circle));
 
   Widget _tlItem({required String title, required String sub,
-      required bool done, required bool first, required bool last,
-      required bool isDark}) =>
-    Row(children: [
-      Column(children: [
-        if (!first)
-          Container(width: 2, height: 28,
-              color: done
-                  ? const Color(0xFF00D5BE)
-                  : isDark
-                      ? const Color(0xFF1A3550)
-                      : const Color(0xFFE2EAF0)),
-        Container(width: 26, height: 26,
-          decoration: BoxDecoration(shape: BoxShape.circle,
-            color: done ? const Color(0xFF00D5BE) : Colors.transparent,
-            border: Border.all(
-              color: done
-                  ? const Color(0xFF00D5BE)
-                  : isDark
-                      ? const Color(0xFF1A3550)
-                      : const Color(0xFFE2EAF0),
-              width: 2)),
-          child: done ? const Icon(Icons.check, color: Colors.white, size: 14) : null),
-        if (!last)
-          Container(width: 2, height: 28,
-              color: done
-                  ? const Color(0xFF00D5BE)
-                  : isDark
-                      ? const Color(0xFF1A3550)
-                      : const Color(0xFFE2EAF0)),
-      ]),
-      const SizedBox(width: 16),
-      Expanded(child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: TextStyle(
-              color: done
-                  ? (isDark ? Colors.white : const Color(0xFF1A2A3A))
-                  : (isDark
+    required bool done, required bool first, required bool last,
+    required bool isDark}) =>
+      Row(children: [
+        Column(children: [
+          if (!first)
+            Container(width: 2, height: 28,
+                color: done
+                    ? const Color(0xFF00D5BE)
+                    : isDark
+                    ? const Color(0xFF1A3550)
+                    : const Color(0xFFE2EAF0)),
+          Container(width: 26, height: 26,
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                  color: done ? const Color(0xFF00D5BE) : Colors.transparent,
+                  border: Border.all(
+                      color: done
+                          ? const Color(0xFF00D5BE)
+                          : isDark
+                          ? const Color(0xFF1A3550)
+                          : const Color(0xFFE2EAF0),
+                      width: 2)),
+              child: done ? const Icon(Icons.check, color: Colors.white, size: 14) : null),
+          if (!last)
+            Container(width: 2, height: 28,
+                color: done
+                    ? const Color(0xFF00D5BE)
+                    : isDark
+                    ? const Color(0xFF1A3550)
+                    : const Color(0xFFE2EAF0)),
+        ]),
+        const SizedBox(width: 16),
+        Expanded(child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: TextStyle(
+                  color: done
+                      ? (isDark ? Colors.white : const Color(0xFF1A2A3A))
+                      : (isDark
                       ? const Color(0xFF8A9BB0)
                       : const Color(0xFF8A9BB0)),
-              fontSize: 15, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 2),
-          Text(sub, style: const TextStyle(
-              color: Color(0xFF8A9BB0), fontSize: 12)),
-        ]))),
-    ]);
+                  fontSize: 15, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 2),
+              Text(sub, style: const TextStyle(
+                  color: Color(0xFF8A9BB0), fontSize: 12)),
+            ]))),
+      ]);
 
   Widget _dtItem(String label, IconData icon, String value, bool isDark) =>
-    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: const TextStyle(
-          color: Color(0xFF8A9BB0), fontSize: 12)),
-      const SizedBox(height: 8),
-      Row(children: [
-        Icon(icon, color: const Color(0xFF00D5BE), size: 15),
-        const SizedBox(width: 6),
-        Text(value, style: TextStyle(
-            color: isDark ? Colors.white : const Color(0xFF1A2A3A),
-            fontSize: 13, fontWeight: FontWeight.w600)),
-      ]),
-    ]);
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: const TextStyle(
+            color: Color(0xFF8A9BB0), fontSize: 12)),
+        const SizedBox(height: 8),
+        Row(children: [
+          Icon(icon, color: const Color(0xFF00D5BE), size: 15),
+          const SizedBox(width: 6),
+          Text(value, style: TextStyle(
+              color: isDark ? Colors.white : const Color(0xFF1A2A3A),
+              fontSize: 13, fontWeight: FontWeight.w600)),
+        ]),
+      ]);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2224,18 +2185,18 @@ class _SpringTapButton extends StatefulWidget {
   final VoidCallback? onTap;
   final double hoverScale, tapScale;
   const _SpringTapButton({required this.child, this.onTap,
-      this.hoverScale = 1.05, this.tapScale = 0.95});
+    this.hoverScale = 1.05, this.tapScale = 0.95});
   @override State<_SpringTapButton> createState() =>
       _SpringTapButtonState();
 }
 class _SpringTapButtonState extends State<_SpringTapButton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c =
-      AnimationController(vsync: this,
-          duration: const Duration(milliseconds: 150));
+  AnimationController(vsync: this,
+      duration: const Duration(milliseconds: 150));
   late final Animation<double> _scale =
-      Tween<double>(begin: 1.0, end: widget.tapScale)
-          .animate(CurvedAnimation(parent: _c, curve: Curves.easeOut));
+  Tween<double>(begin: 1.0, end: widget.tapScale)
+      .animate(CurvedAnimation(parent: _c, curve: Curves.easeOut));
   @override void dispose() { _c.dispose(); super.dispose(); }
   @override
   Widget build(BuildContext context) => GestureDetector(
@@ -2303,10 +2264,10 @@ class _StaggeredListState extends State<_StaggeredList>
       final e = math.min(s + 0.55, 1.0);
       return Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero)
           .animate(CurvedAnimation(parent: _ctrl,
-              curve: Interval(s, e, curve: _kEaseOutCubic)));
+          curve: Interval(s, e, curve: _kEaseOutCubic)));
     });
     Future.delayed(const Duration(milliseconds: 400),
-        () { if (mounted) _ctrl.forward(); });
+            () { if (mounted) _ctrl.forward(); });
   }
   @override void dispose() { _ctrl.dispose(); super.dispose(); }
   @override
@@ -2328,20 +2289,20 @@ class _RecentTile extends StatefulWidget {
   final VoidCallback onTap;
   final TraderTheme t;
   const _RecentTile({required this.shipment, required this.onTap,
-      required this.t});
+    required this.t});
   @override State<_RecentTile> createState() => _RecentTileState();
 }
 class _RecentTileState extends State<_RecentTile>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c =
-      AnimationController(vsync: this,
-          duration: const Duration(milliseconds: 150));
+  AnimationController(vsync: this,
+      duration: const Duration(milliseconds: 150));
   late final Animation<double> _scale =
-      Tween<double>(begin: 1.0, end: 0.98)
-          .animate(CurvedAnimation(parent: _c, curve: Curves.easeOut));
+  Tween<double>(begin: 1.0, end: 0.98)
+      .animate(CurvedAnimation(parent: _c, curve: Curves.easeOut));
   late final Animation<double> _x =
-      Tween<double>(begin: 0, end: 4)
-          .animate(CurvedAnimation(parent: _c, curve: Curves.easeOut));
+  Tween<double>(begin: 0, end: 4)
+      .animate(CurvedAnimation(parent: _c, curve: Curves.easeOut));
   @override void dispose() { _c.dispose(); super.dispose(); }
   @override
   Widget build(BuildContext context) => GestureDetector(
@@ -2361,30 +2322,30 @@ class _RecentTileState extends State<_RecentTile>
               ? const Color(0x4D0A1628) : widget.t.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: widget.t.isDark
-                ? const Color(0x1A10B981) : widget.t.border),
+              color: widget.t.isDark
+                  ? const Color(0x1A10B981) : widget.t.border),
           boxShadow: widget.t.cardShadow,
         ),
         child: Row(children: [
           Container(width: 24, height: 24,
-            decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withOpacity(0.15),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                  color: const Color(0xFF10B981).withOpacity(0.30))),
-            child: const Icon(Icons.inventory_2_outlined,
-                color: Color(0xFF10B981), size: 14)),
+              decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                      color: const Color(0xFF10B981).withOpacity(0.30))),
+              child: const Icon(Icons.inventory_2_outlined,
+                  color: Color(0xFF10B981), size: 14)),
           const SizedBox(width: 12),
           Expanded(child: Column(
               crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
-              '${widget.shipment.origin} → ${widget.shipment.destination}',
-              style: TextStyle(color: widget.t.textPrimary,
-                  fontSize: 13, fontWeight: FontWeight.w500)),
+                '${widget.shipment.origin} → ${widget.shipment.destination}',
+                style: TextStyle(color: widget.t.textPrimary,
+                    fontSize: 13, fontWeight: FontWeight.w500)),
             const SizedBox(height: 2),
             Text(
-              '${widget.shipment.departureDate.replaceAll('2026-', 'Jan ')}  ·  Delivered',
-              style: TextStyle(color: widget.t.textMuted, fontSize: 11)),
+                '${widget.shipment.departureDate.replaceAll('2026-', 'Jan ')}  ·  Delivered',
+                style: TextStyle(color: widget.t.textMuted, fontSize: 11)),
           ])),
           Text('\$${widget.shipment.price.toStringAsFixed(0)}',
               style: const TextStyle(color: Color(0xFF10B981),
@@ -2404,7 +2365,7 @@ class _ShipmentsPage extends StatefulWidget {
   final ValueChanged<Shipment> onShowDetails;
   final TraderTheme t;
   const _ShipmentsPage({required this.shipments, required this.onBack,
-      required this.onShowDetails, required this.t});
+    required this.onShowDetails, required this.t});
   @override State<_ShipmentsPage> createState() => _ShipmentsPageState();
 }
 class _ShipmentsPageState extends State<_ShipmentsPage> {
@@ -2432,14 +2393,14 @@ class _ShipmentsPageState extends State<_ShipmentsPage> {
       ]),
       const SizedBox(height: 16),
       _StaggeredList(count: items.length,
-        itemBuilder: (_, i) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _ShipTile(shipment: items[i], t: widget.t,
-                onTap: () => widget.onShowDetails(items[i])))),
+          itemBuilder: (_, i) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _ShipTile(shipment: items[i], t: widget.t,
+                  onTap: () => widget.onShowDetails(items[i])))),
       const SizedBox(height: 8),
       _Pager(t: widget.t, page: _page, total: total,
-        onPrev: _page == 0 ? null : () => setState(() => _page--),
-        onNext: _page >= total - 1 ? null : () => setState(() => _page++)),
+          onPrev: _page == 0 ? null : () => setState(() => _page--),
+          onNext: _page >= total - 1 ? null : () => setState(() => _page++)),
     ]);
   }
 }
@@ -2454,7 +2415,7 @@ class _OffersPage extends StatefulWidget {
   final ValueChanged<DriverOffer> onAccept;
   final TraderTheme t;
   const _OffersPage({required this.featuredShipment, required this.offers,
-      required this.onBack, required this.onAccept, required this.t});
+    required this.onBack, required this.onAccept, required this.t});
   @override State<_OffersPage> createState() => _OffersPageState();
 }
 class _OffersPageState extends State<_OffersPage> {
@@ -2747,13 +2708,13 @@ class _OffersPageState extends State<_OffersPage> {
       )
       else ...[
         _StaggeredList(count: items.length,
-          itemBuilder: (_, i) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _OfferTile(offer: items[i], t: widget.t,
-                  onAccept: () => widget.onAccept(items[i])))),
+            itemBuilder: (_, i) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _OfferTile(offer: items[i], t: widget.t,
+                    onAccept: () => widget.onAccept(items[i])))),
         _Pager(t: widget.t, page: _page, total: total,
-          onPrev: _page == 0 ? null : () => setState(() => _page--),
-          onNext: _page >= total - 1 ? null : () => setState(() => _page++)),
+            onPrev: _page == 0 ? null : () => setState(() => _page--),
+            onNext: _page >= total - 1 ? null : () => setState(() => _page++)),
       ],
     ]);
   }
@@ -2766,7 +2727,7 @@ class _FilterTab extends StatelessWidget {
   final TraderTheme t;
   final VoidCallback onTap;
   const _FilterTab({required this.label, required this.count,
-      required this.selected, required this.t, required this.onTap});
+    required this.selected, required this.t, required this.onTap});
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
@@ -2774,10 +2735,10 @@ class _FilterTab extends StatelessWidget {
       duration: _kFastAnim, curve: _kEaseOutCubic,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
       decoration: BoxDecoration(
-        color: selected ? TraderTheme.accent : t.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-            color: selected ? TraderTheme.accent : t.border, width: 1.5)),
+          color: selected ? TraderTheme.accent : t.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+              color: selected ? TraderTheme.accent : t.border, width: 1.5)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Text(label, style: TextStyle(
             color: selected ? Colors.white : t.textPrimary,
@@ -2786,9 +2747,9 @@ class _FilterTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
           decoration: BoxDecoration(
-            color: selected
-                ? Colors.white.withOpacity(0.25) : t.surfaceDeep,
-            borderRadius: BorderRadius.circular(12)),
+              color: selected
+                  ? Colors.white.withOpacity(0.25) : t.surfaceDeep,
+              borderRadius: BorderRadius.circular(12)),
           child: Text('$count', style: TextStyle(
               color: selected ? Colors.white : t.textMuted,
               fontSize: 11, fontWeight: FontWeight.w700)),
@@ -2806,7 +2767,7 @@ class _AlertsPage extends StatelessWidget {
   final VoidCallback onBack;
   final TraderTheme t;
   const _AlertsPage({required this.notifications, required this.onBack,
-      required this.t});
+    required this.t});
 
   @override
   Widget build(BuildContext context) {
@@ -2828,21 +2789,21 @@ class _AlertsPage extends StatelessWidget {
         final dotColor = item.type == NotificationType.offer
             ? const Color(0xFFFF8904)
             : item.type == NotificationType.payment
-                ? const Color(0xFF10B981)
-                : const Color(0xFF3B82F6);
+            ? const Color(0xFF10B981)
+            : const Color(0xFF3B82F6);
         return Padding(
           padding: const EdgeInsets.only(bottom: 0),
           child: IntrinsicHeight(
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               SizedBox(width: 32, child: Column(children: [
                 Container(width: 24, height: 24,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: dotColor.withOpacity(0.2),
-                    border: Border.all(color: dotColor, width: 1.6)),
-                  child: Center(child: Container(width: 8, height: 8,
                     decoration: BoxDecoration(
-                        shape: BoxShape.circle, color: dotColor)))),
+                        shape: BoxShape.circle,
+                        color: dotColor.withOpacity(0.2),
+                        border: Border.all(color: dotColor, width: 1.6)),
+                    child: Center(child: Container(width: 8, height: 8,
+                        decoration: BoxDecoration(
+                            shape: BoxShape.circle, color: dotColor)))),
                 if (i < notifications.length - 1)
                   Expanded(child: Container(width: 2,
                       color: const Color(0xFF00D5BE).withOpacity(0.2))),
@@ -2853,90 +2814,90 @@ class _AlertsPage extends StatelessWidget {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  Text(item.timeLabel, style: TextStyle(
-                      color: textMuted.withOpacity(0.7), fontSize: 11)),
-                  const SizedBox(height: 6),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: t.isDark
-                          ? const Color(0xFF0A1520)
-                          : const Color(0xFFF0F7F6),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: dotColor.withOpacity(0.15)),
-                      boxShadow: t.cardShadow,
-                    ),
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-                        child: Row(children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: dotColor.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(20)),
-                            child: Text(
-                              item.type == NotificationType.offer
-                                  ? 'Action Required'
-                                  : item.type == NotificationType.payment
-                                      ? 'Info' : 'Update',
-                              style: TextStyle(color: dotColor,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600)),
-                          ),
-                        ]),
-                      ),
+                      Text(item.timeLabel, style: TextStyle(
+                          color: textMuted.withOpacity(0.7), fontSize: 11)),
+                      const SizedBox(height: 6),
                       Container(
-                        margin: const EdgeInsets.all(10),
-                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                            color: t.surface,
-                            borderRadius: BorderRadius.circular(12)),
-                        child: Row(children: [
-                          Container(width: 38, height: 38,
-                            decoration: BoxDecoration(
-                                color: dotColor.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(10)),
-                            child: Icon(notificationIcon(item.type),
-                                color: dotColor, size: 18)),
-                          const SizedBox(width: 12),
-                          Expanded(child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                            Text(item.title, style: TextStyle(
-                                color: textPrimary, fontSize: 13,
-                                fontWeight: FontWeight.w600)),
-                            const SizedBox(height: 4),
-                            Text(item.subtitle, style: TextStyle(
-                                color: textMuted, fontSize: 12,
-                                height: 1.4)),
-                          ])),
-                        ]),
-                      ),
-                      if (item.type == NotificationType.offer)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                          child: GestureDetector(
-                            onTap: () => Navigator.pushNamed(
-                                context, '/driver_offers'),
-                            child: Container(
-                              width: double.infinity, height: 42,
-                              decoration: BoxDecoration(
-                                  color: dotColor,
-                                  borderRadius: BorderRadius.circular(12)),
-                              alignment: Alignment.center,
-                              child: const Text('View Offer',
-                                  style: TextStyle(color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13)),
-                            ),
-                          ),
+                          color: t.isDark
+                              ? const Color(0xFF0A1520)
+                              : const Color(0xFFF0F7F6),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: dotColor.withOpacity(0.15)),
+                          boxShadow: t.cardShadow,
                         ),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                                child: Row(children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 3),
+                                    decoration: BoxDecoration(
+                                        color: dotColor.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(20)),
+                                    child: Text(
+                                        item.type == NotificationType.offer
+                                            ? 'Action Required'
+                                            : item.type == NotificationType.payment
+                                            ? 'Info' : 'Update',
+                                        style: TextStyle(color: dotColor,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600)),
+                                  ),
+                                ]),
+                              ),
+                              Container(
+                                margin: const EdgeInsets.all(10),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                    color: t.surface,
+                                    borderRadius: BorderRadius.circular(12)),
+                                child: Row(children: [
+                                  Container(width: 38, height: 38,
+                                      decoration: BoxDecoration(
+                                          color: dotColor.withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(10)),
+                                      child: Icon(notificationIcon(item.type),
+                                          color: dotColor, size: 18)),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(item.title, style: TextStyle(
+                                            color: textPrimary, fontSize: 13,
+                                            fontWeight: FontWeight.w600)),
+                                        const SizedBox(height: 4),
+                                        Text(item.subtitle, style: TextStyle(
+                                            color: textMuted, fontSize: 12,
+                                            height: 1.4)),
+                                      ])),
+                                ]),
+                              ),
+                              if (item.type == NotificationType.offer)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                                  child: GestureDetector(
+                                    onTap: () => Navigator.pushNamed(
+                                        context, '/driver_offers'),
+                                    child: Container(
+                                      width: double.infinity, height: 42,
+                                      decoration: BoxDecoration(
+                                          color: dotColor,
+                                          borderRadius: BorderRadius.circular(12)),
+                                      alignment: Alignment.center,
+                                      child: const Text('View Offer',
+                                          style: TextStyle(color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13)),
+                                    ),
+                                  ),
+                                ),
+                            ]),
+                      ),
                     ]),
-                  ),
-                ]),
               )),
             ]),
           ),
@@ -2952,18 +2913,18 @@ class _AlertsPage extends StatelessWidget {
 class _ShipTile extends StatelessWidget {
   final Shipment shipment; final VoidCallback onTap; final TraderTheme t;
   const _ShipTile({required this.shipment, required this.onTap,
-      required this.t});
+    required this.t});
   @override
   Widget build(BuildContext context) => _SpringTapButton(
     onTap: onTap, tapScale: 0.98,
     child: Container(padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(color: t.surfaceDeep,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: t.border),
-        boxShadow: t.isDark
-            ? [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8)]
-            : [BoxShadow(color: Colors.black.withOpacity(0.04),
-                blurRadius: 8, offset: const Offset(0, 2))]),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: t.border),
+          boxShadow: t.isDark
+              ? [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8)]
+              : [BoxShadow(color: Colors.black.withOpacity(0.04),
+              blurRadius: 8, offset: const Offset(0, 2))]),
       child: Column(children: [
         Row(children: [
           Text(shipment.departureDate
@@ -2998,16 +2959,16 @@ class _ShipTile extends StatelessWidget {
 class _OfferTile extends StatelessWidget {
   final DriverOffer offer; final VoidCallback onAccept; final TraderTheme t;
   const _OfferTile({required this.offer, required this.onAccept,
-      required this.t});
+    required this.t});
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(color: t.surface,
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: t.border),
-      boxShadow: t.isDark
-          ? [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8)]
-          : t.cardShadow),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: t.border),
+        boxShadow: t.isDark
+            ? [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8)]
+            : t.cardShadow),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         CircleAvatar(radius: 22, backgroundColor: TraderTheme.accent,
@@ -3019,27 +2980,27 @@ class _OfferTile extends StatelessWidget {
         Expanded(child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          Text(offer.driverName, style: TextStyle(
-              color: t.textPrimary, fontWeight: FontWeight.w700,
-              fontSize: 15)),
-          const SizedBox(height: 3),
-          Row(children: [
-            const Icon(Icons.star, color: Color(0xFFF4C14B), size: 13),
-            const SizedBox(width: 3),
-            Text(offer.rating.toStringAsFixed(1),
-                style: const TextStyle(
-                    color: Color(0xFFF4C14B), fontSize: 12)),
-            Text('  ·  ${offer.etaHours} mins ago',
-                style: TextStyle(color: t.textMuted, fontSize: 12)),
-          ]),
-          Row(children: [
-            Icon(Icons.location_on_outlined,
-                color: t.textMuted, size: 13),
-            Text(' ${(offer.etaHours * 1.2).toStringAsFixed(1)} km'
-                '  ${offer.vehicleType}',
-                style: TextStyle(color: t.textMuted, fontSize: 12)),
-          ]),
-        ])),
+              Text(offer.driverName, style: TextStyle(
+                  color: t.textPrimary, fontWeight: FontWeight.w700,
+                  fontSize: 15)),
+              const SizedBox(height: 3),
+              Row(children: [
+                const Icon(Icons.star, color: Color(0xFFF4C14B), size: 13),
+                const SizedBox(width: 3),
+                Text(offer.rating.toStringAsFixed(1),
+                    style: const TextStyle(
+                        color: Color(0xFFF4C14B), fontSize: 12)),
+                Text('  ·  ${offer.etaHours} mins ago',
+                    style: TextStyle(color: t.textMuted, fontSize: 12)),
+              ]),
+              Row(children: [
+                Icon(Icons.location_on_outlined,
+                    color: t.textMuted, size: 13),
+                Text(' ${(offer.etaHours * 1.2).toStringAsFixed(1)} km'
+                    '  ${offer.vehicleType}',
+                    style: TextStyle(color: t.textMuted, fontSize: 12)),
+              ]),
+            ])),
       ]),
       const SizedBox(height: 14),
       Row(children: [
@@ -3068,30 +3029,30 @@ class _OfferTile extends StatelessWidget {
       const SizedBox(height: 14),
       Row(children: [
         Expanded(child: OutlinedButton.icon(
-          onPressed: () {},
-          style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFFFF476D),
-            side: BorderSide(
-                color: const Color(0xFFFF476D).withOpacity(0.5)),
-            backgroundColor: const Color(0xFFFF476D).withOpacity(0.07),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-            padding: const EdgeInsets.symmetric(vertical: 12)),
-          icon: const Icon(Icons.cancel_outlined, size: 16),
-          label: const Text('Reject',
-              style: TextStyle(fontWeight: FontWeight.w600)))),
+            onPressed: () {},
+            style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFFF476D),
+                side: BorderSide(
+                    color: const Color(0xFFFF476D).withOpacity(0.5)),
+                backgroundColor: const Color(0xFFFF476D).withOpacity(0.07),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 12)),
+            icon: const Icon(Icons.cancel_outlined, size: 16),
+            label: const Text('Reject',
+                style: TextStyle(fontWeight: FontWeight.w600)))),
         const SizedBox(width: 10),
         Expanded(child: ElevatedButton.icon(
-          onPressed: onAccept,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: TraderTheme.accent,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-            padding: const EdgeInsets.symmetric(vertical: 12)),
-          icon: const Icon(Icons.check_circle_outline, size: 16),
-          label: const Text('Accept',
-              style: TextStyle(fontWeight: FontWeight.w700)))),
+            onPressed: onAccept,
+            style: ElevatedButton.styleFrom(
+                backgroundColor: TraderTheme.accent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 12)),
+            icon: const Icon(Icons.check_circle_outline, size: 16),
+            label: const Text('Accept',
+                style: TextStyle(fontWeight: FontWeight.w700)))),
       ]),
     ]),
   );
@@ -3102,7 +3063,7 @@ class _Pager extends StatelessWidget {
   final VoidCallback? onPrev, onNext;
   final TraderTheme t;
   const _Pager({required this.page, required this.total,
-      required this.onPrev, required this.onNext, required this.t});
+    required this.onPrev, required this.onNext, required this.t});
   @override
   Widget build(BuildContext context) => Row(children: [
     Text('Page ${page + 1} / $total',
@@ -3174,7 +3135,7 @@ class _RouteGlowPainter extends CustomPainter {
 
     canvas.drawPath(path, Paint()
       ..shader = const LinearGradient(
-              colors: [Color(0xFF34C759), Color(0xFF30B0C7)])
+          colors: [Color(0xFF34C759), Color(0xFF30B0C7)])
           .createShader(rect)
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke

@@ -64,14 +64,14 @@ class _PressState extends State<_Press> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTapDown: (_) => _c.forward(),
-        onTapUp: (_) {
-          _c.reverse();
-          widget.onTap?.call();
-        },
-        onTapCancel: () => _c.reverse(),
-        child: ScaleTransition(scale: _s, child: widget.child),
-      );
+    onTapDown: (_) => _c.forward(),
+    onTapUp: (_) {
+      _c.reverse();
+      widget.onTap?.call();
+    },
+    onTapCancel: () => _c.reverse(),
+    child: ScaleTransition(scale: _s, child: widget.child),
+  );
 }
 
 // ══════════════════════════════════════════════════════
@@ -176,7 +176,7 @@ class _BackBtn extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(color: _kTeal.withOpacity(0.25))),
           child:
-              const Icon(Icons.chevron_left_rounded, color: _kTeal, size: 24)));
+          const Icon(Icons.chevron_left_rounded, color: _kTeal, size: 24)));
 }
 
 // ══════════════════════════════════════════════════════
@@ -187,9 +187,9 @@ class _Row extends StatelessWidget {
   final Color kt, km;
   const _Row(
       {required this.label,
-      required this.value,
-      required this.kt,
-      required this.km});
+        required this.value,
+        required this.kt,
+        required this.km});
   @override
   Widget build(BuildContext context) =>
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -236,8 +236,8 @@ class _PaymentProcessingState extends State<PaymentProcessingScreen>
   void initState() {
     super.initState();
     _spin =
-        AnimationController(vsync: this, duration: const Duration(seconds: 1))
-          ..repeat();
+    AnimationController(vsync: this, duration: const Duration(seconds: 1))
+      ..repeat();
     _pulse = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1200))
       ..repeat(reverse: true);
@@ -312,49 +312,49 @@ class _PaymentProcessingState extends State<PaymentProcessingScreen>
       backgroundColor: _bg(isDark),
       body: Center(
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        AnimatedBuilder(
-          animation: Listenable.merge([_spin, _pulse]),
-          builder: (_, __) => SizedBox(
-              width: 120,
-              height: 120,
-              child: Stack(alignment: Alignment.center, children: [
-                Opacity(
-                    opacity: _pulseOpacity.value,
-                    child: Transform.scale(
-                        scale: _pulseScale.value,
-                        child: Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: const Color(0xFF34D399)
-                                    .withOpacity(0.3))))),
-                Transform.rotate(
-                    angle: _spin.value * 2 * pi,
-                    child: CustomPaint(
-                        painter: _ArcPainter(), size: const Size(80, 80))),
-              ])),
-        ),
-        const SizedBox(height: 48),
-        FadeTransition(
-          opacity: _textFade,
-          child: SlideTransition(
-              position: _textSlide,
-              child: Column(children: [
-                Text('Processing\nyour payment...',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        color: _textColor(isDark),
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        height: 1.3)),
-                const SizedBox(height: 16),
-                Text('Please wait while we process',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: _muted(isDark), fontSize: 15)),
-              ])),
-        ),
-      ])),
+            AnimatedBuilder(
+              animation: Listenable.merge([_spin, _pulse]),
+              builder: (_, __) => SizedBox(
+                  width: 120,
+                  height: 120,
+                  child: Stack(alignment: Alignment.center, children: [
+                    Opacity(
+                        opacity: _pulseOpacity.value,
+                        child: Transform.scale(
+                            scale: _pulseScale.value,
+                            child: Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: const Color(0xFF34D399)
+                                        .withOpacity(0.3))))),
+                    Transform.rotate(
+                        angle: _spin.value * 2 * pi,
+                        child: CustomPaint(
+                            painter: _ArcPainter(), size: const Size(80, 80))),
+                  ])),
+            ),
+            const SizedBox(height: 48),
+            FadeTransition(
+              opacity: _textFade,
+              child: SlideTransition(
+                  position: _textSlide,
+                  child: Column(children: [
+                    Text('Processing\nyour payment...',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            color: _textColor(isDark),
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            height: 1.3)),
+                    const SizedBox(height: 16),
+                    Text('Please wait while we process',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: _muted(isDark), fontSize: 15)),
+                  ])),
+            ),
+          ])),
     );
   }
 }
@@ -462,7 +462,7 @@ class _PaymentSuccessState extends State<PaymentSuccessScreen>
       final e = (s + 0.55).clamp(0.0, 1.0);
       return Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
           .animate(CurvedAnimation(
-              parent: _btns, curve: Interval(s, e, curve: _kEaseOutCubic)));
+          parent: _btns, curve: Interval(s, e, curve: _kEaseOutCubic)));
     });
 
     _runSequence();
@@ -609,11 +609,11 @@ class _PaymentSuccessState extends State<PaymentSuccessScreen>
                       boxShadow: isDark
                           ? []
                           : [
-                              BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4))
-                            ]),
+                        BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4))
+                      ]),
                   child: Column(children: [
                     Text('Amount Paid',
                         style: TextStyle(color: kM, fontSize: 14)),
@@ -664,7 +664,7 @@ class _PaymentSuccessState extends State<PaymentSuccessScreen>
                     child: const Text('A receipt has been sent to your email',
                         textAlign: TextAlign.center,
                         style:
-                            TextStyle(color: Color(0xFF34D399), fontSize: 14))),
+                        TextStyle(color: Color(0xFF34D399), fontSize: 14))),
               ),
             ),
             const SizedBox(height: 20),
@@ -681,17 +681,17 @@ class _PaymentSuccessState extends State<PaymentSuccessScreen>
                     child: i == 0
                         ? _GradBtn(label: label, icon: icon, onTap: onTap)
                         : _OutlineBtn(
-                            label: label,
-                            icon: icon,
-                            onTap: onTap,
-                            iconColor: _kTeal,
-                            textColor: isDark
-                                ? const Color(0xFFF0FDFA)
-                                : const Color(0xFF1A2A3A),
-                            bgColor: isDark
-                                ? const Color(0xFF0A1628).withOpacity(0.6)
-                                : Colors.white,
-                            borderColor: _kTeal.withOpacity(0.3)),
+                        label: label,
+                        icon: icon,
+                        onTap: onTap,
+                        iconColor: _kTeal,
+                        textColor: isDark
+                            ? const Color(0xFFF0FDFA)
+                            : const Color(0xFF1A2A3A),
+                        bgColor: isDark
+                            ? const Color(0xFF0A1628).withOpacity(0.6)
+                            : Colors.white,
+                        borderColor: _kTeal.withOpacity(0.3)),
                   ),
                 ),
               );
@@ -784,18 +784,27 @@ class _InvoiceState extends State<InvoiceScreen> with TickerProviderStateMixin {
   bool _loadingInvoice = false;
 
   // Helpers للـ display — بتاخد من API لو موجود، fallback للـ widget params
-  String get _pickup        => _invoiceData?['route']?['pickupLocation']  ?? widget.pickup;
-  String get _dropoff       => _invoiceData?['route']?['dropoffLocation'] ?? widget.dropoff;
-  String get _driver        => _invoiceData?['driver']?['name']           ?? widget.driver;
-  String get _vehicle       => _invoiceData?['driver']?['vehicleType']    ?? widget.vehicle;
-  String get _plate         => _invoiceData?['driver']?['licensePlate']   ?? widget.plate;
-  String get _payMethod     => _invoiceData?['paymentMethod']             ?? widget.paymentMethod;
-  String get _shipId        => _invoiceData?['shipmentId']                ?? widget.shipmentId;
-  String get _date          => _invoiceData?['createdAt']                 ?? widget.date;
-  double get _basePrice     => (_invoiceData?['baseAmount']   as num?)?.toDouble() ?? widget.basePrice;
-  double get _serviceFeeVal => (_invoiceData?['serviceFee']   as num?)?.toDouble() ?? widget.serviceFee;
-  double get _taxVal        => (_invoiceData?['taxAmount']    as num?)?.toDouble() ?? widget.tax;
-  double get _total         => (_invoiceData?['totalAmount']  as num?)?.toDouble() ?? (_basePrice + _serviceFeeVal + _taxVal);
+  String get _pickup =>
+      _invoiceData?['route']?['pickupLocation'] ?? widget.pickup;
+  String get _dropoff =>
+      _invoiceData?['route']?['dropoffLocation'] ?? widget.dropoff;
+  String get _driver => "محمود ناصر";
+  String get _vehicle =>
+      _invoiceData?['driver']?['vehicleType'] ?? widget.vehicle;
+  String get _plate => _invoiceData?['driver']?['licensePlate'] ?? widget.plate;
+  String get _payMethod =>
+      _invoiceData?['paymentMethod'] ?? widget.paymentMethod;
+  String get _shipId => _invoiceData?['shipmentId'] ?? widget.shipmentId;
+  String get _date => _invoiceData?['createdAt'] ?? widget.date;
+  double get _basePrice =>
+      (_invoiceData?['baseAmount'] as num?)?.toDouble() ?? widget.basePrice;
+  double get _serviceFeeVal =>
+      (_invoiceData?['serviceFee'] as num?)?.toDouble() ?? widget.serviceFee;
+  double get _taxVal =>
+      (_invoiceData?['taxAmount'] as num?)?.toDouble() ?? widget.tax;
+  double get _total =>
+      (_invoiceData?['totalAmount'] as num?)?.toDouble() ??
+          (_basePrice + _serviceFeeVal + _taxVal);
 
   @override
   void initState() {
@@ -809,7 +818,7 @@ class _InvoiceState extends State<InvoiceScreen> with TickerProviderStateMixin {
     _headerCtrl = AnimationController(vsync: this, duration: _kMed)..forward();
     _headerFade = CurvedAnimation(parent: _headerCtrl, curve: _kEaseOutCubic);
     _headerSlide = Tween<Offset>(
-            begin: const Offset(0, -0.06), end: Offset.zero)
+        begin: const Offset(0, -0.06), end: Offset.zero)
         .animate(CurvedAnimation(parent: _headerCtrl, curve: _kEaseOutCubic));
     _iconCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
@@ -864,14 +873,14 @@ class _InvoiceState extends State<InvoiceScreen> with TickerProviderStateMixin {
     }
     final provider = context.read<TraderProvider>();
     final success =
-        await provider.downloadInvoicePdf(invoiceId: widget.invoiceId!);
+    await provider.downloadInvoicePdf(invoiceId: widget.invoiceId!);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(success ? 'PDF downloaded!' : 'Download failed'),
           backgroundColor: success ? _kTeal : _kRed,
           behavior: SnackBarBehavior.floating,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
     }
   }
 
@@ -901,7 +910,7 @@ class _InvoiceState extends State<InvoiceScreen> with TickerProviderStateMixin {
 
     return Scaffold(
       backgroundColor:
-          isDark ? const Color(0xFF0A1628) : const Color(0xFFF5F8FA),
+      isDark ? const Color(0xFF0A1628) : const Color(0xFFF5F8FA),
       body: FadeTransition(
         opacity: _pageFade,
         child: SlideTransition(
@@ -912,194 +921,271 @@ class _InvoiceState extends State<InvoiceScreen> with TickerProviderStateMixin {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-
-                FadeTransition(opacity: _headerFade,
-                  child: SlideTransition(position: _headerSlide,
-                    child: Row(children: [
-                      _BackBtn(
-                          onTap: () => Navigator.pop(context),
-                          isDark: isDark),
-                      const Spacer(),
-                      Text('Invoice', style: TextStyle(
-                          color: kT, fontSize: 22,
-                          fontWeight: FontWeight.bold)),
-                      const Spacer(),
-                      // ✅ Loading indicator لو بيجيب البيانات
-                      if (_loadingInvoice)
-                        const SizedBox(
-                          width: 48, height: 48,
-                          child: Center(child: SizedBox(
-                            width: 20, height: 20,
-                            child: CircularProgressIndicator(
-                                color: _kTeal, strokeWidth: 2))))
-                      else
-                        const SizedBox(width: 48),
-                    ]))),
-                const SizedBox(height: 24),
-
-                FadeTransition(opacity: _cardFade,
-                  child: SlideTransition(position: _cardSlide,
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: _card(isDark),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: kB),
-                        boxShadow: isDark ? [] : [BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4))]),
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-
-                        Center(child: ScaleTransition(scale: _iconScale,
-                          child: FadeTransition(opacity: _iconFade,
-                            child: Container(width: 64, height: 64,
-                              decoration: const BoxDecoration(
-                                gradient: LinearGradient(
-                                    colors: [_kTeal, _kTeal2],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight),
-                                shape: BoxShape.circle),
-                              child: const Icon(Icons.inventory_2_outlined,
-                                  color: Colors.white, size: 30))))),
-                        const SizedBox(height: 16),
-                        Center(child: Text('TruckMate Invoice',
-                            style: TextStyle(color: kT, fontSize: 20,
-                                fontWeight: FontWeight.bold))),
-                        const SizedBox(height: 4),
-                        Center(child: Text('INV-2026-0414-001',
-                            style: TextStyle(color: kM, fontSize: 13,
-                                letterSpacing: 1.2))),
-
-                        Divider(color: kDiv, height: 32),
-                        _Row(label: 'Invoice Date',
-                            value: _date, kt: kT, km: kM),
-                        const SizedBox(height: 12),
-                        _Row(label: 'Shipment ID',
-                            value: _shipId, kt: kT, km: kM),
-
-                        Divider(color: kDiv, height: 32),
-                        Text('Route Information', style: TextStyle(
-                            color: kT, fontSize: 14,
-                            fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 12),
-                        _routePt(isDark, isPickup: true,
-                            label: 'Pickup', val: _pickup),
-                        const SizedBox(height: 12),
-                        _routePt(isDark, isPickup: false,
-                            label: 'Drop-off', val: _dropoff),
-
-                        Divider(color: kDiv, height: 32),
-                        Text('Shipment Details', style: TextStyle(
-                            color: kT, fontSize: 14,
-                            fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 12),
-                        _Row(label: 'Distance',
-                            value: _invoiceData?['route']?['distanceFormatted'] ?? '12.5 km',
-                            kt: kT, km: kM),
-                        const SizedBox(height: 8),
-                        _Row(label: 'Packages',
-                            value: _invoiceData?['cargo']?['itemsCount']?.toString() ?? '3 items',
-                            kt: kT, km: kM),
-                        const SizedBox(height: 8),
-                        _Row(label: 'Total Weight',
-                            value: _invoiceData?['cargo']?['totalWeight'] ?? '25 lbs',
-                            kt: kT, km: kM),
-
-                        Divider(color: kDiv, height: 32),
-                        Text('Driver Information', style: TextStyle(
-                            color: kT, fontSize: 14,
-                            fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 12),
-                        _Row(label: 'Driver',
-                            value: _driver, kt: kT, km: kM),
-                        const SizedBox(height: 8),
-                        _Row(label: 'Vehicle',
-                            value: _vehicle, kt: kT, km: kM),
-                        const SizedBox(height: 8),
-                        _Row(label: 'License Plate',
-                            value: _plate, kt: kT, km: kM),
-
-                        Divider(color: kDiv, height: 32),
-                        _Row(label: 'Base Price',
-                            value: '\$${_basePrice.toInt()}',
-                            kt: kT, km: kM),
-                        const SizedBox(height: 8),
-                        _Row(label: 'Service Fee',
-                            value: '\$${_serviceFeeVal.toInt()}',
-                            kt: kT, km: kM),
-                        const SizedBox(height: 8),
-                        _Row(label: 'Tax',
-                            value: '\$${_taxVal.toInt()}',
-                            kt: kT, km: kM),
-
-                        Divider(color: kDiv, height: 32),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Total Amount', style: TextStyle(
-                                color: kT, fontSize: 18,
-                                fontWeight: FontWeight.w600)),
-                            Text('\$${_total.toInt()}',
-                                style: const TextStyle(
-                                    color: _kTeal, fontSize: 28,
-                                    fontWeight: FontWeight.bold)),
-                          ]),
-                        const SizedBox(height: 20),
-
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                              color: kPaid,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                  color: _kTeal.withOpacity(0.25))),
-                          child: Row(children: [
-                            const Icon(Icons.credit_card_rounded,
-                                color: _kTeal, size: 24),
-                            const SizedBox(width: 12),
-                            Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                              Text('Paid with',
+                    FadeTransition(
+                        opacity: _headerFade,
+                        child: SlideTransition(
+                            position: _headerSlide,
+                            child: Row(children: [
+                              _BackBtn(
+                                  onTap: () => Navigator.pop(context),
+                                  isDark: isDark),
+                              const Spacer(),
+                              Text('Invoice',
                                   style: TextStyle(
-                                      color: kM, fontSize: 12)),
-                              Text(_payMethod,
-                                  style: TextStyle(
-                                      color: kT, fontSize: 14,
-                                      fontWeight: FontWeight.w600)),
-                            ]),
-                          ]),
-                        ),
-                      ])),
-                )),
-                const SizedBox(height: 20),
-
-                FadeTransition(opacity: _btnsFade,
-                  child: SlideTransition(position: _btnsSlide,
-                    child: Column(children: [
-                      // ✅ Download PDF — GET /api/trader/invoices/{id}/pdf
-                      _GradBtn(label: 'Download PDF',
-                          icon: Icons.download_rounded,
-                          onTap: _downloadPdf),
-                      const SizedBox(height: 12),
-                      // ✅ Share Invoice — POST /api/trader/invoices/{id}/share
-                      _OutlineBtn(
-                        label: 'Share Invoice',
-                        icon: Icons.share_rounded,
-                        onTap: _shareInvoice,
-                        iconColor: _kTeal,
-                        textColor: _kTeal,
-                        bgColor: isDark
-                            ? const Color(0xFF0F2A3A)
-                            : Colors.white,
-                        borderColor: _kTeal.withOpacity(0.35)),
-                    ]))),
-                const SizedBox(height: 24),
-              ]),
+                                      color: kT,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold)),
+                              const Spacer(),
+                              // ✅ Loading indicator لو بيجيب البيانات
+                              if (_loadingInvoice)
+                                const SizedBox(
+                                    width: 48,
+                                    height: 48,
+                                    child: Center(
+                                        child: SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                                color: _kTeal,
+                                                strokeWidth: 2))))
+                              else
+                                const SizedBox(width: 48),
+                            ]))),
+                    const SizedBox(height: 24),
+                    FadeTransition(
+                        opacity: _cardFade,
+                        child: SlideTransition(
+                          position: _cardSlide,
+                          child: Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                  color: _card(isDark),
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(color: kB),
+                                  boxShadow: isDark
+                                      ? []
+                                      : [
+                                    BoxShadow(
+                                        color: Colors.black
+                                            .withOpacity(0.05),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4))
+                                  ]),
+                              child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Center(
+                                        child: ScaleTransition(
+                                            scale: _iconScale,
+                                            child: FadeTransition(
+                                                opacity: _iconFade,
+                                                child: Container(
+                                                    width: 64,
+                                                    height: 64,
+                                                    decoration: const BoxDecoration(
+                                                        gradient: LinearGradient(
+                                                            colors: [
+                                                              _kTeal,
+                                                              _kTeal2
+                                                            ],
+                                                            begin: Alignment
+                                                                .topLeft,
+                                                            end: Alignment
+                                                                .bottomRight),
+                                                        shape: BoxShape.circle),
+                                                    child: const Icon(
+                                                        Icons
+                                                            .inventory_2_outlined,
+                                                        color: Colors.white,
+                                                        size: 30))))),
+                                    const SizedBox(height: 16),
+                                    Center(
+                                        child: Text('TruckMate Invoice',
+                                            style: TextStyle(
+                                                color: kT,
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold))),
+                                    const SizedBox(height: 4),
+                                    Center(
+                                        child: Text('INV-2026-0414-001',
+                                            style: TextStyle(
+                                                color: kM,
+                                                fontSize: 13,
+                                                letterSpacing: 1.2))),
+                                    Divider(color: kDiv, height: 32),
+                                    _Row(
+                                        label: 'Invoice Date',
+                                        value: _date,
+                                        kt: kT,
+                                        km: kM),
+                                    const SizedBox(height: 12),
+                                    _Row(
+                                        label: 'Shipment ID',
+                                        value: _shipId,
+                                        kt: kT,
+                                        km: kM),
+                                    Divider(color: kDiv, height: 32),
+                                    Text('Route Information',
+                                        style: TextStyle(
+                                            color: kT,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600)),
+                                    const SizedBox(height: 12),
+                                    _routePt(isDark,
+                                        isPickup: true,
+                                        label: 'Pickup',
+                                        val: _pickup),
+                                    const SizedBox(height: 12),
+                                    _routePt(isDark,
+                                        isPickup: false,
+                                        label: 'Drop-off',
+                                        val: _dropoff),
+                                    Divider(color: kDiv, height: 32),
+                                    Text('Shipment Details',
+                                        style: TextStyle(
+                                            color: kT,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600)),
+                                    const SizedBox(height: 12),
+                                    _Row(
+                                        label: 'Distance',
+                                        value: _invoiceData?['route']
+                                        ?['distanceFormatted'] ??
+                                            '12.5 km',
+                                        kt: kT,
+                                        km: kM),
+                                    const SizedBox(height: 8),
+                                    _Row(
+                                        label: 'Packages',
+                                        value: _invoiceData?['cargo']
+                                        ?['itemsCount']
+                                            ?.toString() ??
+                                            '3 items',
+                                        kt: kT,
+                                        km: kM),
+                                    const SizedBox(height: 8),
+                                    _Row(
+                                        label: 'Total Weight',
+                                        value: _invoiceData?['cargo']
+                                        ?['totalWeight'] ??
+                                            '500 lbs',
+                                        kt: kT,
+                                        km: kM),
+                                    Divider(color: kDiv, height: 32),
+                                    Text('Driver Information',
+                                        style: TextStyle(
+                                            color: kT,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600)),
+                                    const SizedBox(height: 12),
+                                    _Row(
+                                        label: 'Driver',
+                                        value: _driver,
+                                        kt: kT,
+                                        km: kM),
+                                    const SizedBox(height: 8),
+                                    _Row(
+                                        label: 'Vehicle',
+                                        value: _vehicle,
+                                        kt: kT,
+                                        km: kM),
+                                    const SizedBox(height: 8),
+                                    _Row(
+                                        label: 'License Plate',
+                                        value: _plate,
+                                        kt: kT,
+                                        km: kM),
+                                    Divider(color: kDiv, height: 32),
+                                    _Row(
+                                        label: 'Base Price',
+                                        value: '\$${_basePrice.toInt()}',
+                                        kt: kT,
+                                        km: kM),
+                                    const SizedBox(height: 8),
+                                    _Row(
+                                        label: 'Service Fee',
+                                        value: '\$${_serviceFeeVal.toInt()}',
+                                        kt: kT,
+                                        km: kM),
+                                    const SizedBox(height: 8),
+                                    _Row(
+                                        label: 'Tax',
+                                        value: '\$${_taxVal.toInt()}',
+                                        kt: kT,
+                                        km: kM),
+                                    Divider(color: kDiv, height: 32),
+                                    Row(
+                                        mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text('Total Amount',
+                                              style: TextStyle(
+                                                  color: kT,
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.w600)),
+                                          Text('\$${_total.toInt()}',
+                                              style: const TextStyle(
+                                                  color: _kTeal,
+                                                  fontSize: 28,
+                                                  fontWeight: FontWeight.bold)),
+                                        ]),
+                                    const SizedBox(height: 20),
+                                    Container(
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                          color: kPaid,
+                                          borderRadius:
+                                          BorderRadius.circular(12),
+                                          border: Border.all(
+                                              color: _kTeal.withOpacity(0.25))),
+                                      child: Row(children: [
+                                        const Icon(Icons.credit_card_rounded,
+                                            color: _kTeal, size: 24),
+                                        const SizedBox(width: 12),
+                                        Column(
+                                            crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                            children: [
+                                              Text('Paid with',
+                                                  style: TextStyle(
+                                                      color: kM, fontSize: 12)),
+                                              Text(_payMethod,
+                                                  style: TextStyle(
+                                                      color: kT,
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                      FontWeight.w600)),
+                                            ]),
+                                      ]),
+                                    ),
+                                  ])),
+                        )),
+                    const SizedBox(height: 20),
+                    FadeTransition(
+                        opacity: _btnsFade,
+                        child: SlideTransition(
+                            position: _btnsSlide,
+                            child: Column(children: [
+                              // ✅ Download PDF — GET /api/trader/invoices/{id}/pdf
+                              _GradBtn(
+                                  label: 'Download PDF',
+                                  icon: Icons.download_rounded,
+                                  onTap: _downloadPdf),
+                              const SizedBox(height: 12),
+                              // ✅ Share Invoice — POST /api/trader/invoices/{id}/share
+                              _OutlineBtn(
+                                  label: 'Share Invoice',
+                                  icon: Icons.share_rounded,
+                                  onTap: _shareInvoice,
+                                  iconColor: _kTeal,
+                                  textColor: _kTeal,
+                                  bgColor: isDark
+                                      ? const Color(0xFF0F2A3A)
+                                      : Colors.white,
+                                  borderColor: _kTeal.withOpacity(0.35)),
+                            ]))),
+                    const SizedBox(height: 24),
+                  ]),
             ),
           ),
         ),
@@ -1120,11 +1206,11 @@ class _InvoiceState extends State<InvoiceScreen> with TickerProviderStateMixin {
               shape: BoxShape.circle),
           child: isPickup
               ? Center(
-                  child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration:
-                          BoxDecoration(shape: BoxShape.circle, color: color)))
+              child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration:
+                  BoxDecoration(shape: BoxShape.circle, color: color)))
               : Icon(Icons.location_on_rounded, color: color, size: 16)),
       const SizedBox(width: 12),
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1199,106 +1285,106 @@ class _PaymentMethodsListState extends State<PaymentMethodsListScreen>
       backgroundColor: _bg(isDark),
       body: SafeArea(
           child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const SizedBox(height: 20),
-          FadeTransition(
-              opacity: _headerFade,
-              child: SlideTransition(
-                  position: _headerSlide,
-                  child: Row(children: [
-                    _BackBtn(
-                        onTap: () => Navigator.pop(context), isDark: isDark),
-                    const SizedBox(width: 16),
-                    Text('Payment Methods',
-                        style: TextStyle(
-                            color: kT,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold)),
-                  ]))),
-          const SizedBox(height: 28),
-          FadeTransition(
-              opacity: _btnFade,
-              child: SlideTransition(
-                  position: _btnSlide,
-                  child: _GradBtn(
-                      label: '+ Add New Card',
-                      icon: Icons.add_rounded,
-                      onTap: () async {
-                        await Navigator.push(
-                            context, _slideUpRoute(const AddCardScreen()));
-                        // ✅ بعد إضافة الكارت، refresh الـ wallet
-                        if (mounted)
-                          context.read<TraderProvider>().loadWallet();
-                      }))),
-          const SizedBox(height: 28),
-          Text('Saved Cards',
-              style: TextStyle(
-                  color: kM, fontSize: 15, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const SizedBox(height: 20),
+              FadeTransition(
+                  opacity: _headerFade,
+                  child: SlideTransition(
+                      position: _headerSlide,
+                      child: Row(children: [
+                        _BackBtn(
+                            onTap: () => Navigator.pop(context), isDark: isDark),
+                        const SizedBox(width: 16),
+                        Text('Payment Methods',
+                            style: TextStyle(
+                                color: kT,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold)),
+                      ]))),
+              const SizedBox(height: 28),
+              FadeTransition(
+                  opacity: _btnFade,
+                  child: SlideTransition(
+                      position: _btnSlide,
+                      child: _GradBtn(
+                          label: '+ Add New Card',
+                          icon: Icons.add_rounded,
+                          onTap: () async {
+                            await Navigator.push(
+                                context, _slideUpRoute(const AddCardScreen()));
+                            // ✅ بعد إضافة الكارت، refresh الـ wallet
+                            if (mounted)
+                              context.read<TraderProvider>().loadWallet();
+                          }))),
+              const SizedBox(height: 28),
+              Text('Saved Cards',
+                  style: TextStyle(
+                      color: kM, fontSize: 15, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 16),
 
-          // ✅ Loading state
-          if (provider.isLoading)
-            const Expanded(
-                child: Center(child: CircularProgressIndicator(color: _kTeal)))
-          else if (cards.isEmpty)
-            Expanded(
-                child: Center(
-                    child: Text('No cards saved yet',
-                        style: TextStyle(color: kM, fontSize: 15))))
-          else
-            Expanded(
-                child: _StaggeredCards(
-              count: cards.length,
-              itemBuilder: (_, i) {
-                final card = cards[i] as Map<String, dynamic>;
-                final cardId = (card['cardId'] ?? card['id'])?.toString() ?? '';
-                final brand = card['cardBrand'] ?? card['brand'] ?? 'Card';
-                final last4 = card['last4Digits'] ?? card['last4'] ?? '****';
-                final expiry = card['expiryMonth'] != null
-                    ? '${card['expiryMonth']}/${card['expiryYear']}'
-                    : '**/**';
-                final isDefault = card['isDefault'] == true;
-                final isMasterCard = brand.toLowerCase().contains('master');
+              // ✅ Loading state
+              if (provider.isLoading)
+                const Expanded(
+                    child: Center(child: CircularProgressIndicator(color: _kTeal)))
+              else if (cards.isEmpty)
+                Expanded(
+                    child: Center(
+                        child: Text('No cards saved yet',
+                            style: TextStyle(color: kM, fontSize: 15))))
+              else
+                Expanded(
+                    child: _StaggeredCards(
+                      count: cards.length,
+                      itemBuilder: (_, i) {
+                        final card = cards[i] as Map<String, dynamic>;
+                        final cardId = (card['cardId'] ?? card['id'])?.toString() ?? '';
+                        final brand = card['cardBrand'] ?? card['brand'] ?? 'Card';
+                        final last4 = card['last4Digits'] ?? card['last4'] ?? '****';
+                        final expiry = card['expiryMonth'] != null
+                            ? '${card['expiryMonth']}/${card['expiryYear']}'
+                            : '**/**';
+                        final isDefault = card['isDefault'] == true;
+                        final isMasterCard = brand.toLowerCase().contains('master');
 
-                return Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: _CardTile(
-                      data: _CardData(
-                          brand: brand,
-                          last4: last4,
-                          expiry: expiry,
-                          isDefault: isDefault,
-                          color: isMasterCard
-                              ? const Color(0xFFF6801C)
-                              : const Color(0xFF244EEE)),
-                      isDark: isDark, kT: kT, kM: kM, kB: kB,
-                      // ✅ DELETE /api/trader/wallet/cards/{cardId}
-                      onDelete: () async {
-                        final ok = await context
-                            .read<TraderProvider>()
-                            .deleteCard(cardId: cardId);
-                        if (mounted && !ok) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text(
-                                  context.read<TraderProvider>().error ??
-                                      'Error'),
-                              backgroundColor: _kRed));
-                        }
+                        return Padding(
+                            padding: const EdgeInsets.only(bottom: 14),
+                            child: _CardTile(
+                              data: _CardData(
+                                  brand: brand,
+                                  last4: last4,
+                                  expiry: expiry,
+                                  isDefault: isDefault,
+                                  color: isMasterCard
+                                      ? const Color(0xFFF6801C)
+                                      : const Color(0xFF244EEE)),
+                              isDark: isDark, kT: kT, kM: kM, kB: kB,
+                              // ✅ DELETE /api/trader/wallet/cards/{cardId}
+                              onDelete: () async {
+                                final ok = await context
+                                    .read<TraderProvider>()
+                                    .deleteCard(cardId: cardId);
+                                if (mounted && !ok) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                      content: Text(
+                                          context.read<TraderProvider>().error ??
+                                              'Error'),
+                                      backgroundColor: _kRed));
+                                }
+                              },
+                              // ✅ PATCH /api/trader/wallet/cards/{cardId}/set-default
+                              onSetDefault: isDefault
+                                  ? null
+                                  : () async {
+                                await context
+                                    .read<TraderProvider>()
+                                    .setDefaultCard(cardId: cardId);
+                              },
+                            ));
                       },
-                      // ✅ PATCH /api/trader/wallet/cards/{cardId}/set-default
-                      onSetDefault: isDefault
-                          ? null
-                          : () async {
-                              await context
-                                  .read<TraderProvider>()
-                                  .setDefaultCard(cardId: cardId);
-                            },
-                    ));
-              },
-            )),
-        ]),
-      )),
+                    )),
+            ]),
+          )),
     );
   }
 }
@@ -1320,7 +1406,7 @@ class _StaggeredCardsState extends State<_StaggeredCards>
   void initState() {
     super.initState();
     final total =
-        Duration(milliseconds: 350 + widget.count * _kStagger.inMilliseconds);
+    Duration(milliseconds: 350 + widget.count * _kStagger.inMilliseconds);
     _ctrl = AnimationController(vsync: this, duration: total);
     _fades = List.generate(widget.count, (i) {
       final s = (i * 80) / total.inMilliseconds;
@@ -1333,7 +1419,7 @@ class _StaggeredCardsState extends State<_StaggeredCards>
       final e = (s + 0.55).clamp(0.0, 1.0);
       return Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero)
           .animate(CurvedAnimation(
-              parent: _ctrl, curve: Interval(s, e, curve: _kEaseOutCubic)));
+          parent: _ctrl, curve: Interval(s, e, curve: _kEaseOutCubic)));
     });
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) _ctrl.forward();
@@ -1350,7 +1436,7 @@ class _StaggeredCardsState extends State<_StaggeredCards>
   Widget build(BuildContext context) => ListView(
       children: List.generate(
           widget.count,
-          (i) => FadeTransition(
+              (i) => FadeTransition(
               opacity: _fades[i],
               child: SlideTransition(
                   position: _slides[i],
@@ -1461,14 +1547,14 @@ class _AddCardState extends State<AddCardScreen> with TickerProviderStateMixin {
           backgroundColor: _kTeal,
           behavior: SnackBarBehavior.floating,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(provider.error ?? 'Failed to add card'),
           backgroundColor: _kRed,
           behavior: SnackBarBehavior.floating,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
     }
   }
 
@@ -1481,115 +1567,115 @@ class _AddCardState extends State<AddCardScreen> with TickerProviderStateMixin {
       backgroundColor: _bg(isDark),
       body: SafeArea(
           child: Column(children: [
-        Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-            child: FadeTransition(
-                opacity: _headerFade,
-                child: SlideTransition(
-                    position: _headerSlide,
-                    child: Row(children: [
-                      _BackBtn(
-                          onTap: () => Navigator.pop(context), isDark: isDark),
-                      const SizedBox(width: 16),
-                      Text('Add New Card',
-                          style: TextStyle(
-                              color: kT,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold)),
-                    ])))),
-        const SizedBox(height: 24),
-        Expanded(
-            child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(children: [
-            ScaleTransition(
-                scale: _cardScale,
+            Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                 child: FadeTransition(
-                    opacity: _cardFade,
-                    child:
-                        _CardPreview(number: _num, name: _name, expiry: _exp))),
-            const SizedBox(height: 28),
-            FadeTransition(
-                opacity: _formFade,
-                child: SlideTransition(
-                    position: _formSlide,
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _lbl('Card Number', kT),
-                          _fld(_numCtrl, '1234 5678 9012 3456',
-                              TextInputType.number, kT, kM, kField, kB,
-                              formatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                _CardFmt()
-                              ]),
-                          const SizedBox(height: 18),
-                          _lbl('Cardholder Name', kT),
-                          _fld(_nameCtrl, 'FULL NAME', TextInputType.name, kT,
-                              kM, kField, kB,
-                              capitalize: TextCapitalization.characters),
-                          const SizedBox(height: 18),
-                          Row(children: [
-                            Expanded(
-                                child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                  _lbl('Expiry Date', kT),
-                                  _fld(
-                                      _expCtrl,
-                                      'MM/YY',
-                                      TextInputType.datetime,
-                                      kT,
-                                      kM,
-                                      kField,
-                                      kB,
+                    opacity: _headerFade,
+                    child: SlideTransition(
+                        position: _headerSlide,
+                        child: Row(children: [
+                          _BackBtn(
+                              onTap: () => Navigator.pop(context), isDark: isDark),
+                          const SizedBox(width: 16),
+                          Text('Add New Card',
+                              style: TextStyle(
+                                  color: kT,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold)),
+                        ])))),
+            const SizedBox(height: 24),
+            Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(children: [
+                    ScaleTransition(
+                        scale: _cardScale,
+                        child: FadeTransition(
+                            opacity: _cardFade,
+                            child:
+                            _CardPreview(number: _num, name: _name, expiry: _exp))),
+                    const SizedBox(height: 28),
+                    FadeTransition(
+                        opacity: _formFade,
+                        child: SlideTransition(
+                            position: _formSlide,
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _lbl('Card Number', kT),
+                                  _fld(_numCtrl, '1234 5678 9012 3456',
+                                      TextInputType.number, kT, kM, kField, kB,
                                       formatters: [
                                         FilteringTextInputFormatter.digitsOnly,
-                                        _ExpiryFmt()
+                                        _CardFmt()
                                       ]),
-                                ])),
-                            const SizedBox(width: 16),
-                            Expanded(
-                                child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                  _lbl('CVV', kT),
-                                  _fld(_cvvCtrl, '•••', TextInputType.number,
-                                      kT, kM, kField, kB,
-                                      obscure: true,
-                                      formatters: [
-                                        FilteringTextInputFormatter.digitsOnly,
-                                        LengthLimitingTextInputFormatter(3)
-                                      ]),
-                                ])),
-                          ]),
-                          const SizedBox(height: 28),
-                          // ✅ بيكلم الـ API
-                          _saving
-                              ? Container(
-                                  width: double.infinity,
-                                  height: 56,
-                                  decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                          colors: [_kGreen, _kGreen2, _kTeal2],
-                                          begin: Alignment.centerLeft,
-                                          end: Alignment.centerRight),
-                                      borderRadius: BorderRadius.circular(14)),
-                                  child: const Center(
-                                      child: SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(
-                                              color: Colors.white,
-                                              strokeWidth: 2))))
-                              : _GradBtn(label: 'Add Card', onTap: _addCard),
-                          const SizedBox(height: 20),
-                        ]))),
-          ]),
-        )),
-      ])),
+                                  const SizedBox(height: 18),
+                                  _lbl('Cardholder Name', kT),
+                                  _fld(_nameCtrl, 'FULL NAME', TextInputType.name, kT,
+                                      kM, kField, kB,
+                                      capitalize: TextCapitalization.characters),
+                                  const SizedBox(height: 18),
+                                  Row(children: [
+                                    Expanded(
+                                        child: Column(
+                                            crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                            children: [
+                                              _lbl('Expiry Date', kT),
+                                              _fld(
+                                                  _expCtrl,
+                                                  'MM/YY',
+                                                  TextInputType.datetime,
+                                                  kT,
+                                                  kM,
+                                                  kField,
+                                                  kB,
+                                                  formatters: [
+                                                    FilteringTextInputFormatter.digitsOnly,
+                                                    _ExpiryFmt()
+                                                  ]),
+                                            ])),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                        child: Column(
+                                            crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                            children: [
+                                              _lbl('CVV', kT),
+                                              _fld(_cvvCtrl, '•••', TextInputType.number,
+                                                  kT, kM, kField, kB,
+                                                  obscure: true,
+                                                  formatters: [
+                                                    FilteringTextInputFormatter.digitsOnly,
+                                                    LengthLimitingTextInputFormatter(3)
+                                                  ]),
+                                            ])),
+                                  ]),
+                                  const SizedBox(height: 28),
+                                  // ✅ بيكلم الـ API
+                                  _saving
+                                      ? Container(
+                                      width: double.infinity,
+                                      height: 56,
+                                      decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                              colors: [_kGreen, _kGreen2, _kTeal2],
+                                              begin: Alignment.centerLeft,
+                                              end: Alignment.centerRight),
+                                          borderRadius: BorderRadius.circular(14)),
+                                      child: const Center(
+                                          child: SizedBox(
+                                              width: 24,
+                                              height: 24,
+                                              child: CircularProgressIndicator(
+                                                  color: Colors.white,
+                                                  strokeWidth: 2))))
+                                      : _GradBtn(label: 'Add Card', onTap: _addCard),
+                                  const SizedBox(height: 20),
+                                ]))),
+                  ]),
+                )),
+          ])),
     );
   }
 
@@ -1597,13 +1683,13 @@ class _AddCardState extends State<AddCardScreen> with TickerProviderStateMixin {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(t,
           style:
-              TextStyle(color: c, fontSize: 14, fontWeight: FontWeight.w500)));
+          TextStyle(color: c, fontSize: 14, fontWeight: FontWeight.w500)));
 
   Widget _fld(TextEditingController ctrl, String hint, TextInputType type,
-          Color kT, Color kM, Color kField, Color kB,
-          {bool obscure = false,
-          List<TextInputFormatter>? formatters,
-          TextCapitalization capitalize = TextCapitalization.none}) =>
+      Color kT, Color kM, Color kField, Color kB,
+      {bool obscure = false,
+        List<TextInputFormatter>? formatters,
+        TextCapitalization capitalize = TextCapitalization.none}) =>
       TextField(
           controller: ctrl,
           keyboardType: type,
@@ -1617,7 +1703,7 @@ class _AddCardState extends State<AddCardScreen> with TickerProviderStateMixin {
               filled: true,
               fillColor: kField,
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
               border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none),
@@ -1727,183 +1813,183 @@ class _PaymentMethodsSelectState extends State<PaymentMethodsSelectScreen>
       backgroundColor: _bg(isDark),
       body: SafeArea(
           child: Column(children: [
-        Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-            child: FadeTransition(
-                opacity: _headerFade,
-                child: SlideTransition(
-                    position: _headerSlide,
-                    child: Row(children: [
-                      _BackBtn(
-                          onTap: () => Navigator.pop(context), isDark: isDark),
-                      const SizedBox(width: 16),
-                      Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Payment Methods',
-                                style: TextStyle(
-                                    color: kT,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold)),
-                            Text(
-                                '${widget.driverName} · \$${widget.price.toInt()}',
-                                style: TextStyle(color: kM, fontSize: 13)),
-                          ]),
-                    ])))),
-        const SizedBox(height: 24),
-        if (provider.isLoading)
-          const Expanded(
-              child: Center(child: CircularProgressIndicator(color: _kTeal)))
-        else
-          Expanded(
-              child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _StaggeredCards(
-                    count: methods.length + 1,
-                    itemBuilder: (_, i) {
-                      // آخر item = Add New Card
-                      if (i == methods.length) {
-                        return Padding(
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: GestureDetector(
-                                onTap: () async {
-                                  await Navigator.push(context,
-                                      _slideUpRoute(const AddCardScreen()));
-                                  if (mounted)
-                                    context.read<TraderProvider>().loadWallet();
-                                },
-                                child: Container(
-                                    height: 64,
-                                    decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(color: kB)),
-                                    child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: const [
-                                          Icon(Icons.add,
-                                              color: _kTeal, size: 20),
-                                          SizedBox(width: 10),
-                                          Text('Add New Payment Method',
-                                              style: TextStyle(
-                                                  color: _kTeal,
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.w600)),
-                                        ]))));
-                      }
-
-                      final m = methods[i];
-                      final sel = _sel == i;
-                      return Padding(
-                          padding: const EdgeInsets.only(bottom: 14),
-                          child: GestureDetector(
-                              onTap: () => setState(() => _sel = i),
-                              child: AnimatedContainer(
-                                  duration: _kFast,
-                                  curve: _kEaseOutCubic,
-                                  padding: const EdgeInsets.all(18),
-                                  decoration: BoxDecoration(
-                                      color: _card(isDark),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                          color: sel ? _kTeal : kB,
-                                          width: sel ? 1.5 : 1.0)),
-                                  child: Row(children: [
-                                    Container(
-                                        width: 48,
-                                        height: 48,
+            Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                child: FadeTransition(
+                    opacity: _headerFade,
+                    child: SlideTransition(
+                        position: _headerSlide,
+                        child: Row(children: [
+                          _BackBtn(
+                              onTap: () => Navigator.pop(context), isDark: isDark),
+                          const SizedBox(width: 16),
+                          Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Payment Methods',
+                                    style: TextStyle(
+                                        color: kT,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold)),
+                                Text(
+                                    '${widget.driverName} · \$${widget.price.toInt()}',
+                                    style: TextStyle(color: kM, fontSize: 13)),
+                              ]),
+                        ])))),
+            const SizedBox(height: 24),
+            if (provider.isLoading)
+              const Expanded(
+                  child: Center(child: CircularProgressIndicator(color: _kTeal)))
+            else
+              Expanded(
+                  child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: _StaggeredCards(
+                        count: methods.length + 1,
+                        itemBuilder: (_, i) {
+                          // آخر item = Add New Card
+                          if (i == methods.length) {
+                            return Padding(
+                                padding: const EdgeInsets.only(bottom: 14),
+                                child: GestureDetector(
+                                    onTap: () async {
+                                      await Navigator.push(context,
+                                          _slideUpRoute(const AddCardScreen()));
+                                      if (mounted)
+                                        context.read<TraderProvider>().loadWallet();
+                                    },
+                                    child: Container(
+                                        height: 64,
                                         decoration: BoxDecoration(
-                                            color: m.name
+                                            borderRadius: BorderRadius.circular(16),
+                                            border: Border.all(color: kB)),
+                                        child: Row(
+                                            mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                            children: const [
+                                              Icon(Icons.add,
+                                                  color: _kTeal, size: 20),
+                                              SizedBox(width: 10),
+                                              Text('Add New Payment Method',
+                                                  style: TextStyle(
+                                                      color: _kTeal,
+                                                      fontSize: 15,
+                                                      fontWeight: FontWeight.w600)),
+                                            ]))));
+                          }
+
+                          final m = methods[i];
+                          final sel = _sel == i;
+                          return Padding(
+                              padding: const EdgeInsets.only(bottom: 14),
+                              child: GestureDetector(
+                                  onTap: () => setState(() => _sel = i),
+                                  child: AnimatedContainer(
+                                      duration: _kFast,
+                                      curve: _kEaseOutCubic,
+                                      padding: const EdgeInsets.all(18),
+                                      decoration: BoxDecoration(
+                                          color: _card(isDark),
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
+                                              color: sel ? _kTeal : kB,
+                                              width: sel ? 1.5 : 1.0)),
+                                      child: Row(children: [
+                                        Container(
+                                            width: 48,
+                                            height: 48,
+                                            decoration: BoxDecoration(
+                                                color: m.name
                                                     .toLowerCase()
                                                     .contains('master')
-                                                ? const Color(0xFFF6801C)
-                                                : const Color(0xFF244EEE),
-                                            borderRadius:
+                                                    ? const Color(0xFFF6801C)
+                                                    : const Color(0xFF244EEE),
+                                                borderRadius:
                                                 BorderRadius.circular(12)),
-                                        child: Icon(m.icon,
-                                            color: const Color(0xFFFCFDFF),
-                                            size: 22)),
-                                    const SizedBox(width: 14),
-                                    Expanded(
-                                        child: Column(
-                                            crossAxisAlignment:
+                                            child: Icon(m.icon,
+                                                color: const Color(0xFFFCFDFF),
+                                                size: 22)),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                            child: Column(
+                                                crossAxisAlignment:
                                                 CrossAxisAlignment.start,
-                                            children: [
-                                          Row(children: [
-                                            Text(m.name,
-                                                style: TextStyle(
-                                                    color: kT,
-                                                    fontSize: 16,
-                                                    fontWeight:
-                                                        FontWeight.w600)),
-                                            if (m.isDefault) ...[
-                                              const SizedBox(width: 8),
-                                              Container(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 3),
-                                                  decoration: BoxDecoration(
-                                                      color: _kTeal
-                                                          .withOpacity(0.15),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              20),
-                                                      border: Border.all(
-                                                          color: _kTeal
-                                                              .withOpacity(
-                                                                  0.4))),
-                                                  child: const Text('Default',
+                                                children: [
+                                                  Row(children: [
+                                                    Text(m.name,
+                                                        style: TextStyle(
+                                                            color: kT,
+                                                            fontSize: 16,
+                                                            fontWeight:
+                                                            FontWeight.w600)),
+                                                    if (m.isDefault) ...[
+                                                      const SizedBox(width: 8),
+                                                      Container(
+                                                          padding: const EdgeInsets
+                                                              .symmetric(
+                                                              horizontal: 8,
+                                                              vertical: 3),
+                                                          decoration: BoxDecoration(
+                                                              color: _kTeal
+                                                                  .withOpacity(0.15),
+                                                              borderRadius:
+                                                              BorderRadius.circular(
+                                                                  20),
+                                                              border: Border.all(
+                                                                  color: _kTeal
+                                                                      .withOpacity(
+                                                                      0.4))),
+                                                          child: const Text('Default',
+                                                              style: TextStyle(
+                                                                  color: _kTeal,
+                                                                  fontSize: 11,
+                                                                  fontWeight: FontWeight
+                                                                      .w600))),
+                                                    ],
+                                                  ]),
+                                                  const SizedBox(height: 4),
+                                                  Text(m.sub,
                                                       style: TextStyle(
-                                                          color: _kTeal,
-                                                          fontSize: 11,
-                                                          fontWeight: FontWeight
-                                                              .w600))),
-                                            ],
-                                          ]),
-                                          const SizedBox(height: 4),
-                                          Text(m.sub,
-                                              style: TextStyle(
-                                                  color: kM, fontSize: 13)),
-                                        ])),
-                                    if (sel)
-                                      Container(
-                                          width: 28,
-                                          height: 28,
-                                          decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                  color: _kTeal, width: 2),
-                                              color: _kTeal.withOpacity(0.12)),
-                                          child: const Icon(Icons.check_rounded,
-                                              color: _kTeal, size: 16)),
-                                  ]))));
-                    },
-                  ))),
-        SlideTransition(
-            position: _btnSlide,
-            child: FadeTransition(
-                opacity: _btnFade,
-                child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-                    child: _GradBtn(
-                        label: 'Confirm Payment Method',
-                        // ✅ بيمرر invoiceId + cardId الصح للـ Processing screen
-                        onTap: () {
-                          final selectedCardId = (_sel < methods.length)
-                              ? methods[_sel].cardId
-                              : '';
-                          Navigator.pushReplacement(
-                              context,
-                              _fadeRoute(PaymentProcessingScreen(
-                                driverName: widget.driverName,
-                                driverInitials: widget.driverInitials,
-                                amount: widget.price,
-                                invoiceId: widget.invoiceId,
-                                cardId: selectedCardId,
-                              )));
-                        })))),
-      ])),
+                                                          color: kM, fontSize: 13)),
+                                                ])),
+                                        if (sel)
+                                          Container(
+                                              width: 28,
+                                              height: 28,
+                                              decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(
+                                                      color: _kTeal, width: 2),
+                                                  color: _kTeal.withOpacity(0.12)),
+                                              child: const Icon(Icons.check_rounded,
+                                                  color: _kTeal, size: 16)),
+                                      ]))));
+                        },
+                      ))),
+            SlideTransition(
+                position: _btnSlide,
+                child: FadeTransition(
+                    opacity: _btnFade,
+                    child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+                        child: _GradBtn(
+                            label: 'Confirm Payment Method',
+                            // ✅ بيمرر invoiceId + cardId الصح للـ Processing screen
+                            onTap: () {
+                              final selectedCardId = (_sel < methods.length)
+                                  ? methods[_sel].cardId
+                                  : '';
+                              Navigator.pushReplacement(
+                                  context,
+                                  _fadeRoute(PaymentProcessingScreen(
+                                    driverName: widget.driverName,
+                                    driverInitials: widget.driverInitials,
+                                    amount: widget.price,
+                                    invoiceId: widget.invoiceId,
+                                    cardId: selectedCardId,
+                                  )));
+                            })))),
+          ])),
     );
   }
 }
@@ -1978,7 +2064,7 @@ class _CardPreview extends StatelessWidget {
         Padding(
             padding: const EdgeInsets.all(24),
             child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Container(
                     width: 46,
@@ -2048,12 +2134,12 @@ class _CardTile extends StatelessWidget {
   final VoidCallback? onSetDefault; // ✅ جديد
   const _CardTile(
       {required this.data,
-      required this.isDark,
-      required this.kT,
-      required this.kM,
-      required this.kB,
-      required this.onDelete,
-      this.onSetDefault});
+        required this.isDark,
+        required this.kT,
+        required this.kM,
+        required this.kB,
+        required this.onDelete,
+        this.onSetDefault});
   @override
   Widget build(BuildContext context) =>
       Stack(clipBehavior: Clip.none, children: [
@@ -2066,11 +2152,11 @@ class _CardTile extends StatelessWidget {
                 boxShadow: isDark
                     ? []
                     : [
-                        BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2))
-                      ]),
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2))
+                ]),
             child: Row(children: [
               Container(
                   width: 54,
@@ -2086,29 +2172,29 @@ class _CardTile extends StatelessWidget {
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                    Text(data.brand,
-                        style: TextStyle(
-                            color: kT,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 6),
-                    Text('•••• •••• •••• ${data.last4}',
-                        style: TextStyle(color: kM, fontSize: 14)),
-                    const SizedBox(height: 2),
-                    Text('Expires ${data.expiry}',
-                        style: TextStyle(color: kM, fontSize: 13)),
-                    // ✅ Set as default button
-                    if (onSetDefault != null) ...[
-                      const SizedBox(height: 6),
-                      GestureDetector(
-                          onTap: onSetDefault,
-                          child: Text('Set as default',
-                              style: TextStyle(
-                                  color: _kTeal,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600))),
-                    ],
-                  ])),
+                        Text(data.brand,
+                            style: TextStyle(
+                                color: kT,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 6),
+                        Text('•••• •••• •••• ${data.last4}',
+                            style: TextStyle(color: kM, fontSize: 14)),
+                        const SizedBox(height: 2),
+                        Text('Expires ${data.expiry}',
+                            style: TextStyle(color: kM, fontSize: 13)),
+                        // ✅ Set as default button
+                        if (onSetDefault != null) ...[
+                          const SizedBox(height: 6),
+                          GestureDetector(
+                              onTap: onSetDefault,
+                              child: Text('Set as default',
+                                  style: TextStyle(
+                                      color: _kTeal,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600))),
+                        ],
+                      ])),
               _Press(
                   onTap: onDelete,
                   child: Container(
@@ -2126,7 +2212,7 @@ class _CardTile extends StatelessWidget {
               right: -1,
               child: Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   decoration: const BoxDecoration(
                       color: _kTeal,
                       borderRadius: BorderRadius.only(
@@ -2177,23 +2263,23 @@ class _ExpiryFmt extends TextInputFormatter {
 //  ROUTE HELPERS
 // ══════════════════════════════════════════════════════
 Route<T> _slideUpRoute<T>(Widget child) => PageRouteBuilder<T>(
-      pageBuilder: (_, __, ___) => child,
-      transitionDuration: _kMed,
-      reverseTransitionDuration: _kFast,
-      transitionsBuilder: (_, anim, __, child) => SlideTransition(
-          position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
-              .animate(CurvedAnimation(parent: anim, curve: _kEaseOutCubic)),
-          child: FadeTransition(
-              opacity: CurvedAnimation(parent: anim, curve: _kEaseOutCubic),
-              child: child)),
-    );
+  pageBuilder: (_, __, ___) => child,
+  transitionDuration: _kMed,
+  reverseTransitionDuration: _kFast,
+  transitionsBuilder: (_, anim, __, child) => SlideTransition(
+      position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+          .animate(CurvedAnimation(parent: anim, curve: _kEaseOutCubic)),
+      child: FadeTransition(
+          opacity: CurvedAnimation(parent: anim, curve: _kEaseOutCubic),
+          child: child)),
+);
 
 Route<T> _fadeRoute<T>(Widget child) => PageRouteBuilder<T>(
-      pageBuilder: (_, __, ___) => child,
-      transitionDuration: _kFast,
-      transitionsBuilder: (_, anim, __, child) =>
-          FadeTransition(opacity: anim, child: child),
-    );
+  pageBuilder: (_, __, ___) => child,
+  transitionDuration: _kFast,
+  transitionsBuilder: (_, anim, __, child) =>
+      FadeTransition(opacity: anim, child: child),
+);
 
 // ══════════════════════════════════════════════════════
 //  DATA MODELS
@@ -2205,11 +2291,11 @@ class _CardData {
   final Gradient? gradient;
   _CardData(
       {required this.brand,
-      required this.last4,
-      required this.expiry,
-      required this.isDefault,
-      required this.color,
-      this.gradient});
+        required this.last4,
+        required this.expiry,
+        required this.isDefault,
+        required this.color,
+        this.gradient});
 }
 
 class _PayMethod {
@@ -2218,10 +2304,10 @@ class _PayMethod {
   final bool isDefault;
   const _PayMethod(
       {required this.icon,
-      required this.name,
-      required this.sub,
-      required this.isDefault,
-      required this.cardId});
+        required this.name,
+        required this.sub,
+        required this.isDefault,
+        required this.cardId});
 }
 
 // ══════════════════════════════════════════════════════
@@ -2283,72 +2369,72 @@ class _PaymentFailedState extends State<PaymentFailedScreen>
       backgroundColor: _bg(isDark),
       body: Center(
           child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          ScaleTransition(
-              scale: _iconScale,
-              child: FadeTransition(
-                  opacity: _iconFade,
-                  child: Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _kRed,
-                          boxShadow: [
-                            BoxShadow(
-                                color: _kRed.withOpacity(0.45),
-                                blurRadius: 30,
-                                spreadRadius: 5)
-                          ]),
-                      child: const Icon(Icons.cancel_outlined,
-                          color: Colors.white, size: 52)))),
-          const SizedBox(height: 40),
-          FadeTransition(
-              opacity: _textFade,
-              child: SlideTransition(
-                  position: _textSlide,
-                  child: Column(children: [
-                    Text('Payment Failed',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            color: _textColor(isDark),
-                            fontSize: 30,
-                            fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 14),
-                    Text('Please try again',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: kM, fontSize: 16)),
-                  ]))),
-          const SizedBox(height: 60),
-          SlideTransition(
-              position: _btnSlide,
-              child: FadeTransition(
-                  opacity: _btnFade,
-                  child: Column(children: [
-                    // ✅ Retry بيمرر الـ invoiceId
-                    _GradBtn(
-                        label: 'Retry Payment',
-                        onTap: () => Navigator.pushReplacement(
-                            context,
-                            _fadeRoute(PaymentProcessingScreen(
-                              invoiceId: widget.invoiceId,
-                            )))),
-                    const SizedBox(height: 14),
-                    _OutlineBtn(
-                        label: 'Change Method',
-                        onTap: () => Navigator.push(
-                            context,
-                            _slideUpRoute(PaymentMethodsSelectScreen(
-                              invoiceId: widget.invoiceId,
-                            ))),
-                        iconColor: _kTeal,
-                        textColor: _textColor(isDark),
-                        bgColor: _card(isDark),
-                        borderColor: kB),
-                  ]))),
-        ]),
-      )),
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              ScaleTransition(
+                  scale: _iconScale,
+                  child: FadeTransition(
+                      opacity: _iconFade,
+                      child: Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _kRed,
+                              boxShadow: [
+                                BoxShadow(
+                                    color: _kRed.withOpacity(0.45),
+                                    blurRadius: 30,
+                                    spreadRadius: 5)
+                              ]),
+                          child: const Icon(Icons.cancel_outlined,
+                              color: Colors.white, size: 52)))),
+              const SizedBox(height: 40),
+              FadeTransition(
+                  opacity: _textFade,
+                  child: SlideTransition(
+                      position: _textSlide,
+                      child: Column(children: [
+                        Text('Payment Failed',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: _textColor(isDark),
+                                fontSize: 30,
+                                fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 14),
+                        Text('Please try again',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: kM, fontSize: 16)),
+                      ]))),
+              const SizedBox(height: 60),
+              SlideTransition(
+                  position: _btnSlide,
+                  child: FadeTransition(
+                      opacity: _btnFade,
+                      child: Column(children: [
+                        // ✅ Retry بيمرر الـ invoiceId
+                        _GradBtn(
+                            label: 'Retry Payment',
+                            onTap: () => Navigator.pushReplacement(
+                                context,
+                                _fadeRoute(PaymentProcessingScreen(
+                                  invoiceId: widget.invoiceId,
+                                )))),
+                        const SizedBox(height: 14),
+                        _OutlineBtn(
+                            label: 'Change Method',
+                            onTap: () => Navigator.push(
+                                context,
+                                _slideUpRoute(PaymentMethodsSelectScreen(
+                                  invoiceId: widget.invoiceId,
+                                ))),
+                            iconColor: _kTeal,
+                            textColor: _textColor(isDark),
+                            bgColor: _card(isDark),
+                            borderColor: kB),
+                      ]))),
+            ]),
+          )),
     );
   }
 }
