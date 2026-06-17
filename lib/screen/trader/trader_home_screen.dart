@@ -242,7 +242,7 @@ _offers        = [];
     _tabSwitchCtrl.value = 1.0;
   }
 
-  // ✅ جيب البيانات الحقيقية من الـ API
+  // ✅ FIX 1: _loadData() يجيب currentShipment + shipments معاً
   Future<void> _loadData() async {
     final provider = context.read<TraderProvider>();
 
@@ -253,45 +253,84 @@ _offers        = [];
     ]);
 
     if (!mounted) return;
-    setState(() {
-      // ✅ الاسم من الـ profile
-      if (provider.fullName.isNotEmpty) _traderName = provider.fullName;
 
+    setState(() {
+      if (provider.fullName.isNotEmpty) _traderName = provider.fullName;
       _apiLoading = false;
 
-      // ✅ لو في shipments من الـ API، استخدمهم
-      if (provider.shipments.isNotEmpty) {
-        _shipments = provider.shipments.map((s) {
-          final status = _parseStatus(s['status']?.toString() ?? 'pending');
-          final driverName = s['driver']?['name'] ?? s['driverName'] ?? '';
-          return Shipment(
-            id:             s['id']?.toString() ?? '',
-            title:          s['vehicleType']    ?? 'Delivery',
-            reference:      s['shipmentId']?.toString() ?? s['id']?.toString() ?? '',
-            origin:         s['pickupLocation'] ?? s['route']?['pickupLocation'] ?? '',
-            destination:    s['dropOffLocation'] ?? s['route']?['dropoffLocation'] ?? '',
-            status:         status,
-            progress:       _progressFromStatus(status),
-            departureDate:  s['scheduledDate']?.toString() ?? '',
-            weightTons:     (s['weight']      as num?)?.toDouble() ?? 1.0,
-            price:          (s['finalCost']   as num?)?.toDouble() ?? 0,
-            driverName:     driverName.isNotEmpty ? driverName : 'Unassigned',
-            driverInitials: makeInitials(driverName.isNotEmpty ? driverName : 'Unassigned'),
-            vehicleInfo:    s['vehicleType']  ?? '',
-            goodsType:      s['vehicleType']  ?? '',
-            priority:       'Standard',
-            cancelReason:   null,
-            timeline: [
-              const ShipmentMilestone(label: 'Created',    time: '', isDone: true),
-              ShipmentMilestone(label: 'In Transit', time: '',
-                  isDone: status == ShipmentStatus.inTransit || status == ShipmentStatus.delivered),
-              ShipmentMilestone(label: 'Delivered',  time: '',
-                  isDone: status == ShipmentStatus.delivered),
-            ],
-          );
-        }).toList();
+      final List<Shipment> all = [];
+
+      // ✅ FIX: currentShipment أولاً عشان الشحنة الجديدة تظهر فوراً في الـ hero
+      if (provider.currentShipment != null) {
+        final cs = _toShipment(Map<String, dynamic>.from(provider.currentShipment!));
+        if (cs != null) all.add(cs);
       }
+
+      // ✅ باقي الشحنات مع تجنب التكرار
+      for (final raw in provider.shipments) {
+        final s = _toShipment(Map<String, dynamic>.from(raw as Map));
+        if (s != null && !all.any((x) => x.reference == s.reference)) {
+          all.add(s);
+        }
+      }
+
+      // ✅ fallback من homeData لو الاتنين فاضيين
+      if (all.isEmpty) {
+        final cs = provider.homeData?['currentShipment'];
+        if (cs is Map) {
+          final s = _toShipment(Map<String, dynamic>.from(cs));
+          if (s != null) all.add(s);
+        }
+      }
+
+      _shipments = all;
     });
+  }
+
+  // ✅ Helper: Map → Shipment (returns null لو في exception)
+  Shipment? _toShipment(Map<String, dynamic> s) {
+    try {
+      final status = _parseStatus(s['status']?.toString() ?? 'pending');
+      final dn = (s['driver']?['name']
+          ?? s['driverName']
+          ?? s['assignedDriver']?['name']
+          ?? '').toString();
+      final ref = (s['shipmentId'] ?? s['id'] ?? 'TM-000000').toString();
+      return Shipment(
+        id:             ref,
+        title:          s['vehicleType']?.toString() ?? 'Delivery',
+        reference:      ref,
+        origin:         s['pickupLocation']?.toString()
+            ?? s['route']?['pickupLocation']?.toString() ?? '',
+        destination:    s['dropOffLocation']?.toString()
+            ?? s['route']?['dropoffLocation']?.toString() ?? '',
+        status:         status,
+        progress:       _progressFromStatus(status),
+        departureDate:  s['scheduledDate']?.toString().split('T').first
+            ?? s['createdAt']?.toString().split('T').first ?? '-',
+        weightTons:     (s['weight']      as num?)?.toDouble() ?? 1.0,
+        price:          (s['finalCost']   as num?)?.toDouble()
+            ?? (s['price']        as num?)?.toDouble()
+            ?? (s['totalCostEGP'] as num?)?.toDouble() ?? 0.0,
+        driverName:     dn.isNotEmpty ? dn : 'Unassigned',
+        driverInitials: makeInitials(dn.isNotEmpty ? dn : 'Unassigned'),
+        vehicleInfo:    s['vehicleType']?.toString() ?? '',
+        goodsType:      s['vehicleType']?.toString() ?? '',
+        priority:       'Standard',
+        cancelReason:   s['cancelReason']?.toString(),
+        timeline: [
+          const ShipmentMilestone(label: 'Created',    time: '', isDone: true),
+          ShipmentMilestone(
+            label: 'In Transit', time: '',
+            isDone: status == ShipmentStatus.inTransit || status == ShipmentStatus.delivered,
+          ),
+          ShipmentMilestone(
+            label: 'Delivered', time: '',
+            isDone: status == ShipmentStatus.delivered,
+          ),
+        ],
+      );
+    } catch (_) { return null; }
   }
 
   ShipmentStatus _parseStatus(String s) {
