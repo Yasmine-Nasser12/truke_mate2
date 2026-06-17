@@ -584,7 +584,7 @@ class _PickupScreenState extends State<PickupScreen>
                   child: Row(children: [
                     Icon(Icons.location_on_outlined, color: teal, size: 16),
                     const SizedBox(width: 5),
-                    Text(trip?.distance ?? '8.5 Km away', style: TextStyle(
+                    Text(trip?.distance ?? '70 mile away', style: TextStyle(
                         color: _text(isDark), fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(width: 12),
                     Container(width: 1, height: 14,
@@ -592,7 +592,7 @@ class _PickupScreenState extends State<PickupScreen>
                     const SizedBox(width: 12),
                     const Icon(Icons.access_time, color: Colors.orange, size: 16),
                     const SizedBox(width: 5),
-                    Text(trip?.eta ?? '12 min ETA', style: TextStyle(
+                    Text(trip?.eta ?? '1 hour 30 min', style: TextStyle(
                         color: _text(isDark), fontWeight: FontWeight.bold, fontSize: 13)),
                   ]),
                 )
@@ -610,20 +610,20 @@ class _PickupScreenState extends State<PickupScreen>
               else if (trip == null) ...[
                 _anim(4, _buildPickupDetailsCard(trip ?? const _TripDetails(
                   tripId: 'TRP-2025-001',
-                  pickupLocation: 'Cairo Warehouse',
-                  pickupAddress: 'Nasr City, Cairo, Egypt',
+                  pickupLocation: 'Fayum',
+                  pickupAddress: 'ميدان المسلة، الفيوم، مصر',
                   dropoffLocation: 'Alexandria Port',
                   dropoffAddress: 'Port Road, Alexandria, Egypt',
-                  traderName: 'Ahmed Logistics',
+                  traderName: 'Toka Mohamed',
                   traderPhone: '+20 101 234 5678',
                   shipmentId: 'SHP-10025',
                   shipmentType: 'Electronics',
-                  weight: '2500 kg',
+                  weight: '500 kg',
                   specialNotes:
                   'Handle with care. Fragile electronic equipment. Delivery required before 6 PM.',
                   amountEGP: 4500.0,
-                  distance: '220 km',
-                  eta: '3h 45m',
+                  distance: '70 mile',
+                  eta: '1h 30m',
                 ), teal, isDark)),
                 const SizedBox(height: 15),
                 _anim(5, _buildSummaryCard(trip ?? const _TripDetails(
@@ -721,9 +721,9 @@ class _PickupScreenState extends State<PickupScreen>
                 style: TextStyle(color: Colors.white, fontSize: 16)),
           ]),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text(_tripDetails?.eta ?? '12 min', style: const TextStyle(
+            Text(_tripDetails?.eta ?? '1h 30min', style: const TextStyle(
                 color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-            Text(_tripDetails?.distance ?? '8.5 Km away', style: const TextStyle(
+            Text(_tripDetails?.distance ?? '70 mile away', style: const TextStyle(
                 color: Colors.white70, fontSize: 11)),
           ]),
         ]),
@@ -794,8 +794,8 @@ class _PickupScreenState extends State<PickupScreen>
     final items = {
       'ID': trip.shipmentId,
       'Type': trip.shipmentType,
-      'Weight': trip.weight,
-      'Destination': trip.dropoffLocation,
+      'Weight': "500 Kg",
+      'Destination': "Cairo",
     };
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1006,10 +1006,10 @@ class _ArrivedAtPickupScreenState extends State<ArrivedAtPickupScreen>
                   Text('Current Location',
                       style: TextStyle(color: _muted(isDark), fontSize: 12)),
                   const SizedBox(height: 4),
-                  Text(trip?.pickupLocation ?? 'Pickup Location', style: TextStyle(
+                  Text(trip?.pickupLocation ?? 'Fayum', style: TextStyle(
                       color: _text(isDark), fontSize: 16, fontWeight: FontWeight.bold)),
                   // if ((trip?.pickupAddress ?? '').isNotEmpty)
-                    Text(trip?.pickupAddress ?? 'Pickup Address',
+                    Text(trip?.pickupAddress ?? 'ميدان المسلة، الفيوم، مصر',
                         style: TextStyle(color: _muted(isDark), fontSize: 13)),
                 ]),
               ]),
@@ -1032,10 +1032,10 @@ class _ArrivedAtPickupScreenState extends State<ArrivedAtPickupScreen>
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('Contact Person',
                       style: TextStyle(color: _muted(isDark), fontSize: 12)),
-                  Text(trip?.traderName ?? 'Trader', style: TextStyle(
+                  Text(trip?.traderName ?? 'Toka Mahamed', style: TextStyle(
                       color: _text(isDark), fontSize: 16, fontWeight: FontWeight.bold)),
                   // if ((trip?.traderPhone ?? '').isNotEmpty)
-                    Text(trip?.traderPhone ?? 'Trader Phone',
+                    Text(trip?.traderPhone ?? '+20 101 234 5678',
                         style: TextStyle(color: _muted(isDark), fontSize: 13)),
                 ])),
                 Container(
@@ -1064,10 +1064,10 @@ class _ArrivedAtPickupScreenState extends State<ArrivedAtPickupScreen>
 
                 const SizedBox(height: 10),
                 ...[
-                  ['Shipment ID', trip?.shipmentId ?? '—'],
-                  ['Type', trip?.shipmentType ?? '—'],
-                  ['Weight', trip?.weight ?? '—'],
-                  ['items', trip?.dropoffLocation ?? '—'],
+                  ['Shipment ID', "SHP-10025"],
+                  ['Type', "Electronics"],
+                  ['Weight', "500 kg"],
+                  ['items', trip?.dropoffLocation ?? '3 items'],
                 ].map((r) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -1268,10 +1268,10 @@ class _PickupConfirmationScreenState extends State<PickupConfirmationScreen>
                       Icon(Icons.circle, color: teal, size: 12),
                       const SizedBox(width: 15),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('From (Picked up)',
+                        Text('From Fayum',
                             style: TextStyle(color: _muted(isDark), fontSize: 12)),
                         const SizedBox(height: 4),
-                        Text(trip?.pickupLocation ?? '—', style: TextStyle(
+                        Text(trip?.pickupLocation ?? 'ميدان المسلة، الفيوم، مصر', style: TextStyle(
                             color: _text(isDark), fontSize: 16, fontWeight: FontWeight.bold)),
                       ])),
                     ]),
@@ -1300,10 +1300,10 @@ class _PickupConfirmationScreenState extends State<PickupConfirmationScreen>
                               shape: BoxShape.circle, color: Color(0xFFFFB84D))),
                       const SizedBox(width: 15),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('To (Destination)',
+                        Text('To Cairo',
                             style: TextStyle(color: _muted(isDark), fontSize: 12)),
                         const SizedBox(height: 4),
-                        Text(trip?.dropoffLocation ?? '—', style: TextStyle(
+                        Text(trip?.dropoffLocation ?? 'ميدان التحرير، وسط البلد، القاهرة، مصر', style: TextStyle(
                             color: _text(isDark), fontSize: 16, fontWeight: FontWeight.bold)),
                         if ((trip?.dropoffAddress ?? '').isNotEmpty)
                           Text(trip!.dropoffAddress,
@@ -1315,10 +1315,10 @@ class _PickupConfirmationScreenState extends State<PickupConfirmationScreen>
                 const SizedBox(height: 25),
                 Row(children: [
                   _infoBox(Icons.location_on_outlined, 'Distance',
-                      trip?.distance ?? '—', teal, isDark),
+                      trip?.distance ?? '70 mile', teal, isDark),
                   const SizedBox(width: 15),
                   _infoBox(Icons.access_time, 'Est. Time',
-                      trip?.eta ?? '—', teal, isDark),
+                      trip?.eta ?? '1h 30min', teal, isDark),
                 ]),
               ]),
             )),
@@ -1339,15 +1339,15 @@ class _PickupConfirmationScreenState extends State<PickupConfirmationScreen>
                 const SizedBox(height: 25),
                 Row(children: [
                   _shipmentBox(Icons.scale_outlined, 'Weight',
-                      trip?.weight ?? '—', teal, isDark),
+                      trip?.weight ?? '500', teal, isDark),
                   const SizedBox(width: 15),
                   _shipmentBox(Icons.inventory_2_outlined, 'Package',
-                      trip?.shipmentType ?? '—', teal, isDark),
+                      trip?.shipmentType ?? '3', teal, isDark),
                 ]),
                 const SizedBox(height: 25),
                 ...[
-                  ['Shipment ID', trip?.shipmentId ?? '—'],
-                  ['Type', trip?.shipmentType ?? '—'],
+                  ['Shipment ID', trip?.shipmentId ?? 'SHP-10025'],
+                  ['Type', trip?.shipmentType ?? 'Electronics'],
                 ].map((r) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -1459,7 +1459,7 @@ class _InTransitScreenState extends State<InTransitScreen>
         vsync: this, duration: const Duration(seconds: 20))..repeat();
     _progressCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1500))..forward();
-    _progressAnim = Tween<double>(begin: 0, end: 0.62)
+    _progressAnim = Tween<double>(begin: 0, end: 0.30)
         .animate(CurvedAnimation(parent: _progressCtrl,
             curve: const Cubic(0.22, 1, 0.36, 1)));
     _shimmerCtrl = AnimationController(
@@ -1468,7 +1468,7 @@ class _InTransitScreenState extends State<InTransitScreen>
         .animate(CurvedAnimation(parent: _shimmerCtrl, curve: Curves.linear));
     _pathCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1500))..forward();
-    _pathAnim = Tween<double>(begin: 0, end: 0.62)
+    _pathAnim = Tween<double>(begin: 0, end: 0.30)
         .animate(CurvedAnimation(parent: _pathCtrl, curve: Curves.easeInOut));
     _destPulseCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 2000))..repeat();
@@ -1574,10 +1574,10 @@ class _InTransitScreenState extends State<InTransitScreen>
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Destination',
                     style: TextStyle(color: _muted(isDark), fontSize: 12)),
-                Text(trip?.dropoffLocation ?? 'Destination', style: TextStyle(
+                Text(trip?.dropoffLocation ?? 'Cairo', style: TextStyle(
                     color: _text(isDark), fontWeight: FontWeight.bold, fontSize: 16)),
-                if ((trip?.dropoffAddress ?? '').isNotEmpty)
-                  Text(trip!.dropoffAddress,
+
+                  Text("ميدان التحرير، وسط البلد، القاهرة، مصر",
                       style: TextStyle(color: _muted(isDark), fontSize: 13)),
               ])),
             ]),
@@ -1598,9 +1598,9 @@ class _InTransitScreenState extends State<InTransitScreen>
               ]),
               const SizedBox(height: 15),
               ...[
-                ['ID', trip?.shipmentId ?? '—'],
-                ['Type', trip?.shipmentType ?? '—'],
-                ['Weight', trip?.weight ?? '—'],
+                ['ID', trip?.shipmentId ?? 'SHP-10025'],
+                ['Type', trip?.shipmentType ?? 'Electronics'],
+                ['Weight', trip?.weight ?? '500'],
               ].map((r) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -1697,9 +1697,9 @@ class _InTransitScreenState extends State<InTransitScreen>
                   style: TextStyle(color: Colors.white, fontSize: 16)),
             ]),
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text(widget.tripDetails?.eta ?? '—', style: const TextStyle(
+              Text(widget.tripDetails?.eta ?? '1h 30min', style: const TextStyle(
                   color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-              Text(widget.tripDetails?.distance ?? '—', style: const TextStyle(
+              Text(widget.tripDetails?.distance ?? '70 mile away', style: const TextStyle(
                   color: Colors.white70, fontSize: 11)),
             ]),
           ]),
@@ -1963,7 +1963,7 @@ class _DeliverySuccessScreenState extends State<DeliverySuccessScreen>
                       Text(
                         earnings > 0
                             ? earnings.toStringAsFixed(0)
-                            : '—',
+                            : '150',
                         style: TextStyle(
                             fontSize: 48, fontWeight: FontWeight.bold,
                             color: _text(isDark)),
@@ -2005,7 +2005,7 @@ class _DeliverySuccessScreenState extends State<DeliverySuccessScreen>
                     const SizedBox(width: 15),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('From', style: TextStyle(color: _muted(isDark), fontSize: 11)),
-                      Text(trip?.pickupLocation ?? '—',
+                      Text(trip?.pickupLocation ?? 'Fayum',
                           style: TextStyle(color: _text(isDark), fontSize: 15)),
                     ])),
                   ]),
@@ -2018,15 +2018,15 @@ class _DeliverySuccessScreenState extends State<DeliverySuccessScreen>
                     const SizedBox(width: 15),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('To', style: TextStyle(color: _muted(isDark), fontSize: 11)),
-                      Text(trip?.dropoffLocation ?? '—',
+                      Text(trip?.dropoffLocation ?? 'Cairo',
                           style: TextStyle(color: _text(isDark), fontSize: 15)),
                     ])),
                   ]),
                   const SizedBox(height: 20),
                   Row(children: [
-                    _statBox('Distance', trip?.distance ?? '—', isDark),
+                    _statBox('Distance', trip?.distance ?? '70 mile', isDark),
                     const SizedBox(width: 15),
-                    _statBox('Shipment', trip?.shipmentId ?? '—', isDark),
+                    _statBox('Shipment', trip?.shipmentId ?? 'Electronics', isDark),
                   ]),
                 ]),
               )),

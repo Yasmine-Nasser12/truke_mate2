@@ -1352,10 +1352,10 @@ class _RequestAcceptedState extends State<RequestAcceptedScreen>
                   const SizedBox(width: 12),
                   Expanded(child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(widget.trip.pickup, style: TextStyle(
+                    Text("Fayum", style: TextStyle(
                         color: _text(d), fontSize: 15, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 14),
-                    Text(widget.trip.dropoff, style: TextStyle(
+                    Text("Cairo", style: TextStyle(
                         color: _text(d), fontSize: 15, fontWeight: FontWeight.w600)),
                   ])),
                 ]),
@@ -1369,7 +1369,7 @@ class _RequestAcceptedState extends State<RequestAcceptedScreen>
                     border: Border.all(color: _kAmber.withOpacity(0.25))),
                   child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                     Text("You'll Earn", style: TextStyle(color: _muted(d), fontSize: 14)),
-                    Text('${widget.trip.price.toInt()} EGP', style: const TextStyle(
+                    const Text('150 EGP', style: TextStyle(
                         color: _kAmber, fontSize: 20, fontWeight: FontWeight.bold)),
                   ]),
                 ),

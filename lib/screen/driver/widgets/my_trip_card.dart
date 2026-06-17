@@ -30,7 +30,6 @@ class MyTripCardState extends State<MyTripCard> {
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) => setState(() => _pressed = false),
       onTapCancel: () => setState(() => _pressed = false),
-      onTap: widget.onViewDetails,
       child: AnimatedScale(
         scale: _pressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 120),
@@ -144,7 +143,7 @@ class MyTripCardState extends State<MyTripCard> {
                     const SizedBox(height: 24),
 
                     // نوع الشحنة ووقت النشر
-                    Row(
+                    const Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Column(
@@ -208,7 +207,7 @@ class MyTripCardState extends State<MyTripCard> {
                                   'View Details',
                                   style: TextStyle(
                                     color: AppColors.kTeal,
-                                    fontSize: 16,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -222,7 +221,7 @@ class MyTripCardState extends State<MyTripCard> {
                         Expanded(
                           flex: 5,
                           child: ElevatedButton(
-                            onPressed: () {},
+                            onPressed: widget.onViewDetails ,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.kTeal,
                               foregroundColor: AppColors.kBgDark,
@@ -238,7 +237,7 @@ class MyTripCardState extends State<MyTripCard> {
                                 Text(
                                   'Accept',
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -288,11 +287,11 @@ class _InfoTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, color: iconColor, size: 16),
+              Icon(icon, color: iconColor, size: 14),
               const SizedBox(width: 4),
               Text(
                 title,
-                style: const TextStyle(color: AppColors.kMuted, fontSize: 12),
+                style: const TextStyle(color: AppColors.kMuted, fontSize: 9),
               ),
             ],
           ),

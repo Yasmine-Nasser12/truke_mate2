@@ -2462,10 +2462,250 @@ class _OffersPageState extends State<_OffersPage> {
         ]),
       ),
       const SizedBox(height: 16),
-      if (items.isEmpty)
-        Center(child: Padding(padding: const EdgeInsets.all(32),
-            child: Text('No offers in this category',
-                style: TextStyle(color: widget.t.textMuted))))
+      if (items.isEmpty) _StaggeredList(
+        count: 3,
+        itemBuilder: (context, index) {
+          final String avatar = index == 0 ? 'م ح' : (index == 1 ? 'A M' : 'Y A');
+          final String name = index == 0 ? 'محمود حسن ' : (index == 1 ? 'Ahmed Mohamed' : 'Yasser Ahmed');
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF071A2E),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: const Color(0xFF00D4FF).withOpacity(.15),
+                ),
+              ),
+              child: Column(
+                children: [
+                  // Header
+                  Row(
+                    children: [
+                      Container(
+                        width: 68,
+                        height: 68,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFF12D6E3),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          avatar,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: const [
+                                Icon(
+                                  Icons.star,
+                                  color: Colors.amber,
+                                  size: 18,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  '4.8',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  '• 8 mins ago',
+                                  style: TextStyle(
+                                    color: Colors.white38,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: const [
+                                Icon(
+                                  Icons.location_on_outlined,
+                                  color: Color(0xFF00D4FF),
+                                  size: 18,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  '3.1 km',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Van',
+                                  style: TextStyle(
+                                    color: Colors.white38,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  // Price & ETA
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF081426),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Offer Price',
+                                style: TextStyle(
+                                  color: Colors.white38,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                '220',
+                                style: TextStyle(
+                                  color: Color(0xFF00D4FF),
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          width: 1,
+                          height: 50,
+                          color: Colors.white10,
+                        ),
+                        const SizedBox(width: 24),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.access_time,
+                                    color: Color(0xFF00D4FF),
+                                    size: 18,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'ETA',
+                                    style: TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                '20 mins',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {},
+                          icon: const Icon(
+                            Icons.cancel_outlined,
+                            color: Colors.red,
+                          ),
+                          label: const Text(
+                            'Reject',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 16,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(54),
+                            side: const BorderSide(
+                              color: Colors.red,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {},
+                          icon: const Icon(Icons.check_circle_outline),
+                          label: const Text(
+                            'Accept',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(54),
+                            backgroundColor: const Color(0xFF12D6E3),
+                            foregroundColor: Colors.white,
+                            elevation: 8,
+                            shadowColor: const Color(0xFF12D6E3),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      )
       else ...[
         _StaggeredList(count: items.length,
           itemBuilder: (_, i) => Padding(

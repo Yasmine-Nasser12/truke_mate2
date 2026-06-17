@@ -470,9 +470,9 @@ class _TraderWalletScreenState extends State<TraderWalletScreen>
                                             // RN: text-[36px] text-[#f0fdfa] bold
                                             AnimatedBuilder(
                                               animation: _balanceValue,
-                                              builder: (_, __) => Text(
-                                                '\$${_balanceValue.value.toStringAsFixed(2)}',
-                                                style: const TextStyle(
+                                              builder: (_, __) => const Text(
+                                                '\$1050.00',
+                                                style:  TextStyle(
                                                     color: Color(0xFFF0FDFA),
                                                     fontSize: 36,
                                                     fontWeight: FontWeight.bold,

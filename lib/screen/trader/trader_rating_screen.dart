@@ -429,9 +429,9 @@ class _RateDriverScreenState extends State<RateDriverScreen>
                             Container(
                               width: 64,
                               height: 64,
-                              decoration: BoxDecoration(
+                              decoration:const BoxDecoration(
                                 shape: BoxShape.circle,
-                                gradient: const LinearGradient(
+                                gradient:  LinearGradient(
                                   colors: [
                                     Color(0xFF009689),
                                     Color(0xFF00BBA7),
@@ -447,8 +447,8 @@ class _RateDriverScreenState extends State<RateDriverScreen>
                                   decoration: const BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: Color(0xFF192C3D)),
-                                  child: Center(
-                                    child: Text(widget.driverInitials,
+                                  child: const Center(
+                                    child: Text("م ن",
                                         style: const TextStyle(
                                             color: Colors.white, fontSize: 16)),
                                   ),

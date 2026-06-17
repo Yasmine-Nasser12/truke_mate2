@@ -620,8 +620,8 @@ class _PaymentSuccessState extends State<PaymentSuccessScreen>
                     const SizedBox(height: 8),
                     AnimatedBuilder(
                         animation: _amountVal,
-                        builder: (_, __) => Text(
-                            '\$${_amountVal.value.toInt()}',
+                        builder: (_, __) => const Text(
+                            '\$150',
                             style: const TextStyle(
                                 color: _kTeal,
                                 fontSize: 42,
@@ -631,11 +631,11 @@ class _PaymentSuccessState extends State<PaymentSuccessScreen>
                     const SizedBox(height: 16),
                     _Row(label: 'Transaction ID', value: txn, kt: kT, km: kM),
                     const SizedBox(height: 12),
-                    _Row(label: 'Date & Time', value: dateStr, kt: kT, km: kM),
+                    _Row(label: 'Date & Time', value: "Jun 25, 2026 • 10:00 AM", kt: kT, km: kM),
                     const SizedBox(height: 12),
                     _Row(
                         label: 'Payment Method',
-                        value: 'Visa **** 4532',
+                        value: 'Visa **** 4444',
                         kt: kT,
                         km: kM),
                     const SizedBox(height: 12),
@@ -748,16 +748,16 @@ class InvoiceScreen extends StatefulWidget {
   const InvoiceScreen({
     super.key,
     this.invoiceId,
-    this.shipmentId    = 'TM-2I8KIDJ70',
-    this.pickup        = 'Fayum',           // ✅
-    this.dropoff       = 'Cairo',           // ✅
-    this.date          = 'Jun 25, 2026 • 10:00 AM', // ✅
-    this.driver        = 'Ahmed Hassan',
-    this.vehicle       = 'Pickup Truck',
-    this.plate         = 'ABC-1234',
-    this.basePrice     = 200,
-    this.serviceFee    = 20,
-    this.tax           = 20,
+    this.shipmentId = 'TM-2I8KIDJ70',
+    this.pickup = 'Fayum', // ✅
+    this.dropoff = 'Cairo', // ✅
+    this.date = 'Jun 25, 2026 • 10:00 AM', // ✅
+    this.driver = 'Ahmed Hassan',
+    this.vehicle = 'Pickup Truck',
+    this.plate = 'ABC-1234',
+    this.basePrice = 200,
+    this.serviceFee = 20,
+    this.tax = 20,
     this.paymentMethod = 'Visa ** 4532',
   });
 
@@ -1355,7 +1355,9 @@ class _PaymentMethodsListState extends State<PaymentMethodsListScreen>
                           last4: last4,
                           expiry: expiry,
                           isDefault: isDefault,
-                          color: isMasterCard ? const Color(0xFFF6801C) : const Color(0xFF244EEE)),
+                          color: isMasterCard
+                              ? const Color(0xFFF6801C)
+                              : const Color(0xFF244EEE)),
                       isDark: isDark, kT: kT, kM: kM, kB: kB,
                       // ✅ DELETE /api/trader/wallet/cards/{cardId}
                       onDelete: () async {
@@ -1897,13 +1899,16 @@ class _PaymentMethodsSelectState extends State<PaymentMethodsSelectScreen>
                                         width: 48,
                                         height: 48,
                                         decoration: BoxDecoration(
-                                            color: m.name.toLowerCase().contains('master')
+                                            color: m.name
+                                                    .toLowerCase()
+                                                    .contains('master')
                                                 ? const Color(0xFFF6801C)
                                                 : const Color(0xFF244EEE),
                                             borderRadius:
                                                 BorderRadius.circular(12)),
                                         child: Icon(m.icon,
-                                            color: const Color(0xFFFCFDFF), size: 22)),
+                                            color: const Color(0xFFFCFDFF),
+                                            size: 22)),
                                     const SizedBox(width: 14),
                                     Expanded(
                                         child: Column(

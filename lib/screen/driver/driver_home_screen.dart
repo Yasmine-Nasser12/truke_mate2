@@ -917,9 +917,9 @@ class _DriverHomeScreenState extends State<DriverHomeScreen>
   Widget _buildTodayStats(DriverProvider driver, bool isDark, Color kCard, Color kBorder, Color kText, Color kMuted) {
     final stats = driver.todayStats;
     final items = [
-      {'icon': Icons.trending_up, 'color': _kAmber, 'label': 'Trips completed', 'value': '${stats.tripsCompleted}', 'tap': null},
+      {'icon': Icons.trending_up, 'color': _kAmber, 'label': 'Trips completed', 'value': '3', 'tap': null},
       {'icon': Icons.attach_money, 'color': _kTeal, 'label': 'Earnings',
-       'value': '${stats.earnings.toStringAsFixed(1)} EGP', 'tap': () => setState(() => _navIndex = 2)},
+       'value': '390 EGP', 'tap': () => setState(() => _navIndex = 2)},
       {'icon': Icons.access_time, 'color': const Color(0xFFFBBF24), 'label': 'Online time', 'value': stats.onlineTime, 'tap': null},
     ];
 
