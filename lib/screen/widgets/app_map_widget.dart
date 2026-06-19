@@ -380,29 +380,29 @@ class _AppMapWidgetState extends State<AppMapWidget>
 
           // ── Empty state ──
           if (!hasShipment && !_loading)
-            Positioned(
-              bottom: 12, left: 12, right: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: _kBg.withOpacity(0.85),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _kCyan.withOpacity(0.2)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.info_outline,
-                        color: _kCyan.withOpacity(0.7), size: 16),
-                    const SizedBox(width: 8),
-                    Text(widget.emptyStateLabel,
-                        style: TextStyle(
-                            color: _kMuted.withOpacity(0.6), fontSize: 12)),
-                  ],
-                ),
-              ),
-            ),
+            // Positioned(
+            //   bottom: 12, left: 12, right: 12,
+            //   child: Container(
+            //     padding: const EdgeInsets.symmetric(
+            //         horizontal: 14, vertical: 10),
+            //     decoration: BoxDecoration(
+            //       color: _kBg.withOpacity(0.85),
+            //       borderRadius: BorderRadius.circular(12),
+            //       border: Border.all(color: _kCyan.withOpacity(0.2)),
+            //     ),
+            //     child: Row(
+            //       mainAxisAlignment: MainAxisAlignment.center,
+            //       children: [
+            //         Icon(Icons.info_outline,
+            //             color: _kCyan.withOpacity(0.7), size: 16),
+            //         const SizedBox(width: 8),
+            //         Text(widget.emptyStateLabel,
+            //             style: TextStyle(
+            //                 color: _kMuted.withOpacity(0.6), fontSize: 12)),
+            //       ],
+            //     ),
+            //   ),
+            // ),
 
           // ── Track Live button (للتريدر) ──
           if (hasShipment && widget.onTap != null)

@@ -57,7 +57,7 @@ class AuthService {
   }) async {
     try {
       final response = await _api.post('/register', data: {
-        'role': 1,
+        'role': 2,
         'verificationToken': verificationToken,
         'driver': {
           'fullName':        name,
@@ -160,7 +160,7 @@ class AuthService {
   }) async {
     try {
       final response = await _api.post('/register', data: {
-        'role': 2,
+        'role': 3,
         'verificationToken': verificationToken,
         'trader': {
           'fullName':            name,
